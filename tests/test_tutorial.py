@@ -28,13 +28,25 @@ def test_adoption_fingerprints_and_reader_owned_data(tmp_path: Path) -> None:
     write(root, "tests/test_prices.py", "def test_prices(): pass\n")
     write(root, "tests/test_other.py", "def test_other(): pass\n")
     write(root, "tests/data/prices.json", '{"price": 3}\n')
+    write(root, "uv.lock", "version = 1\n")
     write(
         root,
         "tests/test_prices.py.gv-dependency.yaml",
         'dependencies:\n  - inputs: ["//tests/data/prices.json"]\n'
         "    kind: content\n    reason: Reads expected prices.\n",
     )
-    config = {"module_roots": ["."], "test_roots": ["tests"]}
+    config = {
+        "module_roots": ["."],
+        "test_roots": ["tests"],
+        "dependencies": [
+            {
+                "readers": ["tests/*.py"],
+                "inputs": ["uv.lock", "pyproject.toml"],
+                "kind": "content",
+                "reason": "All tests use this dependency environment.",
+            }
+        ],
+    }
     write(root, ".github/test-impact.json", json.dumps(config))
     commit(root)
     config_path = root / ".github/test-impact.json"
@@ -52,3 +64,9 @@ def test_adoption_fingerprints_and_reader_owned_data(tmp_path: Path) -> None:
     selection = json.loads(report.read_text(encoding="utf-8"))
     assert selection["mode"] == "scoped"
     assert selection["selected"] == ["tests/test_prices.py"]
+    write(root, "uv.lock", "version = 2\n")
+    lock_head = commit(root)
+    assert main(["affected", *common, "--base", head, "--head", lock_head, "--output", str(report)]) == 0
+    selection = json.loads(report.read_text(encoding="utf-8"))
+    assert selection["mode"] == "full"
+    assert selection["selected"] == ["tests/test_other.py", "tests/test_prices.py"]

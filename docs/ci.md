@@ -88,3 +88,31 @@ print("No affected test files; pytest skipped")
 The JSON form preserves paths containing spaces. Do not use shell evaluation to
 execute report contents. Preserve your test-lane filters and conformance policy;
 file selection does not override those requirements.
+
+## Select whole CI lanes
+
+For tests that must produce complete conformance evidence, use
+[`.github/actions/plan-lanes`](../.github/actions/plan-lanes/action.yml) or
+`python -m pytest_selective.ci` with a config:
+
+```json
+{
+  "graph": {"module_roots": ["src", "."], "test_roots": ["tests"]},
+  "lanes": {
+    "unit": {"roots": ["tests/unit"]},
+    "live": {"roots": ["tests/live"], "inputs": ["external-contracts/**"]}
+  }
+}
+```
+
+An affected test selects its entire lane. Explicit lane inputs cover external
+checkouts, generated tests, and subprocess dependencies that imports cannot see.
+CI/dependency metadata changes and operational planning failures run every lane.
+Review collection policy and set `graph.pytest_policy` from the `fingerprints`
+command before expecting narrowing in a configured pytest project.
+
+The action returns a `lanes` JSON object. Expose it as a planning-job output,
+then gate each expensive job with `always() && !cancelled()` and either a true
+lane value **or a failed planning job**. This preserves tests if planning fails.
+Run the action with `full: true` on main, schedules, and full-test overrides.
+Selected jobs retain all of their existing tests and evidence checks.

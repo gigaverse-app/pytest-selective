@@ -114,6 +114,11 @@ Selection chooses **which files are affected**; your existing markers and CI
 policy still determine which tests may run. Suites that enforce complete
 collection or whole-suite coverage need full runs.
 
+For expensive suites that must retain complete conformance evidence, use
+[whole-lane selection](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/ci.md#select-whole-ci-lanes).
+An affected test activates its entire lane, preserving the lane's existing tests
+and evidence checks.
+
 [Read the evidence, safety boundaries, and adoption checklist](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/evidence.md).
 
 ## Choose the right tool

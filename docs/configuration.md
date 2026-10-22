@@ -77,7 +77,7 @@ Declare lock files, environment manifests, and other suite-wide inputs explicitl
 
 ```json
 {
-  "readers": ["tests/**/test_*.py"],
+  "readers": ["tests/*.py"],
   "inputs": ["uv.lock", "pyproject.toml"],
   "kind": "content",
   "reason": "All tests use this dependency environment."
@@ -85,7 +85,8 @@ Declare lock files, environment manifests, and other suite-wide inputs explicitl
 ```
 
 Add that rule to the configuration's `dependencies` array and adapt the reader
-patterns to your actual inventory. Unknown non-Python files are not automatically
+patterns to your actual inventory. Central-rule reader patterns use shell-style
+matching: here `*` also covers nested paths under `tests/`. Unknown non-Python files are not automatically
 global inputs. Use `global_modules` for modules loaded by every test and
 `always_run` for explicit canary test paths. Retain full-suite checkpoints.
 
