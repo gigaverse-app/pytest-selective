@@ -102,6 +102,25 @@ def test_a_changed_name_selects_only_the_tests_that_read_it(
     assert any("CACHE_TTL" in reason for reason in report.reasons)
 
 
+@pytest.mark.parametrize("global_input", [SETTINGS, "src/proj/cache.py"])
+def test_global_inputs_apply_to_changed_files_before_name_scope_narrowing(
+    repo: Path, config: ImpactConfig, cache: GraphCache, global_input: str
+) -> None:
+    config.global_inputs = [global_input]
+    base, head = edit_settings(repo, "CACHE_TTL = 60", "CACHE_TTL = 90")
+
+    report = affected(repo, base, head, config, cache)
+
+    if global_input == SETTINGS:
+        assert report.mode == "full"
+        assert len(report.selected) == report.total_files == 5
+        assert f"global input: {SETTINGS}" in report.reasons
+    else:
+        # A reader reached by the edit is not itself a changed global input.
+        assert report.selected == ["tests/test_cache.py", "tests/test_startup.py"]
+        assert report.mode == "scoped"
+
+
 @pytest.mark.parametrize("warning_policy", ["error", "always"])
 def test_analysis_warnings_preserve_name_scoped_selection(
     repo: Path, config: ImpactConfig, cache: GraphCache, warning_policy: str

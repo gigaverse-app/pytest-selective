@@ -65,3 +65,11 @@ conftest option. Its default misses the application-imported conftest case;
 pytest-selective retains the affected descendant test. The script and observed
 cases are linked from the comparison. Persisted cache replay parses zero blobs
 for the same tree and exactly one after a one-file comment change.
+
+The next review found two interactions: global matches must use original changed
+paths before name narrowing, and a large local selected-file argument list can
+exceed Windows process limits. Both global/name-scope controls failed before the
+fix; all 112 global, name-scope and first-party controls now pass. The runner
+regressions exercise the actual Windows limit and the portable E2BIG recovery
+boundary, retaining other errors and retrying only once. Final pins are refreshed
+after these corrections pass validation.

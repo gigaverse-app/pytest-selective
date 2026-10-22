@@ -185,6 +185,9 @@ def affected(
         reached |= set(pin.reached) | _content_readers((before, after), pinned)
         reasons.append(pin.reason)
         dependencies_unchanged = dependencies_unchanged and pin.installed_unchanged
+    # Only proven first-party pin moves replace an input's global effect.
+    # Match original changes, never unchanged readers introduced by narrowing.
+    global_paths = [path for path in changed if path not in narrowed and matches(path, config.global_inputs)]
     # A name-scoped module's importers depend only on the names they read. When a change only
     # rebinds names, replace the module with the files that read them; anything unproven keeps its edges.
     for module in config.name_scoped_modules:
@@ -200,9 +203,6 @@ def affected(
             reasons.append(scoped.reason)
     if narrowed:
         relevant = sorted((set(relevant) - narrowed) | reached | name_readers)
-    # Proven first-party pin moves above may replace a lock's global effect.
-    # Every other changed environment input selects all tests, deletions included.
-    global_paths = [path for path in relevant if matches(path, config.global_inputs)]
     if global_paths:
         selected.update(after.tests)
         reasons.extend(f"global input: {path}" for path in global_paths)

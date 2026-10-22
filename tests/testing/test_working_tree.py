@@ -1,10 +1,12 @@
 """Local selection runs real dirty repositories without staging the user's work."""
 
+import errno
 import json
 import os
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -114,6 +116,66 @@ def test_local_runner_missing_history_runs_all_tests(repo: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     assert "2 passed" in result.stdout
     assert "full-suite fallback" in result.stderr
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Exercise the actual Windows command-line limit")
+@pytest.mark.parametrize("full_plan", [False, True])
+def test_large_local_selection_runs_tests_instead_of_exceeding_command_limit(repo: Path, full_plan: bool) -> None:
+    for number in range(500):
+        name = f"tests/test_{number:04d}_" + "long_realistic_suite_name_" * 3 + ".py"
+        write(repo, name, "from pkg.value import VALUE\ndef test_ok(): assert VALUE > 0\n")
+    write(repo, "tests/test_other.py", "def test_other(): assert False\n")
+    commit(repo)
+    if full_plan:
+        write(repo, "requirements.txt", "# changed environment\n")
+    else:
+        write(repo, "pkg/value.py", "VALUE = 1\n# changed source\n")
+    result = run_local(repo, "--", "-q")
+    # The deliberately unaffected failing test proves the scoped overflow also
+    # executes the complete roots, and the pytest failure status is preserved.
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "1 failed, 501 passed" in result.stdout
+    assert "Traceback" not in result.stderr
+    if full_plan:
+        assert "command line is too long" not in result.stderr
+    else:
+        assert "command line is too long" in result.stderr
+        assert "full-suite fallback" in result.stderr
+
+
+@pytest.mark.parametrize("failure", [errno.E2BIG, errno.EACCES, errno.ENAMETOOLONG])
+@pytest.mark.parametrize("retry_fails", [False, True])
+def test_local_spawn_errors_retry_only_oversized_commands_once(repo: Path, failure: int, retry_fails: bool) -> None:
+    write(repo, "pkg/value.py", "VALUE = 2\n")
+    original_run = subprocess.run
+    attempts: list[list[str]] = []
+    initial_error = OSError(failure, "spawn failed")
+    retry_error = OSError(errno.E2BIG, "roots also too large")
+
+    def spawn(command, **kwargs):
+        if command[1:3] != ["-m", "pytest"]:
+            return original_run(command, **kwargs)
+        attempts.append(command)
+        if len(attempts) == 1:
+            raise initial_error
+        if retry_fails:
+            raise retry_error
+        return subprocess.CompletedProcess(command, 5)
+
+    with patch.object(subprocess, "run", side_effect=spawn):
+        arguments = ["run", "--repo", str(repo), "--config", str(repo / "selection.json"), "--", "-q"]
+        if failure == errno.E2BIG and not retry_fails:
+            assert main(arguments) == 5
+        else:
+            with pytest.raises(OSError) as error:
+                main(arguments)
+            assert error.value is (retry_error if failure == errno.E2BIG else initial_error)
+    assert attempts[0][3:] == ["tests/test_value.py", "-q"]
+    if failure == errno.E2BIG:
+        assert len(attempts) == 2
+        assert attempts[1][3:] == ["tests", "-q"]
+    else:
+        assert len(attempts) == 1
 
 
 def test_force_added_ignored_test_is_still_a_local_input(repo: Path, tmp_path: Path) -> None:

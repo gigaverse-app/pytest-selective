@@ -33,6 +33,10 @@ collectors, doctests and whole-suite coverage need a full run with their usual
 arguments. CI lanes that require complete evidence should continue using
 `plan-lanes`, which can avoid service startup as well as test execution.
 
+Full plans invoke the configured roots. If a scoped file list exceeds the
+operating system's command-line limit, the runner reports the fallback and
+retries those complete roots once. Other process-start failures remain errors.
+
 ## Environment inputs
 
 `ImpactConfig.global_inputs` now defaults to common Python environment and pytest

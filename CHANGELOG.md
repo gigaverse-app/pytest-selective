@@ -6,6 +6,7 @@
 - Share conservative environment-file invalidation between file selection and CI lanes, covering other Python installers as well as uv.
 - Reuse one AST traversal and skip unnecessary comment tokenization; real-backend parser records are unchanged with a measured 52.1% median parsing-time reduction.
 - Keep source analysis independent of warning-as-error settings through a shared parser used by import guards and CI-esta.
+- Preserve explicit global-input precedence over name narrowing, and retry oversized local pytest commands once with complete roots.
 
 - Guard hidden, TOML, nested and explicitly declared pytest configuration against unsafe empty selection; retain full-suite dependency updates for configured plugins.
 - Reuse Git tree listings within a process and start fewer Git processes in test fixtures; Windows CI measures coverage on Python 3.14 only.

@@ -1,6 +1,7 @@
 """Run affected local pytest files, avoiding collection of unrelated modules."""
 
 import argparse
+import errno
 import os
 import subprocess
 import sys
@@ -47,11 +48,11 @@ def main(argv: list[str] | None = None) -> int:
                 config_path=config_path.relative_to(repo).as_posix() if config_path.is_relative_to(repo) else None,
                 dependency_token=os.environ.get("IMPACT_DEPENDENCY_TOKEN") or None,
             )
-            selected = report.selected
-            if not selected:
+            if report.mode != "full" and not report.selected:
                 print("No affected tests; pytest was not started.")
                 return 0
-            print(f"Running {len(selected)} affected test files of {report.total_files}.", flush=True)
+            selected = config.test_roots if report.mode == "full" else report.selected
+            print(f"Running {len(report.selected)} affected test files of {report.total_files}.", flush=True)
     except DependencyDeclarationError as error:
         print(f"Invalid test dependency: {error}", file=sys.stderr)
         return 2
@@ -63,4 +64,15 @@ def main(argv: list[str] | None = None) -> int:
     extra = args.pytest_args[1:] if args.pytest_args[:1] == ["--"] else args.pytest_args
     # No shell splitting: paths with spaces remain one argument. In particular,
     # an empty successful plan never becomes bare pytest (which runs everything).
-    return subprocess.run([sys.executable, "-m", "pytest", *selected, *extra], cwd=repo).returncode
+    try:
+        return subprocess.run([sys.executable, "-m", "pytest", *selected, *extra], cwd=repo).returncode
+    except OSError as error:
+        if selected == config.test_roots or (error.errno != errno.E2BIG and getattr(error, "winerror", None) != 206):
+            raise
+        # Ask the OS rather than guessing a limit: environment size and quoting
+        # also consume the available command line. Retry broader roots only once.
+        print(
+            "Test selection full-suite fallback: pytest command line is too long; running configured roots.",
+            file=sys.stderr,
+        )
+    return subprocess.run([sys.executable, "-m", "pytest", *config.test_roots, *extra], cwd=repo).returncode
