@@ -4,22 +4,67 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
 jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          python-version: '3.14'
+          cache-suffix: ${{ github.job }}
+      - run: uv sync --locked
+      - run: uv run --locked pre-commit run --all-files
   tests:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.11", "3.14"]
-        os: [ubuntu-latest, windows-latest]
+        python: ['3.11', '3.14']
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           python-version: ${{ matrix.python }}
-      - run: uv sync
-      - run: uv run pytest -q -n 4
-      - run: uv run ruff check .
+          cache-suffix: ${{ github.job }}-${{ matrix.python }}
+      - run: uv sync --locked
+      - run: uv run --locked pytest -q -n 4 --cov --cov-report=term-missing --cov-report=xml
+      - run: uv run --locked python scripts/tutorial.py --output tutorial-report.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: evidence-${{ matrix.os }}-${{ matrix.python }}
+          path: |
+            coverage.xml
+            tutorial-report.json
+  pytest-minimum:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          python-version: '3.11'
+          cache-suffix: ${{ github.job }}
+      - run: uv sync --locked
+      - run: uv pip install 'pytest==8.0.0'
+      - run: uv run --no-sync pytest -q -n 4
+  distributions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          python-version: '3.14'
+          cache-suffix: ${{ github.job }}
+      - run: uv sync --locked
       - run: uv build
+      - run: uv run --locked twine check --strict dist/*
+      - run: uv run --locked python scripts/smoke_distribution.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: distributions
+          path: dist/*
+          if-no-files-found: error

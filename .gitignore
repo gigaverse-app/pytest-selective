@@ -8,3 +8,6 @@ impact-audit/
 dist/
 *.egg-info/
 .coverage
+coverage.xml
+htmlcov/
+tutorial-report.json
