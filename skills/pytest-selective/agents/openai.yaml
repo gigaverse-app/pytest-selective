@@ -1,0 +1,4 @@
+interface:
+  display_name: "pytest-selective"
+  short_description: "Select affected Python tests with measured evidence"
+  default_prompt: "Use $pytest-selective to speed up this repository's tests while preserving coverage and measuring the result."
