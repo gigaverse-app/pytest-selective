@@ -1,0 +1,83 @@
+[
+  {
+    "repository": "gigaverse-app/due",
+    "run_id": 39843214915,
+    "url": "https://github.com/gigaverse-app/due/actions/runs/39843214915",
+    "workflow": "Widget Store comparison",
+    "head_sha": "6da506c27a66f3776b804bab4542d435d42e27ca",
+    "attempt": 1,
+    "created_at": "2026-10-22T19:47:53Z",
+    "completed_at": "2026-10-22T19:48:10+00:00",
+    "elapsed_seconds": 17.0,
+    "runner_seconds": 13.0,
+    "executed_jobs": 1,
+    "skipped_job_records": 1,
+    "jobs": [
+      {
+        "id": 120049552086,
+        "name": "select-tests",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:47:57Z",
+        "completed_at": "2026-10-22T19:48:10Z"
+      },
+      {
+        "id": 120049686997,
+        "name": "compare",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T19:48:10Z",
+        "completed_at": "2026-10-22T19:48:10Z"
+      }
+    ]
+  },
+  {
+    "repository": "gigaverse-app/due",
+    "run_id": 39843954580,
+    "url": "https://github.com/gigaverse-app/due/actions/runs/39843954580",
+    "workflow": "Widget Store comparison",
+    "head_sha": "6da506c27a66f3776b804bab4542d435d42e27ca",
+    "attempt": 1,
+    "created_at": "2026-10-22T19:52:58Z",
+    "completed_at": "2026-10-22T20:17:23+00:00",
+    "elapsed_seconds": 1465.0,
+    "runner_seconds": 2953.0,
+    "executed_jobs": 5,
+    "skipped_job_records": 0,
+    "jobs": [
+      {
+        "id": 120052147634,
+        "name": "select-tests",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:53:01Z",
+        "completed_at": "2026-10-22T19:53:13Z"
+      },
+      {
+        "id": 120052272265,
+        "name": "compare (false, candidate)",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:53:15Z",
+        "completed_at": "2026-10-22T20:17:23Z"
+      },
+      {
+        "id": 120052272267,
+        "name": "compare (false, baseline)",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:53:15Z",
+        "completed_at": "2026-10-22T20:07:23Z"
+      },
+      {
+        "id": 120052272380,
+        "name": "compare (true, candidate)",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:53:15Z",
+        "completed_at": "2026-10-22T19:59:21Z"
+      },
+      {
+        "id": 120052272413,
+        "name": "compare (true, baseline)",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:53:15Z",
+        "completed_at": "2026-10-22T19:57:54Z"
+      }
+    ]
+  }
+]
