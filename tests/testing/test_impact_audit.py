@@ -95,6 +95,11 @@ def run_audited_pytest(repo: Path, records: Path, *args: str) -> subprocess.Comp
             "-q",
             "-c",
             str(isolated),
+            # This nested run owns its temporary files. The global pytest temp
+            # root contains other tests' Git object stores, whose retention cleanup
+            # is expensive on Windows and unrelated to recorder behavior.
+            "--basetemp",
+            str(repo / ".audit-pytest-tmp"),
             "--rootdir",
             str(repo),
             "-p",

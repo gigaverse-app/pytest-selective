@@ -24,6 +24,9 @@ def commit(root: Path, message: str = "fixture") -> str:
             "user.email=test@example.com",
             "-c",
             "core.hooksPath=",
+            # Disposable fixture histories need no automatic background maintenance.
+            "-c",
+            "maintenance.auto=false",
             "commit",
             "-q",
             "--allow-empty",
