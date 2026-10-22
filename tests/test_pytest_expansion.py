@@ -12,6 +12,7 @@ from pytest_selective import pytest_expansion
 from pytest_selective.impact_graph import GraphCache
 from pytest_selective.impact_models import ImpactConfig
 from pytest_selective.impact_selection import affected
+from tests.testing.git_repo import head
 
 SCRIPT = Path(__file__).resolve().parents[1] / "src/pytest_selective/pytest_expansion.py"
 ACTIVATION = "# gv:test-requires-expansion-reason\n"
@@ -32,7 +33,7 @@ def write(root: Path, relative: str, source: str) -> None:
 def commit(root: Path) -> str:
     git(root, "add", ".")
     git(root, "-c", "maintenance.auto=false", "commit", "--quiet", "-m", "test snapshot")
-    return git(root, "rev-parse", "HEAD")
+    return head(root)
 
 
 @pytest.fixture

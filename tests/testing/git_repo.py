@@ -1,5 +1,6 @@
 """Real Git repositories for tests of tools that read committed trees."""
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -36,4 +37,21 @@ def commit(root: Path, message: str = "fixture") -> str:
         check=True,
         capture_output=True,
     )
+    return head(root)
+
+
+def head(root: Path) -> str:
+    """Read the just-written fixture ref; let Git handle packed refs and worktrees.
+
+    Fixture commits write a loose HEAD/ref. Reading that result avoids a second
+    Git process per commit without substituting a fake commit or repository.
+    """
+    try:
+        value = (root / ".git" / "HEAD").read_text().strip()
+        if value.startswith("ref: "):
+            value = (root / ".git" / value.removeprefix("ref: ")).read_text().strip()
+        if re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", value):
+            return value
+    except OSError:
+        pass
     return subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
