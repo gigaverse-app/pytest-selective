@@ -111,3 +111,19 @@ pytest-selective audit --config .github/test-impact.json --records impact-audit
 
 Audit results cover executed paths, not every possible execution. Declare missing
 edges at their readers. See [evidence and limitations](evidence.md).
+
+### Custom and nested pytest configuration
+
+The policy fingerprints cover conventional pytest configuration names, including
+`pytest.toml`, `.pytest.toml`, `.pytest.ini` and nested candidates. Empty candidates
+are included because their presence can change pytest's root and precedence.
+Changes require reviewing and refreshing `pytest_policy`; until then planning
+fails safely and the CI action runs the complete configured roots.
+
+If your test command uses `pytest -c ci/custom.conf`, add
+`"pytest_config_files": ["ci/custom.conf"]` to the selector config **before**
+running `fingerprints`. These are literal repository-relative POSIX paths, not
+globs. Their complete contents are fingerprinted, and plugin references prevent
+unsafe dependency-pin narrowing. Missing declared files cannot prove selection.
+Keep environment options, dynamically generated configuration and files outside
+the repository covered by explicit whole-lane inputs/full execution.

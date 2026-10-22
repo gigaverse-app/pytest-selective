@@ -161,7 +161,9 @@ def first_party_pin_move(
     return move
 
 
-def refuse_pytest_plugin(spec: FirstPartyPackage, repo: Path, files: dict[str, str]) -> None:
+def refuse_pytest_plugin(
+    spec: FirstPartyPackage, repo: Path, files: dict[str, str], extra_files: tuple[str, ...] = ()
+) -> None:
     """
     Refuse to narrow a package that the consumer's pytest configuration names.
 
@@ -169,7 +171,7 @@ def refuse_pytest_plugin(spec: FirstPartyPackage, repo: Path, files: dict[str, s
     import analysis cannot see its changes. Any mention is refused, not only `-p`: a false refusal
     costs one complete suite, a missed plugin silently skips tests.
     """
-    for path, policy in pytest_policies(repo, files).items():
+    for path, policy in pytest_policies(repo, files, extra_files).items():
         if spec.import_prefix in policy:
             raise ValueError(
                 f"the pytest configuration in {path} names {spec.import_prefix}, so its changes reach every test"

@@ -318,7 +318,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "audit":
             return _audit(args, config, cache)
         if args.command == "fingerprints":
-            result = json.dumps(policy_fingerprints(args.repo, inventory(args.repo, args.head)), indent=2)
+            result = json.dumps(
+                policy_fingerprints(args.repo, inventory(args.repo, args.head), tuple(config.pytest_config_files)),
+                indent=2,
+            )
         elif args.command == "affected":
             config_path = (
                 args.config.resolve().relative_to(args.repo.resolve()).as_posix()

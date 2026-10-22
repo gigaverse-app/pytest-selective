@@ -30,6 +30,14 @@ This is a design comparison; no upstream implementation was copied.
   inputs. Existing boolean GitHub outputs stay compatible. This turns broad
   invalidators into reviewable evidence when deciding what can safely be narrowed.
 
+- **All collection configuration candidates.** Fingerprint hidden and nested
+  `pytest.ini`/`pytest.toml` candidates as well as `pyproject.toml`, `setup.cfg`
+  and `tox.ini`. Add custom files supplied with pytest `-c` to
+  `pytest_config_files` in the selector config before running `fingerprints`;
+  their complete contents are reviewed. Added, edited and deleted candidates
+  require a fresh policy review or the existing full-suite fallback. Changing
+  this policy invalidates old graph caches.
+
 ## Useful next directions
 
 The upstream plugin makes working-tree changes and pytest-native selection easy
