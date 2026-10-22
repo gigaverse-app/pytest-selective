@@ -72,6 +72,29 @@ Reproduce with [the benchmark script](../scripts/benchmark_parsing.py), passing
 the same immutable `--revision` to both versions. Compare `records_sha256` as
 well as timings. Never compare mutable HEADs across runs.
 
+## Identical change replay
+
+The [comparison script](../scripts/compare_impacted.py) runs both installed
+selectors against the same disposable Git repositories. At the pinned reference
+revision, all seven cases agree when pytest-impacted's `conftest_imports=True`
+option is enabled:
+
+| Working-tree change | Expected and observed selection |
+| --- | --- |
+| Transitive application dependency | Its importing test |
+| Deleted application dependency | Its former importing test |
+| New requirements file | Both tests |
+| Documentation only | No tests |
+| New untracked test | The new test |
+| Package initializer | The package's importing test |
+| Application dependency imported only by a conftest | The conftest's descendant test |
+
+For the last case, pytest-impacted's default settings select no tests. Our
+existing conservative conftest behavior selects the descendant without an extra
+option. This is a correctness reason to retain that behavior, not a claim that
+the seven scenarios exhaust either selector's semantics. Run the script in an
+environment containing both revisions with `--output comparison.json`.
+
 ## Validation and remaining evidence
 
 Regressions exercise real Git changes and real pytest subprocesses: local edits,
