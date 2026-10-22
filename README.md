@@ -217,3 +217,18 @@ optional; pytest-selective does not depend on it.</sub>
 
 See the [CI toolkit integration](docs/ci-toolkit.md) for lane selection, validated
 environment caches, required gates and real dependency critical-path reports.
+# Optimize the work that still has to run
+
+Selection and execution solve different parts of slow CI. Once selection keeps
+the required tests, use [CI-esta's critical-path report](https://github.com/gigaverse-app/ci-esta/blob/main/docs/critical-path-optimizations.md)
+to find the job holding up the gate. Due's full conformance gate fell from
+538 to 282 seconds with four isolated workers, preserving all 982 integration
+cases per Django variant and every validator. Obligation's gate fell from 506
+to 422 seconds; its bottleneck then moved to Saleor.
+
+These are one-pair execution measurements, separate from this project's
+affected-test selection results. [Raw reports and matched test inventories](https://github.com/gigaverse-app/ci-esta/blob/main/docs/benchmarks/2026-10-23-critical-execution.md)
+show provenance, runner cost and the actual dependency paths. This repository
+also uses CI-esta's shared native Windows Git action while retaining full
+coverage on all six Python/platform lanes.
+
