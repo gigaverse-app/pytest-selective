@@ -8,6 +8,12 @@
 [![Typed](https://img.shields.io/badge/typing-py.typed-3776AB)](https://github.com/gigaverse-app/pytest-selective/blob/main/src/pytest_selective/py.typed)
 [![Ruff](https://img.shields.io/badge/code%20style-Ruff-D7FF64?logo=ruff&logoColor=black)](https://github.com/gigaverse-app/pytest-selective/blob/main/.pre-commit-config.yaml)
 [![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/gigaverse-app/pytest-selective/blob/main/LICENSE)
+[![Agent skill](https://img.shields.io/badge/Agent_Skill-ready-2563EB)](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/agents.md)
+
+**Our README CI used 92.3% less runner time: 627s → 48s.** Elapsed time fell
+from 211s to 26s, with docs, routing and package checks preserved. One successful
+same-revision pair, not a universal speedup.
+[Inspect the runs and raw evidence](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/benchmarks/2026-10-22-routing.md).
 
 pytest-selective is a **Python test impact analysis** tool for incremental testing
 with pytest. It follows dependencies through both sides of a Git change, selects
@@ -23,6 +29,19 @@ infrastructure. **Alpha:** the API may change before 1.0.
 [GitHub Actions](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/ci.md) ·
 [Evidence and limits](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/evidence.md) ·
 [Keep selection narrow](docs/pytest-hygiene.md)
+
+## Have your agent set it up
+
+Paste this into your coding agent in the Python project you want to improve:
+
+```text
+Read https://raw.githubusercontent.com/gigaverse-app/pytest-selective/main/skills/pytest-selective/SKILL.md
+and use it to speed up this project's tests/CI. Preserve coverage, add routing
+regressions, and prove the result with measured before/after evidence.
+```
+
+[Install the skill or add AGENTS.md instructions](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/agents.md).
+Works through existing Git/CLI tools; no new agent server is needed.
 
 ## A small change should have an explainable test plan
 
