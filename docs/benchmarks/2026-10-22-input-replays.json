@@ -1,0 +1,407 @@
+[
+  {
+    "repository": "due",
+    "base": "b50158b9c4c355ada4d50fc895169a71fcebaa9c",
+    "path": "examples/settings.py",
+    "before": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": true
+    },
+    "after": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": true
+    }
+  },
+  {
+    "repository": "due",
+    "base": "b50158b9c4c355ada4d50fc895169a71fcebaa9c",
+    "path": "examples/celery_app.py",
+    "before": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": true
+    },
+    "after": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": true
+    }
+  },
+  {
+    "repository": "due",
+    "base": "b50158b9c4c355ada4d50fc895169a71fcebaa9c",
+    "path": "scripts/widget_benchmark.py",
+    "before": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": true
+    },
+    "after": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": true
+    }
+  },
+  {
+    "repository": "due",
+    "base": "b50158b9c4c355ada4d50fc895169a71fcebaa9c",
+    "path": "scripts/widget_profile_bootstrap/sitecustomize.py",
+    "before": {
+      "library": false,
+      "integration": false,
+      "widget_comparison": true
+    },
+    "after": {
+      "library": false,
+      "integration": false,
+      "widget_comparison": true
+    }
+  },
+  {
+    "repository": "due",
+    "base": "b50158b9c4c355ada4d50fc895169a71fcebaa9c",
+    "path": "integration_tests/integration/processes.py",
+    "before": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": false
+    },
+    "after": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": true
+    }
+  },
+  {
+    "repository": "due",
+    "base": "b50158b9c4c355ada4d50fc895169a71fcebaa9c",
+    "path": "package/tests/test_completion_lease.py",
+    "before": {
+      "library": true,
+      "integration": false,
+      "widget_comparison": false
+    },
+    "after": {
+      "library": true,
+      "integration": false,
+      "widget_comparison": false
+    }
+  },
+  {
+    "repository": "due",
+    "base": "b50158b9c4c355ada4d50fc895169a71fcebaa9c",
+    "path": "package/README.md",
+    "before": {
+      "library": false,
+      "integration": false,
+      "widget_comparison": false
+    },
+    "after": {
+      "library": false,
+      "integration": false,
+      "widget_comparison": false
+    }
+  },
+  {
+    "repository": "due",
+    "base": "b50158b9c4c355ada4d50fc895169a71fcebaa9c",
+    "path": "package/src/due/__init__.py",
+    "before": {
+      "library": true,
+      "integration": true,
+      "widget_comparison": true
+    },
+    "after": {
+      "library": true,
+      "integration": true,
+      "widget_comparison": true
+    }
+  },
+  {
+    "repository": "pytest-obligation",
+    "base": "920f1380d20a18ad9d026d1a84c9d931c3138785",
+    "path": "package/README.md",
+    "before": {
+      "core": true,
+      "minimum_models": true,
+      "exploration": true,
+      "django": true,
+      "django_psycopg2": true,
+      "redis": true,
+      "mongodb": true,
+      "aiokafka": true,
+      "prefect": true,
+      "demos": true,
+      "saleor": true,
+      "actions": true,
+      "due": true
+    },
+    "after": {
+      "core": false,
+      "minimum_models": false,
+      "exploration": false,
+      "django": false,
+      "django_psycopg2": false,
+      "redis": false,
+      "mongodb": false,
+      "aiokafka": false,
+      "prefect": false,
+      "demos": false,
+      "saleor": false,
+      "actions": false,
+      "due": false
+    }
+  },
+  {
+    "repository": "pytest-obligation",
+    "base": "920f1380d20a18ad9d026d1a84c9d931c3138785",
+    "path": "package/docs/debt-baseline.md",
+    "before": {
+      "core": true,
+      "minimum_models": true,
+      "exploration": true,
+      "django": true,
+      "django_psycopg2": true,
+      "redis": true,
+      "mongodb": true,
+      "aiokafka": true,
+      "prefect": true,
+      "demos": true,
+      "saleor": true,
+      "actions": true,
+      "due": true
+    },
+    "after": {
+      "core": false,
+      "minimum_models": false,
+      "exploration": false,
+      "django": false,
+      "django_psycopg2": false,
+      "redis": false,
+      "mongodb": false,
+      "aiokafka": false,
+      "prefect": false,
+      "demos": false,
+      "saleor": false,
+      "actions": false,
+      "due": false
+    }
+  },
+  {
+    "repository": "pytest-obligation",
+    "base": "920f1380d20a18ad9d026d1a84c9d931c3138785",
+    "path": "docs/demo.tape",
+    "before": {
+      "core": false,
+      "minimum_models": false,
+      "exploration": false,
+      "django": false,
+      "django_psycopg2": false,
+      "redis": false,
+      "mongodb": false,
+      "aiokafka": false,
+      "prefect": false,
+      "demos": true,
+      "saleor": false,
+      "actions": false,
+      "due": false
+    },
+    "after": {
+      "core": false,
+      "minimum_models": false,
+      "exploration": false,
+      "django": false,
+      "django_psycopg2": false,
+      "redis": false,
+      "mongodb": false,
+      "aiokafka": false,
+      "prefect": false,
+      "demos": true,
+      "saleor": false,
+      "actions": false,
+      "due": false
+    }
+  },
+  {
+    "repository": "pytest-obligation",
+    "base": "920f1380d20a18ad9d026d1a84c9d931c3138785",
+    "path": "docs/demo_env.sh",
+    "before": {
+      "core": false,
+      "minimum_models": false,
+      "exploration": false,
+      "django": false,
+      "django_psycopg2": false,
+      "redis": false,
+      "mongodb": false,
+      "aiokafka": false,
+      "prefect": false,
+      "demos": true,
+      "saleor": false,
+      "actions": false,
+      "due": false
+    },
+    "after": {
+      "core": false,
+      "minimum_models": false,
+      "exploration": false,
+      "django": false,
+      "django_psycopg2": false,
+      "redis": false,
+      "mongodb": false,
+      "aiokafka": false,
+      "prefect": false,
+      "demos": true,
+      "saleor": false,
+      "actions": false,
+      "due": false
+    }
+  },
+  {
+    "repository": "pytest-obligation",
+    "base": "920f1380d20a18ad9d026d1a84c9d931c3138785",
+    "path": "package/tests/mongodb/test_mongodb.py",
+    "before": {
+      "core": false,
+      "minimum_models": false,
+      "exploration": false,
+      "django": false,
+      "django_psycopg2": false,
+      "redis": false,
+      "mongodb": true,
+      "aiokafka": false,
+      "prefect": false,
+      "demos": false,
+      "saleor": false,
+      "actions": false,
+      "due": false
+    },
+    "after": {
+      "core": false,
+      "minimum_models": false,
+      "exploration": false,
+      "django": false,
+      "django_psycopg2": false,
+      "redis": false,
+      "mongodb": true,
+      "aiokafka": false,
+      "prefect": false,
+      "demos": false,
+      "saleor": false,
+      "actions": false,
+      "due": false
+    }
+  },
+  {
+    "repository": "pytest-obligation",
+    "base": "920f1380d20a18ad9d026d1a84c9d931c3138785",
+    "path": "package/src/pytest_obligation/__init__.py",
+    "before": {
+      "core": true,
+      "minimum_models": true,
+      "exploration": true,
+      "django": true,
+      "django_psycopg2": true,
+      "redis": true,
+      "mongodb": true,
+      "aiokafka": true,
+      "prefect": true,
+      "demos": true,
+      "saleor": true,
+      "actions": true,
+      "due": true
+    },
+    "after": {
+      "core": true,
+      "minimum_models": true,
+      "exploration": true,
+      "django": true,
+      "django_psycopg2": true,
+      "redis": true,
+      "mongodb": true,
+      "aiokafka": true,
+      "prefect": true,
+      "demos": true,
+      "saleor": true,
+      "actions": true,
+      "due": true
+    }
+  },
+  {
+    "repository": "due",
+    "base": "b50158b9c4c355ada4d50fc895169a71fcebaa9c",
+    "path": "examples/books/models.py",
+    "before": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": true
+    },
+    "after": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": false
+    }
+  },
+  {
+    "repository": "due",
+    "base": "b50158b9c4c355ada4d50fc895169a71fcebaa9c",
+    "path": "examples/catalog/models.py",
+    "before": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": true
+    },
+    "after": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": false
+    }
+  },
+  {
+    "repository": "due",
+    "base": "b50158b9c4c355ada4d50fc895169a71fcebaa9c",
+    "path": "examples/documents/models.py",
+    "before": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": true
+    },
+    "after": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": false
+    }
+  },
+  {
+    "repository": "due",
+    "base": "b50158b9c4c355ada4d50fc895169a71fcebaa9c",
+    "path": "scripts/check_adoption_report.py",
+    "before": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": true
+    },
+    "after": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": false
+    }
+  },
+  {
+    "repository": "due",
+    "base": "b50158b9c4c355ada4d50fc895169a71fcebaa9c",
+    "path": "examples/widget_store/models.py",
+    "before": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": true
+    },
+    "after": {
+      "library": false,
+      "integration": true,
+      "widget_comparison": true
+    }
+  }
+]

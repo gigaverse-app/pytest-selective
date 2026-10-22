@@ -116,3 +116,11 @@ then gate each expensive job with `always() && !cancelled()` and either a true
 lane value **or a failed planning job**. This preserves tests if planning fails.
 Run the action with `full: true` on main, schedules, and full-test overrides.
 Selected jobs retain all of their existing tests and evidence checks.
+
+
+The JSON report also includes `lane_reasons`, naming affected test files, changed
+root files, explicit inputs, global inputs and fallback causes. Skipped lanes say
+`no affected tests or changed inputs`. GitHub's step summary displays this report.
+If an affected or deleted test has no configured lane root, the planner runs all
+configured lanes and names the unmapped test. Map new test directories to a job
+that actually executes them; fallback cannot create a missing execution job.
