@@ -59,6 +59,10 @@ jobs:
           python-version: ${{ matrix.python }}
           cache-suffix: ${{ github.job }}-${{ matrix.python }}
       - run: uv sync --locked
+      - name: Use native Git for Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/use_native_windows_git.ps1
       - name: Record coverage runtime
         run: uv run --locked python -m coverage --version
       - run: uv run --locked pytest -q -n 4 --durations=20 --cov --cov-report=term-missing --cov-report=xml

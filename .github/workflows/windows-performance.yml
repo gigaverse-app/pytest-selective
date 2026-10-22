@@ -41,10 +41,14 @@ jobs:
           $results = Join-Path $env:GITHUB_WORKSPACE 'measurements'
           New-Item -ItemType Directory -Path $results | Out-Null
           $measurements = @()
+          $originalPath = $env:PATH
           foreach ($sample in @('baseline-1', 'candidate-1', 'candidate-2', 'baseline-2')) {
             $arm = $sample.Split('-')[0]
             Push-Location (Join-Path $env:GITHUB_WORKSPACE $arm)
             try {
+              # Start every arm with the same PATH; only the candidate opts in.
+              $env:PATH = $originalPath
+              if ($arm -eq 'candidate') { ./scripts/use_native_windows_git.ps1 }
               $sha = git rev-parse HEAD
               # Keep repeated arms from timing cleanup of an earlier arm's Git fixtures.
               $temp = Join-Path $env:RUNNER_TEMP "matched-pytest-$sample"
