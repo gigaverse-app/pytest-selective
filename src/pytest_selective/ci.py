@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import Field, field_validator
 
-from pytest_selective.impact_graph import DependencyDeclarationError, GraphCache, matches
+from pytest_selective.impact_graph import DependencyDeclarationError, GraphCache, matches, within
 from pytest_selective.impact_models import ImpactConfig, ImpactModel
 from pytest_selective.impact_selection import affected
 
@@ -47,43 +47,74 @@ class LanePlan(ImpactModel):
     selected: list[str] = Field(default_factory=list)
     changed: list[str] = Field(default_factory=list)
     reason: str
+    lane_reasons: dict[str, list[str]] = Field(default_factory=dict)
 
 
 def plan(repo: Path, config: LaneConfig, base: str, head: str, *, full: bool = False) -> LanePlan:
     """A missing proof runs every lane; bad declarations remain actionable failures."""
+
+    def all_lanes(reason: str, *, selected: list[str] | None = None, changed: list[str] | None = None) -> LanePlan:
+        return LanePlan(
+            lanes=dict.fromkeys(config.lanes, True),
+            selected=selected or [],
+            changed=changed or [],
+            reason=reason,
+            lane_reasons={name: [reason] for name in config.lanes},
+        )
+
     if full:
-        return LanePlan(lanes=dict.fromkeys(config.lanes, True), reason="explicit full-suite checkpoint")
+        return all_lanes("explicit full-suite checkpoint")
     cache = None
     try:
         cache = GraphCache(repo / ".test-impact/cache.sqlite3")
         report = affected(repo, base, head, config.graph, cache)
-        global_change = any(matches(path, config.global_inputs) for path in report.changed)
-        # Select a whole lane if any of its tests is affected. Never feed partial
-        # conformance evidence into a validator that requires complete guarantees.
-        lanes = {
-            name: global_change
-            or report.mode == "full"
-            or any(
-                test == root or test.startswith(root.rstrip("/") + "/")
-                # A removed test must still rerun its lane's completeness checks.
-                for test in [*report.selected, *report.changed]
-                for root in lane.roots
+        # Removed tests are absent from report.selected, but their lane still needs
+        # completeness checks. Consult the cached base inventory, not filename guesses.
+        before = cache.snapshot(repo, base, config.graph)
+        affected_tests = set(report.selected) | (set(report.changed) & set(before.tests))
+        unmapped = sorted(
+            test
+            for test in affected_tests
+            if not any(within(test, root) for lane in config.lanes.values() for root in lane.roots)
+        )
+        if unmapped:
+            return all_lanes(
+                "full-suite fallback: unmapped affected tests: " + ", ".join(unmapped),
+                selected=report.selected,
+                changed=report.changed,
             )
-            or any(matches(path, lane.inputs) for path in report.changed)
-            for name, lane in config.lanes.items()
-        }
+        global_paths = [path for path in report.changed if matches(path, config.global_inputs)]
+        lanes = {}
+        evidence = {}
+        # Select whole lanes: validators may require complete conformance evidence.
+        for name, lane in config.lanes.items():
+            reasons = [f"global input: {path}" for path in global_paths]
+            if report.mode == "full":
+                reasons.append("all graph test files affected")
+            reasons.extend(
+                f"affected test: {test}" for test in report.selected if any(within(test, root) for root in lane.roots)
+            )
+            reasons.extend(
+                f"changed root input: {path}"
+                for path in report.changed
+                if path not in report.selected and any(within(path, root) for root in lane.roots)
+            )
+            reasons.extend(f"explicit input: {path}" for path in report.changed if matches(path, lane.inputs))
+            lanes[name] = bool(reasons)
+            evidence[name] = reasons or ["no affected tests or changed inputs"]
         return LanePlan(
             lanes=lanes,
             selected=report.selected,
             changed=report.changed,
-            reason="global CI/dependency input" if global_change else "; ".join(report.reasons),
+            reason="global CI/dependency input" if global_paths else "; ".join(report.reasons),
+            lane_reasons=evidence,
         )
     except DependencyDeclarationError:
         raise
     except Exception as error:
         # A broken cache, missing Git history, or unreviewed pytest policy must
         # never turn a failed planner into a passing skipped test job.
-        return LanePlan(lanes=dict.fromkeys(config.lanes, True), reason=f"full-suite fallback: {error}")
+        return all_lanes(f"full-suite fallback: {error}")
     finally:
         if cache is not None:
             cache.close()
