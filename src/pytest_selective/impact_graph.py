@@ -44,7 +44,7 @@ from pytest_selective.impact_models import (
     file_of,
 )
 
-VERSION = "17"
+VERSION = "18"
 OPAQUE_CALLS = {
     "__import__",
     "import_module",
@@ -173,22 +173,34 @@ def blobs(repo: Path, ids: set[str]) -> dict[str, bytes]:
     return result
 
 
-def pytest_policies(repo: Path, files: dict[str, str]) -> dict[str, str]:
+def pytest_policies(repo: Path, files: dict[str, str], extra_files: tuple[str, ...] = ()) -> dict[str, str]:
     """
     Canonical JSON of the pytest configuration in each file pytest reads it from.
 
     One owner for which files carry pytest configuration and how each is read, shared by the
     review fingerprints and by any rule that must inspect what that configuration loads.
     """
-    paths = {
-        path: oid for path, oid in files.items() if path in {"pyproject.toml", "pytest.ini", "setup.cfg", "tox.ini"}
-    }
+    # Collection can choose a nested/hidden config, even an empty one. Track all
+    # conventional candidates; caller-supplied -c files are opaque global policy.
+    if missing := set(extra_files) - files.keys():
+        raise ValueError(f"declared pytest configuration missing from committed tree: {sorted(missing)}")
+    names = {"pyproject.toml", "pytest.ini", ".pytest.ini", "pytest.toml", ".pytest.toml", "setup.cfg", "tox.ini"}
+    paths = {path: oid for path, oid in files.items() if PurePosixPath(path).name in names or path in extra_files}
     contents = blobs(repo, set(paths.values()))
     policies: dict[str, str] = {}
     for path, oid in paths.items():
         source = contents[oid].decode("utf-8-sig")
+        if path in extra_files:
+            # No format guess for pytest -c: every byte may affect a plugin.
+            policies[path] = json.dumps(source)
+            continue
         if path.endswith(".toml"):
-            policy = tomllib.loads(source).get("tool", {}).get("pytest", {})
+            document = tomllib.loads(source)
+            policy = (
+                document.get("tool", {}).get("pytest", {})
+                if PurePosixPath(path).name == "pyproject.toml"
+                else document.get("pytest", {})
+            )
             canonical = json.dumps(policy, sort_keys=True)
         else:
             parser = configparser.ConfigParser(interpolation=None)
@@ -201,10 +213,10 @@ def pytest_policies(repo: Path, files: dict[str, str]) -> dict[str, str]:
     return policies
 
 
-def policy_fingerprints(repo: Path, tree: GitTree) -> dict[str, str]:
+def policy_fingerprints(repo: Path, tree: GitTree, extra_files: tuple[str, ...] = ()) -> dict[str, str]:
     return {
         path: hashlib.sha256(canonical.encode()).hexdigest()
-        for path, canonical in pytest_policies(repo, tree.files).items()
+        for path, canonical in pytest_policies(repo, tree.files, extra_files).items()
     }
 
 
@@ -453,7 +465,7 @@ class GraphCache:
         add_sidecar_edges(repo, tree, files, snapshot)
         # Declaration errors are actionable authoring failures, even when the
         # same tree also needs a collection-policy review/full-suite fallback.
-        if policy_fingerprints(repo, git_tree) != config.pytest_policy:
+        if policy_fingerprints(repo, git_tree, tuple(config.pytest_config_files)) != config.pytest_policy:
             raise ValueError("pytest configuration changed; review collection policy and refresh its fingerprints")
         self.put(key, snapshot.model_dump_json())
         self.connection.commit()

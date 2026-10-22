@@ -188,6 +188,22 @@ class ImpactConfig(ImpactModel):
     name_scoped_modules: list[NameScopedModule] = Field(default_factory=list)
     first_party_packages: list[FirstPartyPackage] = Field(default_factory=list)
     pytest_policy: dict[str, str] = Field(default_factory=dict)
+    #: Repository-relative files passed through pytest -c; fingerprint their complete contents.
+    pytest_config_files: list[str] = Field(default_factory=list)
+
+    @field_validator("pytest_config_files")
+    @classmethod
+    def _pytest_config_paths(cls, paths: list[str]) -> list[str]:
+        for path in paths:
+            if (
+                not path
+                or path.startswith("/")
+                or any(c in path for c in "\\:*?[]")
+                or any(part in {"", ".", ".."} for part in path.split("/"))
+            ):
+                raise ValueError("pytest_config_files must contain literal repository-relative POSIX paths")
+        return paths
+
     module_roots: list[str] = Field(default_factory=lambda: ["."])
     test_roots: list[str]
     test_patterns: list[str] = Field(default_factory=lambda: list(TEST_FILE_PATTERNS))
