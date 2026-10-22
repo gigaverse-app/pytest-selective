@@ -1,0 +1,293 @@
+[
+  {
+    "repository": "gigaverse-app/pytest-obligation",
+    "run_id": 39843219042,
+    "url": "https://github.com/gigaverse-app/pytest-obligation/actions/runs/39843219042",
+    "workflow": "CI",
+    "head_sha": "967b4037999c7ca53414936fd2f9df4c77158622",
+    "attempt": 1,
+    "created_at": "2026-10-22T19:47:55Z",
+    "completed_at": "2026-10-22T19:48:49+00:00",
+    "elapsed_seconds": 54.0,
+    "runner_seconds": 93.0,
+    "executed_jobs": 5,
+    "skipped_job_records": 12,
+    "jobs": [
+      {
+        "id": 120049560352,
+        "name": "lint",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:47:57Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      },
+      {
+        "id": 120049560550,
+        "name": "select-tests",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:47:57Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      },
+      {
+        "id": 120049560658,
+        "name": "build",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:47:57Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      },
+      {
+        "id": 120049561452,
+        "name": "typecheck",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:47:57Z",
+        "completed_at": "2026-10-22T19:48:10Z"
+      },
+      {
+        "id": 120049698108,
+        "name": "mongodb",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:48:14Z",
+        "completed_at": "2026-10-22T19:48:49Z"
+      },
+      {
+        "id": 120049700122,
+        "name": "minimum-models",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T19:48:12Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      },
+      {
+        "id": 120049700647,
+        "name": "due",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T19:48:12Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      },
+      {
+        "id": 120049700757,
+        "name": "actions",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T19:48:12Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      },
+      {
+        "id": 120049700806,
+        "name": "redis",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T19:48:12Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      },
+      {
+        "id": 120049700902,
+        "name": "demos",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T19:48:12Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      },
+      {
+        "id": 120049701082,
+        "name": "saleor",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T19:48:12Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      },
+      {
+        "id": 120049701134,
+        "name": "django",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T19:48:12Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      },
+      {
+        "id": 120049701166,
+        "name": "django-psycopg2",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T19:48:12Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      },
+      {
+        "id": 120049701396,
+        "name": "aiokafka",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T19:48:12Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      },
+      {
+        "id": 120049701668,
+        "name": "exploration",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T19:48:12Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      },
+      {
+        "id": 120049701730,
+        "name": "core",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T19:48:12Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      },
+      {
+        "id": 120049703034,
+        "name": "prefect",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T19:48:12Z",
+        "completed_at": "2026-10-22T19:48:12Z"
+      }
+    ]
+  },
+  {
+    "repository": "gigaverse-app/pytest-obligation",
+    "run_id": 39843423688,
+    "url": "https://github.com/gigaverse-app/pytest-obligation/actions/runs/39843423688",
+    "workflow": "CI",
+    "head_sha": "967b4037999c7ca53414936fd2f9df4c77158622",
+    "attempt": 1,
+    "created_at": "2026-10-22T19:49:21Z",
+    "completed_at": "2026-10-22T19:54:43+00:00",
+    "elapsed_seconds": 322.0,
+    "runner_seconds": 1602.0,
+    "executed_jobs": 20,
+    "skipped_job_records": 0,
+    "jobs": [
+      {
+        "id": 120050279140,
+        "name": "build",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:24Z",
+        "completed_at": "2026-10-22T19:49:35Z"
+      },
+      {
+        "id": 120050279692,
+        "name": "typecheck",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:24Z",
+        "completed_at": "2026-10-22T19:49:39Z"
+      },
+      {
+        "id": 120050279712,
+        "name": "select-tests",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:24Z",
+        "completed_at": "2026-10-22T19:49:37Z"
+      },
+      {
+        "id": 120050279923,
+        "name": "lint",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:24Z",
+        "completed_at": "2026-10-22T19:49:35Z"
+      },
+      {
+        "id": 120050407906,
+        "name": "redis",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:39Z",
+        "completed_at": "2026-10-22T19:51:06Z"
+      },
+      {
+        "id": 120050407990,
+        "name": "django-psycopg2",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:39Z",
+        "completed_at": "2026-10-22T19:50:29Z"
+      },
+      {
+        "id": 120050408111,
+        "name": "django",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:40Z",
+        "completed_at": "2026-10-22T19:50:37Z"
+      },
+      {
+        "id": 120050408129,
+        "name": "minimum-models",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:40Z",
+        "completed_at": "2026-10-22T19:50:35Z"
+      },
+      {
+        "id": 120050408161,
+        "name": "prefect",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:39Z",
+        "completed_at": "2026-10-22T19:52:02Z"
+      },
+      {
+        "id": 120050408226,
+        "name": "aiokafka",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:39Z",
+        "completed_at": "2026-10-22T19:50:19Z"
+      },
+      {
+        "id": 120050408373,
+        "name": "actions",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:40Z",
+        "completed_at": "2026-10-22T19:50:13Z"
+      },
+      {
+        "id": 120050408393,
+        "name": "exploration",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:39Z",
+        "completed_at": "2026-10-22T19:50:41Z"
+      },
+      {
+        "id": 120050408419,
+        "name": "core (3.14)",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:39Z",
+        "completed_at": "2026-10-22T19:50:21Z"
+      },
+      {
+        "id": 120050408436,
+        "name": "saleor",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:39Z",
+        "completed_at": "2026-10-22T19:54:01Z"
+      },
+      {
+        "id": 120050408450,
+        "name": "demos",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:39Z",
+        "completed_at": "2026-10-22T19:53:40Z"
+      },
+      {
+        "id": 120050408486,
+        "name": "mongodb",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:39Z",
+        "completed_at": "2026-10-22T19:50:04Z"
+      },
+      {
+        "id": 120050408534,
+        "name": "core (3.11)",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:39Z",
+        "completed_at": "2026-10-22T19:50:16Z"
+      },
+      {
+        "id": 120050408549,
+        "name": "core (3.12)",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:40Z",
+        "completed_at": "2026-10-22T19:50:50Z"
+      },
+      {
+        "id": 120050408590,
+        "name": "due",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:39Z",
+        "completed_at": "2026-10-22T19:54:43Z"
+      },
+      {
+        "id": 120050408620,
+        "name": "core (3.13)",
+        "conclusion": "success",
+        "started_at": "2026-10-22T19:49:39Z",
+        "completed_at": "2026-10-22T19:50:23Z"
+      }
+    ]
+  }
+]

@@ -65,3 +65,10 @@ the CI badge reports workflow status, not a universal correctness guarantee.
 
 The [provenance record](../PROVENANCE.md) describes where this code came from.
 Its extraction history is not a published performance benchmark.
+
+
+## Measured consumer CI
+
+See the [2026-10-22 matched CI measurements](benchmarks/2026-10-22.md) for
+real Due and pytest-obligation workflow timings, raw job timestamps, preserved
+execution contracts and the limits of a single narrow-change comparison.
