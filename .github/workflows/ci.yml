@@ -55,6 +55,8 @@ jobs:
           python-version: ${{ matrix.python }}
           cache-suffix: ${{ github.job }}-${{ matrix.python }}
       - run: uv sync --locked
+      - name: Record coverage runtime
+        run: uv run --locked python -m coverage --version
       - run: uv run --locked pytest -q -n 4 --durations=20 --cov --cov-report=term-missing --cov-report=xml
       - run: uv run --locked python scripts/tutorial.py --output tutorial-report.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
