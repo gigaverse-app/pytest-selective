@@ -200,6 +200,12 @@ def affected(
             reasons.append(scoped.reason)
     if narrowed:
         relevant = sorted((set(relevant) - narrowed) | reached | name_readers)
+    # Proven first-party pin moves above may replace a lock's global effect.
+    # Every other changed environment input selects all tests, deletions included.
+    global_paths = [path for path in relevant if matches(path, config.global_inputs)]
+    if global_paths:
+        selected.update(after.tests)
+        reasons.extend(f"global input: {path}" for path in global_paths)
     if relevant:
         reverse = reverse_edges(union_edges(before, after))
         # A name-scoped reader's own file did not change, only a name it reads, so files that read its
@@ -215,7 +221,13 @@ def affected(
         selected.update(test for test in after.tests if matches(test, config.always_run))
         reasons.append(f"dependency closure: {len(impacted & set(after.tests))} test files")
     return ImpactReport(
-        mode="full" if selected and len(selected) == len(after.tests) else "scoped" if selected else "none",
+        # A global invalidation also admits lanes whose work has no Python test
+        # files (external conformance, generated checks, subprocess validators).
+        mode="full"
+        if global_paths or (selected and len(selected) == len(after.tests))
+        else "scoped"
+        if selected
+        else "none",
         dependencies_unchanged=dependencies_unchanged,
         base=before.tree,
         head=after.tree,

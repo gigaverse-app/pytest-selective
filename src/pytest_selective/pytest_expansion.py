@@ -20,6 +20,12 @@ import tokenize
 from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
 
+if __package__:
+    from .ast_imports import parse_ast
+else:
+    # The composite action executes this file directly without installing us.
+    from ast_imports import parse_ast
+
 ACTIVATION = "# gv:test-requires-expansion-reason"
 MARKER = "# pytest-global:"
 SCOPES = {"function": 0, "class": 1, "module": 2, "package": 3, "session": 4}
@@ -173,7 +179,7 @@ def module_nodes(node: ast.AST) -> list[ast.AST]:
 
 def inspect_source(tree: SourceTree, path: str, project_prefixes: tuple[str, ...]) -> Surface:
     source = tree.read(path)
-    parsed = ast.parse(source, filename=path)
+    parsed = parse_ast(source, filename=path)
     lines = source.splitlines()
     surface = Surface({}, set())
     aliases: dict[str, str] = {}

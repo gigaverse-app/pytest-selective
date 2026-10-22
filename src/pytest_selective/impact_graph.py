@@ -23,7 +23,7 @@ from collections import deque
 from pathlib import Path, PurePosixPath
 from typing import TypeVar
 
-from pytest_selective.ast_imports import import_candidates, iter_imports
+from pytest_selective.ast_imports import import_candidates, iter_imports, parse_ast
 from pytest_selective.impact_declarations import (
     DependencyDeclarationError,
     is_declaration,
@@ -44,7 +44,7 @@ from pytest_selective.impact_models import (
     file_of,
 )
 
-VERSION = "18"
+VERSION = "19"
 OPAQUE_CALLS = {
     "__import__",
     "import_module",
@@ -228,7 +228,13 @@ def dependency_comment(text: str, line: int) -> DependencyComment | None:
 def dependency_comments(source: bytes) -> list[DependencyComment]:
     comments: list[DependencyComment] = []
     try:
-        for token in tokenize.tokenize(io.BytesIO(source).readline):
+        encoding, _ = tokenize.detect_encoding(io.BytesIO(source).readline)
+        text = source.decode(encoding)
+        # Most files have no declarations. Decode before the cheap prefilter so
+        # source encoding cookies cannot conceal a real marker from analysis.
+        if "gv:test-dependency" not in text:
+            return comments
+        for token in tokenize.generate_tokens(io.StringIO(text).readline):
             if token.type == tokenize.COMMENT:
                 if comment := dependency_comment(token.string, token.start[0]):
                     comments.append(comment)
@@ -259,11 +265,16 @@ def declared_inputs(comment: DependencyComment, files: dict[str, str], location:
 def parse_source(source: bytes) -> ParsedSource:
     dependencies = dependency_comments(source)
     try:
-        tree = ast.parse(source)
+        tree = parse_ast(source)
     except (SyntaxError, ValueError) as error:
         return ParsedSource(
             imports=[], strings=[], opaque=[f"cannot parse: {error}"], pytest_plugin=False, dependencies=dependencies
         )
+    # Reuse one breadth-first traversal for every fact extracted from this blob.
+    # Large expression subtrees used to be walked repeatedly for assignments,
+    # imports, function names and call/string dependencies.
+    nodes = list(ast.walk(tree))
+    import_nodes = [node for node in nodes if isinstance(node, (ast.Import, ast.ImportFrom))]
     # Django stores this module name; assigning it does not execute its routes.
     # Keep the default graph conservative unless the consumer supplies the policy.
     registrations = [
@@ -277,33 +288,30 @@ def parse_source(source: bytes) -> ParsedSource:
         and isinstance(node.value.value, str)
     ]
     writes = sum(
-        isinstance(node, ast.Name) and node.id == "ROOT_URLCONF" and isinstance(node.ctx, ast.Store)
-        for node in ast.walk(tree)
+        isinstance(node, ast.Name) and node.id == "ROOT_URLCONF" and isinstance(node.ctx, ast.Store) for node in nodes
     )
     registration = registrations[0].value if len(registrations) == writes == 1 else None
     imports = [
         ImportSpec(module="", names=[alias.name for alias in node.names])
         if isinstance(node, ast.Import)
         else ImportSpec(module=node.module or "", names=[alias.name for alias in node.names], level=node.level)
-        for node in iter_imports(tree)
+        for node in import_nodes
     ]
     strings: set[str] = set()
     opaque: set[str] = set()
     plugin = False
     aliases = {
         alias.asname or alias.name: alias.name
-        for node in iter_imports(tree)
+        for node in import_nodes
         if isinstance(node, ast.Import)
         for alias in node.names
     }
-    for statement in iter_imports(tree):
+    for statement in import_nodes:
         if isinstance(statement, ast.ImportFrom):
             for alias in statement.names:
                 aliases[alias.asname or alias.name] = f"{statement.module}.{alias.name}"
-    local_functions = {
-        node.name for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-    }
-    for node in ast.walk(tree):
+    local_functions = {node.name for node in nodes if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    for node in nodes:
         if isinstance(node, ast.Constant) and isinstance(node.value, str) and node is not registration:
             if is_module_string(node.value):
                 strings.add(node.value)
@@ -446,7 +454,9 @@ class GraphCache:
         tree, files = git_tree.tree, git_tree.files
         # Exemptions change no edge; editing them must not discard the resolved graph.
         signature = hashlib.sha256(
-            config.model_dump_json(exclude={"audit_exemptions", "floor_budget", "name_scoped_modules"}).encode()
+            config.model_dump_json(
+                exclude={"audit_exemptions", "floor_budget", "name_scoped_modules", "global_inputs"}
+            ).encode()
         ).hexdigest()
         prefix = _cache_prefix()
         key = f"{prefix}graph:{tree}:{signature}"
@@ -502,7 +512,7 @@ def assignment_strings(source: bytes, assignment: str, deferred: frozenset[str] 
     because the other holds it.
     """
     try:
-        tree = ast.parse(source)
+        tree = parse_ast(source)
     except (SyntaxError, ValueError):
         return None
     value = _single_assignment(tree, assignment)
@@ -833,7 +843,7 @@ class EdgeEvidence:
         oid = self.snapshot.files.get(reader)
         if not reader.endswith(".py") or not oid:
             return None
-        tree = ast.parse(blobs(self.repo, {oid})[oid])
+        tree = parse_ast(blobs(self.repo, {oid})[oid])
         packages = self.index.packages.get(reader, {""})
         # The first line in the file, when several create the same edge.
         imports = [

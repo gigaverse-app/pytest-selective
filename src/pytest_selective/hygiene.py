@@ -21,13 +21,12 @@ violation because the imported module is the test file ``test_foo``.
 
 from __future__ import annotations
 
-import ast
 from functools import cache
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from pytest_selective.ast_imports import import_candidates, iter_imports, module_file
+from pytest_selective.ast_imports import import_candidates, iter_imports, module_file, parse_ast
 from pytest_selective.test_inventory import TEST_FILE_PATTERNS, is_test_module_name
 
 
@@ -89,7 +88,7 @@ def find_test_import_violations(
     for test_file in test_modules:
         resolved_test_file = test_file.resolve()
         importer_package = ".".join(resolved_test_file.relative_to(repo_root).parent.parts)
-        tree = ast.parse(test_file.read_text(encoding="utf-8"), filename=str(test_file))
+        tree = parse_ast(test_file.read_bytes(), filename=str(test_file))
         for node in iter_imports(tree):
             for dotted in sorted(import_candidates(node, importer_package)):
                 imported = resolved_module(dotted)

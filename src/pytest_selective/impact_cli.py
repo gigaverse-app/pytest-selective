@@ -257,6 +257,11 @@ def _floor_budget(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["run"]:
+        from pytest_selective.local import main as run_local
+
+        return run_local(argv[1:])
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "command",
@@ -275,8 +280,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo", type=Path, default=Path("."))
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--cache", type=Path, default=Path(".test-impact/cache.sqlite3"))
-    parser.add_argument("--base", default="HEAD^")
+    parser.add_argument("--base", default=None)
     parser.add_argument("--head", default="HEAD")
+    parser.add_argument(
+        "--working-tree", action="store_true", help="analyze staged, unstaged and untracked local edits"
+    )
     parser.add_argument("--test", default="")
     parser.add_argument("--source", default="")
     parser.add_argument("--output", type=Path)
@@ -307,6 +315,9 @@ def main(argv: list[str] | None = None) -> int:
     # floor-budget: the explanation `affected --explanation-output` wrote for this plan.
     parser.add_argument("--explanation", type=Path, default=Path("test-impact-explanation.json"))
     args = parser.parse_args(argv)
+    args.base = args.base or ("HEAD" if args.working_tree else "HEAD^")
+    if args.working_tree and args.command not in {"affected", "warm", "dependencies", "explain", "conftest-impact"}:
+        parser.error("--working-tree is supported for affected, warm, dependencies, explain and conftest-impact")
     if args.command == "typecheck-scope":
         return _typecheck_scope(args)
     if args.command == "floor-budget":
@@ -314,6 +325,10 @@ def main(argv: list[str] | None = None) -> int:
     cache = None
     try:
         config = ImpactConfig.model_validate_json(args.config.read_text(encoding="utf-8"))
+        if args.working_tree:
+            from pytest_selective.working_tree import snapshot_working_tree
+
+            args.head = snapshot_working_tree(args.repo)
         cache = GraphCache(args.cache)
         if args.command == "audit":
             return _audit(args, config, cache)

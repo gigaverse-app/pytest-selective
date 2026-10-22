@@ -68,6 +68,22 @@ def demonstrate(root: Path, artifacts: Path) -> list[dict]:
     evidence = []
     for label, path, content, mode, count, pytest_exit in scenarios:
         write(root, path, content)
+        index_before = (root / ".git/index").read_bytes()
+        local = run(
+            root,
+            sys.executable,
+            "-m",
+            "pytest_selective",
+            "run",
+            "--config",
+            "impact.json",
+            "--",
+            "-q",
+            expected=pytest_exit or 0,
+        )
+        assert (root / ".git/index").read_bytes() == index_before
+        assert run(root, "git", "rev-parse", "HEAD").stdout.strip() == base
+        assert ("No affected tests" in local.stdout) == (count == 0)
         head = commit(root)
         report_path = artifacts / "selection.json"
         run(

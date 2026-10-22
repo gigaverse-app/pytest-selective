@@ -14,6 +14,7 @@ from pydantic import Field, field_validator, model_validator
 from pytest_selective.impact_graph import DependencyDeclarationError, GraphCache, git, matches, within
 from pytest_selective.impact_models import ImpactConfig, ImpactModel
 from pytest_selective.impact_selection import affected
+from pytest_selective.input_policy import DEFAULT_GLOBAL_INPUTS
 
 JOB_INPUT = re.compile(r"(?P<path>[^#*?\[\]]+)#(?P<job>[A-Za-z_][A-Za-z0-9_-]*)")
 
@@ -50,9 +51,7 @@ class Lane(ImpactModel):
 class LaneConfig(ImpactModel):
     graph: ImpactConfig
     lanes: dict[str, Lane]
-    global_inputs: list[str] = Field(
-        default_factory=lambda: ["**/pyproject.toml", "pyproject.toml", "**/uv.lock", "uv.lock", ".github/**"]
-    )
+    global_inputs: list[str] = Field(default_factory=lambda: [*DEFAULT_GLOBAL_INPUTS, ".github/**"])
 
     @field_validator("lanes")
     @classmethod

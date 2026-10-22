@@ -8,6 +8,7 @@ legitimate sharing routes (conftest fixtures, non-test helper modules,
 production code whose name merely looks test-shaped).
 """
 
+import warnings
 from pathlib import Path
 from unittest.mock import patch
 
@@ -41,6 +42,16 @@ def repo(tmp_path: Path) -> Path:
 
 def _violations(repo: Path) -> list[str]:
     return [violation.imported_module for violation in find_test_import_violations(repo, [Path("tests")])]
+
+
+@pytest.mark.parametrize("warning_policy", ["error", "always"])
+def test_analysis_warning_policy_preserves_isolation_findings(repo: Path, warning_policy: str) -> None:
+    source = _write(repo, "tests/test_beta/test_uses.py")
+    source.write_bytes(b'# coding: latin-1\nimport tests.test_alpha.test_core\nLABEL = "caf\xe9\\d"\n')
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter(warning_policy)
+        assert _violations(repo) == ["tests.test_alpha.test_core"]
+    assert caught == []
 
 
 class TestViolationShapes:

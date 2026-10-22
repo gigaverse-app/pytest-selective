@@ -1,5 +1,6 @@
 """A change to a name-scoped module selects the readers of the names it changes, or its ordinary dependents."""
 
+import warnings
 from pathlib import Path
 
 import pytest
@@ -99,6 +100,22 @@ def test_a_changed_name_selects_only_the_tests_that_read_it(
 
     assert report.selected == ["tests/test_cache.py", "tests/test_startup.py"]
     assert any("CACHE_TTL" in reason for reason in report.reasons)
+
+
+@pytest.mark.parametrize("warning_policy", ["error", "always"])
+def test_analysis_warnings_preserve_name_scoped_selection(
+    repo: Path, config: ImpactConfig, cache: GraphCache, warning_policy: str
+) -> None:
+    source = BASE_SETTINGS + '\nPATTERN = "\\d"\n'
+    write(repo, SETTINGS, source)
+    base = commit(repo)
+    write(repo, SETTINGS, source.replace("CACHE_TTL = 60", "CACHE_TTL = 90"))
+    head = commit(repo)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter(warning_policy)
+        report = affected(repo, base, head, config, cache)
+    assert report.selected == ["tests/test_cache.py", "tests/test_startup.py"]
+    assert caught == []
 
 
 def test_a_name_computed_from_a_changed_one_changes_with_it(

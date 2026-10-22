@@ -30,6 +30,9 @@ infrastructure. **Alpha:** the API may change before 1.0.
 [Evidence and limits](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/evidence.md) ·
 [Keep selection narrow](docs/pytest-hygiene.md)
 
+[Run local edits before committing](docs/local-development.md) ·
+[Comparison with pytest-impacted](docs/comparison-pytest-impacted.md)
+
 ## Have your agent set it up
 
 Paste this into your coding agent in the Python project you want to improve:
