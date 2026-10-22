@@ -18,6 +18,18 @@ This is a design comparison; no upstream implementation was copied.
   variables could redirect analysis despite `git -C`; graph reads now clear
   those location overrides. The regression failed before the fix.
 
+- **Visible selection gaps.** Upstream warns when changed Python files reach no
+  tests. The CI lane adapter has an additional mapping boundary: a selected (or
+  deleted) test may have no configured lane root. A real Git regression reproduced
+  that case incorrectly skipping every job. It now falls back to all configured
+  lanes and names the unmapped tests. Maintainers must still map the new directory
+  to a job that actually executes it; running existing lanes cannot invent that job.
+- **Explain each job decision.** Lane JSON now includes `lane_reasons`: affected
+  tests, changed root files, explicit inputs, global inputs, or the full-suite
+  fallback cause. Skipped lanes explicitly report no affected tests or changed
+  inputs. Existing boolean GitHub outputs stay compatible. This turns broad
+  invalidators into reviewable evidence when deciding what can safely be narrowed.
+
 ## Useful next directions
 
 The upstream plugin makes working-tree changes and pytest-native selection easy
@@ -34,3 +46,16 @@ repeat parsing; selection counts are not evidence of runtime speedups.
 We retain reader-owned dependency declarations, old/new graph union, audit
 records, and explanations rather than replacing the proven selector during
 extraction. Full-suite checkpoints remain necessary for dynamically loaded code.
+
+Upstream's branch mode uses merge bases, including multiple merge bases for
+criss-cross histories. That is useful for a future local branch command; current
+CI callers supply explicit comparison commits. A future mode needs real divergent
+history tests, not a silent change to the existing two-tree API.
+
+Subprocesses and dynamic framework registration still need explicit inputs.
+Upstream's optional handling of application imports through conftest is not a
+safe default for our adopters: preserve startup/conftest edges and full generated
+conformance lanes. In Due, tracing the widget benchmark's subprocess imports
+found a missing shared process helper while proving unrelated example apps need
+not trigger the benchmark. Keep full scheduled/main/manual checkpoints and the
+`test:full` escape hatch.

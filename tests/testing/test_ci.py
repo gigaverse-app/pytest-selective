@@ -104,3 +104,36 @@ def test_output_names_cannot_inject_github_outputs(repository):
     _, config, _ = repository
     with pytest.raises(ValidationError):
         LaneConfig(graph=config.graph, lanes={"bad\ninjected": Lane(roots=["tests"])})
+
+
+@pytest.mark.parametrize("deleted", [False, True])
+def test_unmapped_test_cannot_silently_skip_every_lane(repository, deleted):
+    repo, config, base = repository
+    path = "tests/new_group/test_unmapped.py"
+    write(repo, path, "def test_new(): assert True")
+    if deleted:
+        base = commit(repo)
+        (repo / path).unlink()
+    result = plan(repo, config, base, commit(repo))
+    assert result.lanes == {"unit": True, "live": True}
+    assert path in result.reason
+    assert "unmapped" in result.reason
+
+
+def test_lane_evidence_explains_selected_and_skipped_jobs(repository):
+    repo, config, base = repository
+    write(repo, "src/sample/value.py", "VALUE = 2")
+    result = plan(repo, config, base, commit(repo))
+    assert result.lane_reasons == {
+        "unit": ["affected test: tests/unit/test_value.py"],
+        "live": ["no affected tests or changed inputs"],
+    }
+
+
+@pytest.mark.parametrize("full", [False, True])
+def test_full_suite_evidence_names_its_cause(repository, full):
+    repo, config, base = repository
+    write(repo, "uv.lock", "")
+    result = plan(repo, config, base, commit(repo), full=full)
+    expected = "explicit full-suite checkpoint" if full else "global input: uv.lock"
+    assert all(expected in reasons for reasons in result.lane_reasons.values())
