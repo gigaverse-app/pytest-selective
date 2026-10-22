@@ -1,0 +1,28 @@
+{
+  "graph": {
+    "module_roots": [
+      "src",
+      "."
+    ],
+    "test_roots": [
+      "tests"
+    ],
+    "pytest_policy": {
+      "pyproject.toml": "7a78d68735c0e3b091962244620d3a17557951123c645970638f15d3a737d987"
+    }
+  },
+  "lanes": {
+    "tests": {
+      "roots": [
+        "tests"
+      ],
+      "inputs": [
+        "src/**",
+        "scripts/**",
+        "tests/**",
+        ".pre-commit-config.yaml",
+        ".python-version"
+      ]
+    }
+  }
+}

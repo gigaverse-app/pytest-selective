@@ -49,3 +49,15 @@ Explain the user-visible problem and the resulting behavior. Include the exact
 validation commands, measured evidence where applicable, and any remaining
 limitations. The pull request template provides a short checklist. See
 [RELEASING.md](RELEASING.md) for package publication.
+
+
+## CI lane selection
+
+This repository uses its own `plan-lanes` action. Documentation-only PRs keep
+quality checks (including Markdown links) and distribution build/install checks,
+while skipping the six-platform pytest matrix and minimum-pytest lane. Source,
+tests, scripts, dependency/pytest policy and workflow changes run the complete
+matrix. Main, manual/called runs and the `test:full` label run it in full; a
+failed planner also runs all tests. Repository routing controls exercise the
+committed config against real Git trees, including full and missing-history
+controls. Add new non-import execution inputs to `.github/test-lanes.json`.
