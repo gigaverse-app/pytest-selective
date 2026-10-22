@@ -72,6 +72,23 @@ Reproduce with [the benchmark script](../scripts/benchmark_parsing.py), passing
 the same immutable `--revision` to both versions. Compare `records_sha256` as
 well as timings. Never compare mutable HEADs across runs.
 
+The final implementation also replayed the same backend tree through the actual
+graph cache, opening a fresh cache connection for each step:
+
+| Cache state | Graph construction time | Parsed blobs | Snapshot hits |
+| --- | ---: | ---: | ---: |
+| Empty cache | 7.719s | 2,772 | 0 |
+| Identical tree, persisted cache | 0.049s | 0 | 1 |
+| One test gains a comment | 2.250s | 1 | 0 |
+
+All three snapshots contain 982 test files. These are single observations, not
+before/after speedups. The incremental tree is
+`2ff7876d8f55caaec1e54b13357e6dcf894dd538`; it changes only
+`tests/internals/test_test_file_isolation.py`. Collection-policy fingerprints
+were refreshed in the in-memory measurement configuration to match the frozen
+tree; no adopter configuration or checkout was changed. Persistent blob reuse
+already existed and remains intact after the parsing optimization.
+
 ## Identical change replay
 
 The [comparison script](../scripts/compare_impacted.py) runs both installed
