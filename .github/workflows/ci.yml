@@ -10,8 +10,8 @@ permissions:
   contents: read
 concurrency:
   # Only newer revisions of the same PR supersede work; keep every main/manual run.
-  group: pytest-selective-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.run_attempt == 1 && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.run_attempt == 1 }}
 jobs:
   select-tests:
     runs-on: ubuntu-latest
@@ -31,12 +31,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - uses: gigaverse-app/ci-esta/.github/actions/setup-cached-uv@78e5e2b078ce6d9b4df488a102c387f3548aa00a
         with:
           python-version: '3.14'
-          cache-suffix: ${{ github.job }}
-      - run: uv sync --locked
       - run: uv run --locked pre-commit run --all-files
+      - name: Check aggregate gate against the execution lanes
+        run: >-
+          uv run --no-project --python 3.14
+          --with "ci-esta @ https://github.com/gigaverse-app/ci-esta/archive/78e5e2b078ce6d9b4df488a102c387f3548aa00a.tar.gz"
+          ci-esta check-workflow --workflow .github/workflows/ci.yml --lanes .github/test-lanes.json
       - name: Validate routing even when the platform matrix is skipped
         run: uv run --locked pytest -q tests/test_repository_ci.py
       - name: Validate GitHub Actions
@@ -54,11 +57,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - uses: gigaverse-app/ci-esta/.github/actions/setup-cached-uv@78e5e2b078ce6d9b4df488a102c387f3548aa00a
         with:
           python-version: ${{ matrix.python }}
-          cache-suffix: ${{ github.job }}-${{ matrix.python }}
-      - run: uv sync --locked
       - name: Record coverage runtime
         run: uv run --locked python -m coverage --version
       - run: uv run --locked pytest -q -n 4 --durations=20 --cov --cov-report=term-missing --cov-report=xml
@@ -77,22 +78,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - uses: gigaverse-app/ci-esta/.github/actions/setup-cached-uv@78e5e2b078ce6d9b4df488a102c387f3548aa00a
         with:
           python-version: '3.11'
-          cache-suffix: ${{ github.job }}
-      - run: uv sync --locked
       - run: uv pip install 'pytest==8.0.0'
       - run: uv run --no-sync pytest -q -n 4 --durations=20
   distributions:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - uses: gigaverse-app/ci-esta/.github/actions/setup-cached-uv@78e5e2b078ce6d9b4df488a102c387f3548aa00a
         with:
           python-version: '3.14'
-          cache-suffix: ${{ github.job }}
-      - run: uv sync --locked
       - run: uv build
       - run: uv run --locked twine check --strict dist/*
       - run: uv run --locked python scripts/check_metadata.py
@@ -102,3 +99,15 @@ jobs:
           name: distributions
           path: dist/*
           if-no-files-found: error
+
+  validation-gate:
+    name: Validation gate
+    needs: [select-tests, quality, tests, pytest-minimum, distributions]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: gigaverse-app/ci-esta/.github/actions/validation-gate@78e5e2b078ce6d9b4df488a102c387f3548aa00a
+        with:
+          needs: ${{ toJSON(needs) }}
+          lanes: ${{ needs.select-tests.outputs.lanes || '{}' }}
+          lane-jobs: '{"tests":["tests"],"pytest-minimum":["tests"]}'
