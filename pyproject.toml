@@ -5,18 +5,22 @@ build-backend = "hatchling.build"
 [project]
 name = "pytest-selective"
 version = "0.1.0a1"
-description = "Explainable Git-based test selection for Python, extracted from Gigaverse CI"
+description = "Explainable Python test impact analysis: select affected pytest files from Git changes"
 readme = "README.md"
 requires-python = ">=3.14"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{name = "Gigaverse"}]
+keywords = ["pytest", "test-selection", "test-impact-analysis", "incremental-testing", "git", "ci"]
 dependencies = ["pydantic>=2.11,<3", "pyyaml>=6,<7"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Framework :: Pytest",
   "Intended Audience :: Developers",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Testing",
+  "Topic :: Software Development :: Quality Assurance",
   "Typing :: Typed",
 ]
 
@@ -27,11 +31,14 @@ audit = ["pytest>=8"]
 pytest-selective = "pytest_selective.impact_cli:main"
 
 [project.urls]
+Homepage = "https://github.com/gigaverse-app/pytest-selective"
+Documentation = "https://github.com/gigaverse-app/pytest-selective/blob/main/docs/README.md"
 Repository = "https://github.com/gigaverse-app/pytest-selective"
 Issues = "https://github.com/gigaverse-app/pytest-selective/issues"
+Changelog = "https://github.com/gigaverse-app/pytest-selective/blob/main/CHANGELOG.md"
 
 [dependency-groups]
-dev = ["pytest>=8", "pytest-xdist>=3.6", "pytest-timeout>=2.3", "ruff>=0.14", "build>=1.2"]
+dev = ["pytest>=8", "pytest-xdist>=3.6", "pytest-timeout>=2.3", "pytest-cov>=6", "ruff>=0.14", "build>=1.2", "pre-commit>=4", "twine>=6"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pytest_selective"]
@@ -39,6 +46,16 @@ packages = ["src/pytest_selective"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+addopts = "--strict-config --strict-markers"
+timeout = 120
+
+[tool.coverage.run]
+source = ["pytest_selective"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
 
 [tool.ruff]
 line-length = 120
