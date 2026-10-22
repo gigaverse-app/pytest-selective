@@ -1,0 +1,64 @@
+name: Matched Windows performance
+on:
+  pull_request:
+    paths: ['.github/workflows/windows-performance.yml']
+  workflow_dispatch:
+    inputs:
+      baseline:
+        description: Immutable baseline commit to compare with the selected ref
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: windows-performance-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  compare:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.14']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.baseline || github.event.pull_request.base.sha }}
+          path: baseline
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: candidate
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e
+        with:
+          python-version: ${{ matrix.python }}
+          cache-suffix: matched-windows-${{ matrix.python }}
+      - run: uv sync --directory baseline --locked
+      - run: uv sync --directory candidate --locked
+      - name: Run complete suites in both orders on the same worker
+        shell: pwsh
+        run: |
+          $results = Join-Path $env:GITHUB_WORKSPACE 'measurements'
+          New-Item -ItemType Directory -Path $results | Out-Null
+          $measurements = @()
+          foreach ($sample in @('baseline-1', 'candidate-1', 'candidate-2', 'baseline-2')) {
+            $arm = $sample.Split('-')[0]
+            Push-Location (Join-Path $env:GITHUB_WORKSPACE $arm)
+            try {
+              $sha = git rev-parse HEAD
+              $clock = [System.Diagnostics.Stopwatch]::StartNew()
+              uv run --locked pytest -q -n 4 --durations=20 --cov --cov-report="xml:$results/$sample-coverage.xml" --junitxml="$results/$sample-tests.xml" *> "$results/$sample.log"
+              $result = $LASTEXITCODE
+              $clock.Stop()
+              Get-Content "$results/$sample.log" | Select-Object -Last 25
+              $measurements += [pscustomobject]@{ sample=$sample; sha=$sha; seconds=$clock.Elapsed.TotalSeconds; exit_code=$result }
+              $measurements | ConvertTo-Json | Set-Content "$results/timings.json"
+              if ($result -ne 0) { throw "${sample} failed: $result" }
+            } finally { Pop-Location }
+          }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: matched-windows-${{ matrix.python }}
+          path: measurements/
+          if-no-files-found: error
