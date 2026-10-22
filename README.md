@@ -41,6 +41,29 @@ creates real commits, introduces a pricing regression, and runs pytest on the
 selected files. One of three files is selected and catches the regression.
 This is a reproducible selection example, **not a wall-time speedup claim**.
 
+## Measured CI savings
+
+On real GitHub Actions runs, whole-lane selection kept the affected work and
+skipped unrelated environments:
+
+| Change | Full runner-seconds | Selected runner-seconds | Reduction |
+| --- | ---: | ---: | ---: |
+| Due library test, main CI | 747 | 388 | 48.1% |
+| pytest-obligation MongoDB test | 1,602 | 93 | 94.2% |
+| pytest-obligation package README | 1,691 | 57 | 96.6% |
+
+Each row is one successful sequential pair on the same PR head and merge
+checkout, using `test:full` for the control. Runner-seconds sum executed job
+durations, including setup and cleanup. These are observations, not billed
+minutes or expected savings for every PR. Both runs include planning overhead.
+Due's separate widget benchmark is excluded from the first row.
+
+[Run links, raw timestamps, method and limits](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/benchmarks/2026-10-22.md)
+include the much slower widget comparison and its 624-second browser-install
+outlier. The savings come from pytest-selective routing and explicit consumer
+inputs. [CI-esta](https://github.com/gigaverse-app/ci-esta) provides timing reports
+and evidence gates; these measurements do not claim savings from receipt reuse.
+
 ## Try it in two minutes
 
 Requires **Python 3.11+, Git 2.24+, and uv**. Use a planner Python version at
