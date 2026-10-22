@@ -137,3 +137,118 @@ def test_full_suite_evidence_names_its_cause(repository, full):
     result = plan(repo, config, base, commit(repo), full=full)
     expected = "explicit full-suite checkpoint" if full else "global input: uv.lock"
     assert all(expected in reasons for reasons in result.lane_reasons.values())
+
+
+WORKFLOW = """\
+name: CI
+on: [pull_request]
+env:
+  LEVEL: info
+jobs:
+  select-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: example/plan-lanes@1111111
+  tests:
+    needs: select-tests
+    runs-on: ubuntu-latest
+    steps:
+      - run: pytest tests/unit
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - run: ruff check
+"""
+
+
+@pytest.fixture
+def workflow_repository(tmp_path: Path) -> tuple[Path, LaneConfig, str]:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    write(tmp_path, "src/sample/__init__.py")
+    write(tmp_path, "tests/unit/test_value.py", "def test_value(): assert True")
+    write(tmp_path, "tests/live/test_other.py", "def test_other(): assert True")
+    write(tmp_path, ".github/workflows/ci.yml", WORKFLOW)
+    config = LaneConfig(
+        graph=ImpactConfig(module_roots=["src", "."], test_roots=["tests"]),
+        lanes={
+            "unit": Lane(roots=["tests/unit"], inputs=[".github/workflows/ci.yml#tests"]),
+            "live": Lane(roots=["tests/live"], inputs=[".github/workflows/ci.yml#lint"]),
+        },
+        global_inputs=["uv.lock"],
+    )
+    return tmp_path, config, commit(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "expected"),
+    [
+        ("example/plan-lanes@1111111", "example/plan-lanes@2222222", {"unit": False, "live": False}),
+        ("pytest tests/unit", "pytest -x tests/unit", {"unit": True, "live": False}),
+        ("ruff check", "ruff check --fix", {"unit": False, "live": True}),
+        ("LEVEL: info", "LEVEL: debug", {"unit": True, "live": True}),
+        ("on: [pull_request]", "on: [pull_request, push]", {"unit": True, "live": True}),
+        ("name: CI\n", "# Comments and layout are not behavior.\nname:   CI\n", {"unit": False, "live": False}),
+    ],
+)
+def test_job_inputs_select_only_lanes_whose_job_or_shared_settings_changed(workflow_repository, old, new, expected):
+    repo, config, base = workflow_repository
+    write(repo, ".github/workflows/ci.yml", WORKFLOW.replace(old, new))
+    assert plan(repo, config, base, commit(repo)).lanes == expected
+
+
+def test_job_input_evidence_names_the_job(workflow_repository):
+    repo, config, base = workflow_repository
+    write(repo, ".github/workflows/ci.yml", WORKFLOW.replace("pytest tests/unit", "pytest -x tests/unit"))
+    head = commit(repo)
+    result = plan(repo, config, base, head)
+    assert result.lane_reasons["unit"] == ["explicit input: .github/workflows/ci.yml#tests"]
+    assert result.lane_reasons["live"] == ["unchanged job: .github/workflows/ci.yml#lint"]
+    write(repo, "README.md", "documentation")
+    assert plan(repo, config, head, commit(repo)).lane_reasons["live"] == ["no affected tests or changed inputs"]
+
+
+def test_removing_the_workflow_or_the_job_selects_its_lane(workflow_repository):
+    repo, config, base = workflow_repository
+    write(repo, ".github/workflows/ci.yml", WORKFLOW.split("  lint:")[0])
+    assert plan(repo, config, base, commit(repo)).lanes == {"unit": False, "live": True}
+    (repo / ".github/workflows/ci.yml").unlink()
+    assert plan(repo, config, base, commit(repo)).lanes == {"unit": True, "live": True}
+
+
+@pytest.mark.parametrize("workflow_changed", [False, True])
+def test_a_misspelled_job_is_a_declaration_error(workflow_repository, workflow_changed):
+    repo, config, base = workflow_repository
+    config.lanes["unit"] = Lane(roots=["tests/unit"], inputs=[".github/workflows/ci.yml#test"])
+    if workflow_changed:
+        write(repo, ".github/workflows/ci.yml", WORKFLOW.replace("ruff check", "ruff check --fix"))
+    else:
+        write(repo, "README.md", "documentation")
+    with pytest.raises(DependencyDeclarationError, match="no job 'test'"):
+        plan(repo, config, base, commit(repo))
+
+
+@pytest.mark.parametrize("content", ["jobs: [unclosed", "name: not a workflow"])
+def test_an_unreadable_workflow_runs_every_lane(workflow_repository, content):
+    repo, config, base = workflow_repository
+    write(repo, ".github/workflows/ci.yml", content)
+    result = plan(repo, config, base, commit(repo))
+    assert result.lanes == {"unit": True, "live": True}
+    assert "fallback" in result.reason
+
+
+@pytest.mark.parametrize(
+    ("inputs", "global_inputs", "message"),
+    [
+        ([".github/workflows/*.yml#tests"], ["uv.lock"], "without wildcards"),
+        ([".github/workflows/ci.yml#"], ["uv.lock"], "without wildcards"),
+        ([".github/workflows/ci.yml#tests"], None, "matches a global input"),
+    ],
+)
+def test_job_inputs_that_cannot_narrow_are_rejected(inputs, global_inputs, message):
+    settings = {} if global_inputs is None else {"global_inputs": global_inputs}
+    with pytest.raises(ValidationError, match=message):
+        LaneConfig(
+            graph=ImpactConfig(module_roots=["."], test_roots=["tests"]),
+            lanes={"unit": {"roots": ["tests"], "inputs": inputs}},
+            **settings,
+        )

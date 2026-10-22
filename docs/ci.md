@@ -111,6 +111,37 @@ CI/dependency metadata changes and operational planning failures run every lane.
 Review collection policy and set `graph.pytest_policy` from the `fingerprints`
 command before expecting narrowing in a configured pytest project.
 
+### Depend on one workflow job
+
+A lane that depends on the workflow file which runs it would otherwise run for
+every edit to that file, including a version bump of the planning action itself.
+Name the job instead: `<workflow path>#<job id>`.
+
+```json
+{
+  "lanes": {
+    "unit": {"roots": ["tests/unit"], "inputs": [".github/workflows/ci.yml#tests"]}
+  },
+  "global_inputs": ["uv.lock", "pyproject.toml", ".github/actions/**"]
+}
+```
+
+The lane runs when the parsed YAML of that job differs between base and head,
+or when anything outside `jobs:` does (triggers, `env`, `defaults`,
+`permissions`, `concurrency`), because every job inherits those. Comments and
+formatting do not count. Adding, removing or renaming the job, or deleting the
+file, selects the lane. Other jobs are not followed through `needs`: list each
+job whose change can alter the lane's result, such as one that builds an
+artifact the tests download. Reusable workflows and local actions are separate
+files; list them as ordinary inputs.
+
+A skipped lane whose workflow file changed elsewhere reports
+`unchanged job: <path>#<job>`. A job id that the workflow does not define is a
+declaration error (exit 2) on every plan, and a workflow that does not parse
+runs every lane. The workflow path must not match
+`global_inputs`, which runs every lane first; the default `.github/**` does, so
+a config with a job input must set `global_inputs` explicitly.
+
 The action returns a `lanes` JSON object. Expose it as a planning-job output,
 then gate each expensive job with `always() && !cancelled()` and either a true
 lane value **or a failed planning job**. This preserves tests if planning fails.
