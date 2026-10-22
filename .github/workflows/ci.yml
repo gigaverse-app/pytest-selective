@@ -60,13 +60,13 @@ jobs:
       - uses: gigaverse-app/ci-esta/.github/actions/setup-cached-uv@e9d279269e80a4e68435dbd65cdb9dbd23048f7b
         with:
           python-version: ${{ matrix.python }}
+      - name: Use native Git for Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/use_native_windows_git.ps1
       - name: Record coverage runtime
         run: uv run --locked python -m coverage --version
-      # Windows starts processes slowly; one Windows Python measures coverage there.
-      - run: >-
-          uv run --locked pytest -q -n 4 --durations=20 --junitxml=test-timings.xml
-          ${{ (matrix.os != 'windows-latest' || matrix.python == '3.14')
-          && '--cov --cov-report=term-missing --cov-report=xml' || '' }}
+      - run: uv run --locked pytest -q -n 4 --durations=20 --junitxml=test-timings.xml --cov --cov-report=term-missing --cov-report=xml
       - uses: gigaverse-app/ci-esta/.github/actions/learn-test-timings@e9d279269e80a4e68435dbd65cdb9dbd23048f7b
         with:
           junit-pattern: test-timings.xml

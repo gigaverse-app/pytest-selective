@@ -21,9 +21,8 @@ Fewer selected files is useful only when affected tests remain included. This
 example makes no claim about production time saved, recall across arbitrary
 projects, or performance against another selector. The script asserts its
 expected outcomes and emits commit SHAs and reasons. CI retains the report and
-coverage XML under `evidence-<os>-<python>` in each run's artifacts. Windows
-Python 3.11 runs without coverage to keep its slow process starts off the critical
-path; Windows Python 3.14 measures Windows coverage.
+coverage XML under `evidence-<os>-<python>` in each run's artifacts. Both Windows
+Python versions retain coverage, including interpreter-specific execution paths.
 
 ## What the regression suite exercises
 
