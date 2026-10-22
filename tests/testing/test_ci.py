@@ -1,5 +1,4 @@
 import json
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -8,12 +7,12 @@ from pydantic import ValidationError
 from pytest_selective.ci import Lane, LaneConfig, main, plan
 from pytest_selective.impact_graph import DependencyDeclarationError
 from pytest_selective.impact_models import ImpactConfig
-from tests.testing.git_repo import commit, write
+from tests.testing.git_repo import commit, init, write
 
 
 @pytest.fixture
 def repository(tmp_path: Path) -> tuple[Path, LaneConfig, str]:
-    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    init(tmp_path)
     write(tmp_path, "src/sample/__init__.py")
     write(tmp_path, "src/sample/value.py", "VALUE = 1")
     write(tmp_path, "tests/unit/test_value.py", "from sample.value import VALUE\ndef test_value(): assert VALUE")
@@ -163,7 +162,7 @@ jobs:
 
 @pytest.fixture
 def workflow_repository(tmp_path: Path) -> tuple[Path, LaneConfig, str]:
-    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    init(tmp_path)
     write(tmp_path, "src/sample/__init__.py")
     write(tmp_path, "tests/unit/test_value.py", "def test_value(): assert True")
     write(tmp_path, "tests/live/test_other.py", "def test_other(): assert True")

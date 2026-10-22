@@ -20,15 +20,10 @@ from pytest_selective.impact_first_party import PinMove, first_party_pin_move
 from pytest_selective.impact_graph import GraphCache, inventory, policy_fingerprints
 from pytest_selective.impact_models import FirstPartyPackage, ImpactConfig
 from pytest_selective.impact_selection import affected
-from tests.testing.git_repo import commit, write
+from tests.testing.git_repo import commit, init, write
 
 PACKAGE = "acme-shared"
 MODULE = "acme_shared"
-
-
-def init(root: Path) -> None:
-    root.mkdir(parents=True)
-    subprocess.run(["git", "init", "-q", str(root)], check=True)
 
 
 @pytest.fixture

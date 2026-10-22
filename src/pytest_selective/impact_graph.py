@@ -12,6 +12,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import sqlite3
 import subprocess
 import sys
@@ -20,6 +21,7 @@ import tomllib
 import unicodedata
 from collections import deque
 from pathlib import Path, PurePosixPath
+from typing import TypeVar
 
 from pytest_selective.ast_imports import import_candidates, iter_imports
 from pytest_selective.impact_declarations import (
@@ -109,11 +111,37 @@ def git_environment() -> dict[str, str]:
     return {name: value for name, value in os.environ.items() if name not in locations}
 
 
+CacheKey = TypeVar("CacheKey")
+CacheValue = TypeVar("CacheValue")
+FULL_OBJECT_ID = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
+CACHED_OBJECTS = 1024
+# One plan lists the same revisions several times, and each Git process costs ~40 ms on
+# Windows. Both maps are content-addressed: a commit id names one tree, a tree one listing.
+# Commit ids stay per repository, so an object another repository lacks still fails there.
+_commit_trees: dict[tuple[str, str], str] = {}
+_tree_listings: dict[str, bytes] = {}
+
+
+def _remember(cache: dict[CacheKey, CacheValue], key: CacheKey, value: CacheValue) -> None:
+    if len(cache) >= CACHED_OBJECTS:
+        cache.clear()
+    cache[key] = value
+
+
 def inventory(repo: Path, revision: str) -> GitTree:
-    tree = git(repo, "rev-parse", "--verify", "--end-of-options", f"{revision}^{{tree}}").decode().strip()
+    commit_key = (str(repo), revision)
+    tree = _commit_trees.get(commit_key)
+    if tree is None:
+        tree = git(repo, "rev-parse", "--verify", "--end-of-options", f"{revision}^{{tree}}").decode().strip()
+        if FULL_OBJECT_ID.fullmatch(revision):
+            _remember(_commit_trees, commit_key, tree)
+    listing = _tree_listings.get(tree)
+    if listing is None:
+        listing = git(repo, "ls-tree", "-rz", tree)
+        _remember(_tree_listings, tree, listing)
     files: dict[str, str] = {}
     links: list[str] = []
-    for record in git(repo, "ls-tree", "-rz", tree).split(b"\0"):
+    for record in listing.split(b"\0"):
         if not record:
             continue
         metadata, name = record.split(b"\t", 1)
