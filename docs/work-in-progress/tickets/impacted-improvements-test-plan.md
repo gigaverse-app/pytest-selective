@@ -49,16 +49,19 @@ Matched backend parsing: 2,772 unique blobs / 22,698,774 bytes from tree
 before, 4.082s after; identical dependency-record SHA-256. Details and limits:
 [comparison](../../comparison-pytest-impacted.md).
 
-Final pinned runtime `7cdab2621185f03689410ba92b84f93fea47e395` passed hosted
-selector CI [39868386707](https://github.com/gigaverse-app/pytest-selective/actions/runs/39868386707).
-CI-esta `3889852` passed 1,081 Linux tests with the immutable locked archive and
-hosted [39869214254](https://github.com/gigaverse-app/ci-esta/actions/runs/39869214254).
-Due `7562cb7` passed 15 consumer contracts, hosted
-[CI](https://github.com/gigaverse-app/due/actions/runs/39869469000) and
-[widget routing](https://github.com/gigaverse-app/due/actions/runs/39869469062).
-pytest-obligation passed 13 contracts after integrating the nested-policy fix;
-the final merge with its toolkit pin rollout is being checked in
-[39869817956](https://github.com/gigaverse-app/pytest-obligation/actions/runs/39869817956).
+Final pinned runtime `6c65e923adf9e4283ba64c0db994304b3d426031` passed 624 local
+tests (2 skipped) and hosted
+[39870754068](https://github.com/gigaverse-app/pytest-selective/actions/runs/39870754068),
+including Linux, Windows and macOS on Python 3.11 and 3.14, minimum pytest,
+distribution installs and the installed tutorial.
+CI-esta `de97e4f` passed 1,081 Linux tests with the immutable locked archive and
+hosted [39870853962](https://github.com/gigaverse-app/ci-esta/actions/runs/39870853962).
+Due `e657074` passed 15 consumer contracts, hosted
+[CI](https://github.com/gigaverse-app/due/actions/runs/39871413040) and
+[widget routing](https://github.com/gigaverse-app/due/actions/runs/39871413101).
+pytest-obligation `c70bf89` passed 13 contracts and hosted
+[39870827024](https://github.com/gigaverse-app/pytest-obligation/actions/runs/39870827024),
+including the admitted database, queue, demo and external conformance lanes.
 
 Seven identical real-Git scenarios agree with pytest-impacted's conservative
 conftest option. Its default misses the application-imported conftest case;
@@ -71,5 +74,25 @@ paths before name narrowing, and a large local selected-file argument list can
 exceed Windows process limits. Both global/name-scope controls failed before the
 fix; all 112 global, name-scope and first-party controls now pass. The runner
 regressions exercise the actual Windows limit and the portable E2BIG recovery
-boundary, retaining other errors and retrying only once. Final pins are refreshed
-after these corrections pass validation.
+boundary, retaining other errors and retrying only once. The final pins above
+include both corrections.
+
+Backend-common `b687c04` passed 95 focused compatibility checks and hosted
+[Python tests](https://github.com/gigaverse-app/backend-common/actions/runs/39871010403),
+type checking and CI action validation. Before the final pin refresh its broader
+Linux suite passed 637 tests (58 skipped). Compatibility cleanup removes stale
+private-import inventories, synchronizes action inputs/schema, and checks pins
+through the existing canonical migration contract.
+
+The generated backend and AI adoption PRs exposed missing nested pytest-policy
+fingerprints. Reviewed the nested settings and repaired the generated branches,
+preserving the collection-policy guard. Backend `51781fdae` passes all 193
+existing routing/policy controls under Linux. Its unchanged-tree CLI run selects
+zero tests from 982 files without fallback. AI `6211347bb` passes 19 routing
+controls, including full real-repository Git trees for unchanged/docs-only
+selection and changed-policy fallback. Its lockfile control now expects full
+selection. The first upgrade can still conservatively run fully against its
+base commit's older declarations; a repaired head does not silently approve an
+unreviewed base policy. Hosted application results belong to generated adoption
+PRs [backend #5500](https://github.com/gigaverse-app/gigaverse-backend/pull/5500)
+and [AI #3117](https://github.com/gigaverse-app/gigaverse-ai/pull/3117).
