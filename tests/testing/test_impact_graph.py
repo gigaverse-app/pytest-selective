@@ -1582,14 +1582,18 @@ def test_isolated_warm_action_loads_sidecars(repo: Path, config: ImpactConfig, t
         IMPACT_WARM_ONLY="true",
         IMPACT_CONFIG="config.json",
         IMPACT_HEAD="HEAD",
-        GITHUB_STEP_SUMMARY=str(summary),
-        GITHUB_OUTPUT=str(output),
-        SHARED_ACTION_PATH=str(Path(".github/actions/test-impact").resolve()),
+        GITHUB_STEP_SUMMARY=summary.as_posix(),
+        GITHUB_OUTPUT=output.as_posix(),
+        SHARED_ACTION_PATH=Path(".github/actions/test-impact").resolve().as_posix(),
     )
     for name in ("VIRTUAL_ENV", "PYTHONPATH", "PYTHONHOME"):
         env.pop(name, None)
+    # Resolve PATH explicitly: Windows' bare executable lookup may choose the
+    # WSL launcher in System32 instead of the Git Bash available on PATH.
+    bash = shutil.which("bash")
+    assert bash is not None
     result = subprocess.run(
-        ["bash", "-euo", "pipefail", "-c", step["run"]],
+        [bash, "-euo", "pipefail", "-c", step["run"]],
         cwd=repo,
         env=env,
         capture_output=True,
