@@ -203,13 +203,18 @@ def _remove_tree(path: Path) -> None:
         shutil.rmtree(path, onerror=writable)
 
 
-def _has_commit(repo: Path, commit: str) -> bool:
+def _available_commits(repo: Path, commits: set[str]) -> set[str]:
+    """Prove all requested objects are commits with one Git process."""
+    if not commits:
+        return set()
+    ordered = sorted(commits)
     probe = subprocess.run(
-        ["git", "-C", str(repo), "cat-file", "-e", f"{commit}^{{commit}}"],
+        ["git", "-C", str(repo), "cat-file", "--batch-check=%(objecttype)"],
+        input="".join(f"{commit}^{{commit}}\n" for commit in ordered).encode(),
         capture_output=True,
-        check=False,
+        check=True,
     )
-    return probe.returncode == 0
+    return {commit for commit, kind in zip(ordered, probe.stdout.splitlines(), strict=True) if kind == b"commit"}
 
 
 def fetch_commits(spec: FirstPartyPackage, move: PinMove, cache_dir: Path, token: str | None) -> Path:
@@ -225,17 +230,32 @@ def fetch_commits(spec: FirstPartyPackage, move: PinMove, cache_dir: Path, token
         if not (repo / "HEAD").exists():
             repo.mkdir(parents=True, exist_ok=True)
             subprocess.run(["git", "init", "-q", "--bare", str(repo)], capture_output=True, check=True)
-        missing = sorted(
-            {move.old, move.new} - {commit for commit in (move.old, move.new) if _has_commit(repo, commit)}
-        )
+        wanted = {move.old, move.new}
+        available = _available_commits(repo, wanted)
+        missing = sorted(wanted - available)
         if missing:
+            # This shallow cache is bounded and rebuilt above; automatic maintenance
+            # needlessly starts another process after every tiny fetch on Windows.
             subprocess.run(
-                ["git", "-C", str(repo), "fetch", "-q", "--no-tags", "--depth=1", spec.repository, *missing],
+                [
+                    "git",
+                    "-C",
+                    str(repo),
+                    "fetch",
+                    "-q",
+                    "--no-auto-maintenance",
+                    "--no-tags",
+                    "--depth=1",
+                    spec.repository,
+                    *missing,
+                ],
                 capture_output=True,
                 check=True,
                 env=environment,
                 timeout=120,
             )
+            # Existing objects were already proved; only fetched objects need another probe.
+            available |= _available_commits(repo, set(missing))
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as error:
         detail = getattr(error, "stderr", b"") or b""
         message = detail.decode(errors="replace").strip().splitlines()[-1:] if detail else [type(error).__name__]
@@ -243,7 +263,7 @@ def fetch_commits(spec: FirstPartyPackage, move: PinMove, cache_dir: Path, token
             f"could not compare {spec.name} {move.old[:12]}..{move.new[:12]}: fetch failed ({message[0] if message else ''})"
         ) from error
     for commit in (move.old, move.new):
-        if not _has_commit(repo, commit):
+        if commit not in available:
             raise ValueError(f"could not compare {spec.name}: {commit[:12]} is not in {spec.repository}")
     return repo
 

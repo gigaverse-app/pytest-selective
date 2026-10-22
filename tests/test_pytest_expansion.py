@@ -31,7 +31,7 @@ def write(root: Path, relative: str, source: str) -> None:
 
 def commit(root: Path) -> str:
     git(root, "add", ".")
-    git(root, "commit", "--quiet", "-m", "test snapshot")
+    git(root, "-c", "maintenance.auto=false", "commit", "--quiet", "-m", "test snapshot")
     return git(root, "rev-parse", "HEAD")
 
 

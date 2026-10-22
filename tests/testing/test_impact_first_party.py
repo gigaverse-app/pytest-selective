@@ -619,3 +619,14 @@ def test_a_lock_without_a_commit_in_the_pinned_source_proves_nothing() -> None:
             before_manifest=manifest(URL, "PR7").encode(),
             after_manifest=manifest(URL, "PR7").encode(),
         )
+
+
+def test_batch_probe_preserves_commit_type_and_missing_object_checks(dependency: Path):
+    old = commit(dependency)
+    write(dependency, "another.py", "VALUE = 1\n")
+    new = commit(dependency)
+    tree = subprocess.check_output(["git", "-C", str(dependency), "rev-parse", "HEAD^{tree}"], text=True).strip()
+    missing = "0" * 40
+    assert impact_first_party._available_commits(dependency, {old, new, tree, missing}) == {old, new}
+    assert impact_first_party._available_commits(dependency, {old}) == {old}
+    assert impact_first_party._available_commits(dependency, set()) == set()
