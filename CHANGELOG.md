@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Guard hidden, TOML, nested and explicitly declared pytest configuration against unsafe empty selection; retain full-suite dependency updates for configured plugins.
+
 - Lane inputs can name one workflow job (`.github/workflows/ci.yml#tests`), so edits to other jobs, such as a planner pin bump, no longer run the lane.
 - Batch first-party commit probes and avoid redundant Git maintenance in bounded dependency caches.
 - Isolate nested audit-test temporary directories to avoid unrelated fixture cleanup.
