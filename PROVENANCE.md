@@ -15,3 +15,9 @@ repository history are excluded. The optional audit recorder loads explicitly;
 installing the package does not automatically alter pytest collection.
 
 Copyright Gigaverse. Licensed under Apache-2.0; see LICENSE.
+
+The global pytest expansion guard and test-file import-isolation checks were extracted
+from backend-common b6a2de0f58f18b78e544568d9ebd7371c8c30370 via CI-esta
+a9e6f656532aac521163280178f643149da34114. Their original behavioral tests move
+with them. CI-esta retains compatibility delegates; pytest-selective owns these
+guards because they preserve the assumptions behind file-level test selection.
