@@ -236,6 +236,7 @@ def fetch_commits(spec: FirstPartyPackage, move: PinMove, cache_dir: Path, token
         if missing:
             # This shallow cache is bounded and rebuilt above; automatic maintenance
             # needlessly starts another process after every tiny fetch on Windows.
+            # The older alias also supports our documented Git 2.24 minimum.
             subprocess.run(
                 [
                     "git",
@@ -243,7 +244,7 @@ def fetch_commits(spec: FirstPartyPackage, move: PinMove, cache_dir: Path, token
                     str(repo),
                     "fetch",
                     "-q",
-                    "--no-auto-maintenance",
+                    "--no-auto-gc",
                     "--no-tags",
                     "--depth=1",
                     spec.repository,

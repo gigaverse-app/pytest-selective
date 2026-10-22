@@ -80,3 +80,14 @@ took 119.37s. All original outcomes and covered unchanged lines/branches were
 preserved. Separate normal CI workers also varied substantially: baseline pytest
 steps were 126/135s for Python 3.11/3.14, versus 172/140s for the final candidate.
 These unpaired observations are not the basis for the hosted speedup claim.
+
+## Git compatibility
+
+The fetch optimization uses `--no-auto-gc`, the equivalent spelling available
+since the documented Git 2.24 minimum. The newer `--no-auto-maintenance` spelling
+caused dependency comparison to fall back to all tests on that version. The
+existing real-repository pin-move regression reproduced this with a built Git
+2.24.0 binary before the correction. Afterward the complete first-party dependency
+suite passes on Git 2.24.0 and on the current installed Git. The timing results
+above describe the measured revision; the alias correction does not change its
+behavior on the measured modern Git versions.
