@@ -159,6 +159,21 @@ explains complete-lane selection. Runtime requirements differ: Due requires
 Python 3.14+; pytest-obligation's core and pytest-selective support Python 3.11+.
 Planning can run separately from your tests.
 
+## CI observability and evidence reuse
+
+[CI-esta](https://github.com/gigaverse-app/ci-esta) renders pytest-selective's
+selection explanations alongside GitHub Actions timing and configured runner-cost
+estimates. It imports the shared explanation models instead of maintaining a
+second selector. It also provides completion receipts and strict aggregate gates
+for reusing already-proven lanes. Selection asks what may be affected; reuse asks
+whether the declared work already passed. Keep conservative fallbacks for both.
+
+The [integration guide](https://github.com/gigaverse-app/ci-esta/blob/main/docs/integrations.md)
+connects these workflows to
+[pytest-obligation](https://github.com/gigaverse-app/pytest-obligation)'s executed
+conformance evidence and [Due](https://github.com/gigaverse-app/due)'s durable-work
+runtime. CI-esta is optional; pytest-selective does not depend on it.
+
 ## Contribute
 
 ```bash
