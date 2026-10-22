@@ -7,6 +7,7 @@
 | Configure an existing Python project | [Configuration and dependency declarations](configuration.md) |
 | Run the selected files safely in CI | [GitHub Actions and runner integration](ci.md) |
 | Understand what has been demonstrated | [Evidence and limits](evidence.md) |
+| Measure complete Windows suite runtime | [Windows runtime evidence](benchmarks/windows-runtime.md) |
 | Improve the library | [Contributing](../CONTRIBUTING.md) |
 | Publish a package | [Releasing](../RELEASING.md) |
 

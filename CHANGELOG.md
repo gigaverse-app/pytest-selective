@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Batch first-party commit probes and avoid redundant Git maintenance in bounded dependency caches.
+- Isolate nested audit-test temporary directories to avoid unrelated fixture cleanup.
+- Add matched Windows full-suite timing, test inventory and coverage evidence.
+
 - Guided README, configuration reference, CI integration, and runnable regression tutorial.
 - Coverage artifacts, Linux/Windows/macOS CI, minimum-pytest checks, and isolated wheel/sdist smoke tests.
 - Locked Ruff pre-commit hooks, local documentation link checks, and dependency updates.
