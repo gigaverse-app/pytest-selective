@@ -124,3 +124,10 @@ root files, explicit inputs, global inputs and fallback causes. Skipped lanes sa
 If an affected or deleted test has no configured lane root, the planner runs all
 configured lanes and names the unmapped test. Map new test directories to a job
 that actually executes them; fallback cannot create a missing execution job.
+
+The action also uploads the report as the `test-lane-selection` artifact; set
+`artifact-name` to rename it, or to an empty string to skip the upload.
+[CI-esta](https://github.com/gigaverse-app/ci-esta)'s report renders it as the
+pull-request sticky's lane section: which lanes ran and why, and the runner time
+the skipped jobs took on the default branch's last full run. See
+[how the two fit together in a Python project](https://github.com/gigaverse-app/ci-esta/blob/main/docs/integrations.md#getting-the-most-from-both-in-a-python-project).

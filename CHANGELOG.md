@@ -5,6 +5,7 @@
 - Batch first-party commit probes and avoid redundant Git maintenance in bounded dependency caches.
 - Isolate nested audit-test temporary directories to avoid unrelated fixture cleanup.
 - Add matched Windows full-suite timing, test inventory and coverage evidence.
+- `plan-lanes` uploads its plan as the `test-lane-selection` artifact, which CI-esta renders as the sticky's lane section.
 
 - Guided README, configuration reference, CI integration, and runnable regression tutorial.
 - Coverage artifacts, Linux/Windows/macOS CI, minimum-pytest checks, and isolated wheel/sdist smoke tests.
