@@ -21,7 +21,7 @@ Fewer selected files is useful only when affected tests remain included. This
 example makes no claim about production time saved, recall across arbitrary
 projects, or performance against another selector. The script asserts its
 expected outcomes and emits commit SHAs and reasons. CI retains the report and
-coverage XML under `evidence-<os>` in each run's artifacts.
+coverage XML under `evidence-<os>-<python>` in each run's artifacts.
 
 ## What the regression suite exercises
 

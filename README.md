@@ -3,7 +3,7 @@
 **Run affected Python tests. See why they matter.**
 
 [![CI](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml)
-[![Python 3.14+](https://img.shields.io/badge/python-3.14%2B-3776AB?logo=python&logoColor=white)](https://github.com/gigaverse-app/pytest-selective/blob/main/pyproject.toml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://github.com/gigaverse-app/pytest-selective/blob/main/pyproject.toml)
 [![Alpha](https://img.shields.io/badge/status-alpha-E9A23B)](https://github.com/gigaverse-app/pytest-selective/blob/main/CHANGELOG.md)
 [![Typed](https://img.shields.io/badge/typing-py.typed-3776AB)](https://github.com/gigaverse-app/pytest-selective/blob/main/src/pytest_selective/py.typed)
 [![Ruff](https://img.shields.io/badge/code%20style-Ruff-D7FF64?logo=ruff&logoColor=black)](https://github.com/gigaverse-app/pytest-selective/blob/main/.pre-commit-config.yaml)
@@ -43,9 +43,10 @@ This is a reproducible selection example, **not a wall-time speedup claim**.
 
 ## Try it in two minutes
 
-Requires **Python 3.14+, Git, and uv**. Your test runtime can use a different
-Python version when planning runs separately. The optional audit recorder runs
-in the test environment and therefore requires Python 3.14+ there too.
+Requires **Python 3.11+, Git 2.24+, and uv**. Use a planner Python version at
+least as new as your source syntax; the CI action uses Python 3.14. Your test
+runtime can use a different Python version when planning runs separately.
+The optional audit recorder requires Python 3.11+ in the test environment.
 
 ```bash
 git clone https://github.com/gigaverse-app/pytest-selective.git
@@ -66,7 +67,7 @@ hold. It uses a temporary repository and leaves your checkout untouched.
 
 ## Install in your project
 
-Until the first PyPI release, install from GitHub using Python 3.14+:
+Until the first PyPI release, install from GitHub using Python 3.11+:
 
 ```bash
 pip install "pytest-selective @ git+https://github.com/gigaverse-app/pytest-selective.git"
@@ -128,6 +129,8 @@ and evidence checks.
 committed revisions, inspectable JSON plans, runtime dependency audits, and
 planning before application startup. Both use static dependency analysis; choose
 based on your workflow, and validate selection against your own suite.
+See the [lessons from pytest-impacted](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/pytest-impacted.md)
+for portability and Git-resolution improvements adopted from that comparison.
 
 ## Build durable work, test recovery, select the right CI work
 
@@ -152,8 +155,8 @@ automatic integration or a guarantee for arbitrary application code. Due's
 [conformance guide](https://github.com/gigaverse-app/due/blob/main/package/docs/conformance.md)
 shows the binding, and the
 [lane guide](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/ci.md#select-whole-ci-lanes)
-explains complete-lane selection. Runtime requirements differ: Due and the
-selector require Python 3.14+; pytest-obligation's core supports Python 3.11+.
+explains complete-lane selection. Runtime requirements differ: Due requires
+Python 3.14+; pytest-obligation's core and pytest-selective support Python 3.11+.
 Planning can run separately from your tests.
 
 ## Contribute

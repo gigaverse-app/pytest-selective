@@ -1,7 +1,8 @@
 # Configure Python test impact analysis
 
-The planner needs Python 3.14+ and Git. It does not need your application
-dependencies. Your test runner can use a separate environment.
+The planner needs Python 3.11+ and Git 2.24+. Use an interpreter at least as new
+as your source syntax. It does not need your application dependencies. Your test
+runner can use a separate environment.
 
 ## Declare the repository layout
 
@@ -99,7 +100,7 @@ pytest-selective explain --config .github/test-impact.json \
   --test tests/test_prices.py --source src/shop/prices.py
 ```
 
-To record real file reads, install the optional extra in the Python 3.14+ test
+To record real file reads, install the optional extra in the Python 3.11+ test
 environment and run a representative suite:
 
 ```bash

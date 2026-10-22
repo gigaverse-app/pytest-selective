@@ -1607,7 +1607,9 @@ def test_isolated_warm_action_loads_sidecars(repo: Path, config: ImpactConfig, t
     warmed = GraphCache(repo / ".test-impact/cache.sqlite3")
     try:
         snapshot = warmed.snapshot(repo, "HEAD", config)
-        assert warmed.snapshot_hits == 1
+        # The action uses Python 3.14. Older local parsers must rebuild rather
+        # than trust a graph parsed under a different syntax version.
+        assert warmed.snapshot_hits == int(sys.version_info[:2] == (3, 14))
         assert explanation(snapshot, "tests/left/test_one.py", "input.json")[-1:] == ["input.json"]
     finally:
         warmed.close()

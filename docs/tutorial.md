@@ -1,7 +1,7 @@
 # Tutorial: catch a regression with one of three test files
 
 This exercise runs the installed CLI and real pytest processes against a temporary
-Git repository. It needs Python 3.14+, Git, and the development dependencies.
+Git repository. It needs Python 3.11+, Git 2.24+, and the development dependencies.
 
 ```bash
 git clone https://github.com/gigaverse-app/pytest-selective.git

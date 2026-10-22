@@ -11,6 +11,7 @@ import fnmatch
 import hashlib
 import io
 import json
+import os
 import sqlite3
 import subprocess
 import sys
@@ -41,7 +42,7 @@ from pytest_selective.impact_models import (
     file_of,
 )
 
-VERSION = "16"
+VERSION = "17"
 OPAQUE_CALLS = {
     "__import__",
     "import_module",
@@ -88,11 +89,28 @@ def git(repo: Path, *args: str, data: bytes | None = None) -> bytes:
         input=data,
         capture_output=True,
         check=True,
+        env=git_environment(),
     ).stdout
 
 
+def git_environment() -> dict[str, str]:
+    """Explicit repository paths win over location variables inherited from hooks."""
+    locations = {
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GIT_COMMON_DIR",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_PREFIX",
+        "GIT_SHALLOW_FILE",
+        "GIT_GRAFT_FILE",
+    }
+    return {name: value for name, value in os.environ.items() if name not in locations}
+
+
 def inventory(repo: Path, revision: str) -> GitTree:
-    tree = git(repo, "rev-parse", "--verify", f"{revision}^{{tree}}").decode().strip()
+    tree = git(repo, "rev-parse", "--verify", "--end-of-options", f"{revision}^{{tree}}").decode().strip()
     files: dict[str, str] = {}
     links: list[str] = []
     for record in git(repo, "ls-tree", "-rz", tree).split(b"\0"):
@@ -174,7 +192,7 @@ def dependency_comments(source: bytes) -> list[DependencyComment]:
             if token.type == tokenize.COMMENT:
                 if comment := dependency_comment(token.string, token.start[0]):
                     comments.append(comment)
-    except tokenize.TokenError, SyntaxError, UnicodeError:
+    except (tokenize.TokenError, SyntaxError, UnicodeError):
         # The AST parse diagnostic owns malformed Python. Keep any actual
         # declarations found before the tokenization error for validation.
         pass
@@ -445,7 +463,7 @@ def assignment_strings(source: bytes, assignment: str, deferred: frozenset[str] 
     """
     try:
         tree = ast.parse(source)
-    except SyntaxError, ValueError:
+    except (SyntaxError, ValueError):
         return None
     value = _single_assignment(tree, assignment)
     if value is None:

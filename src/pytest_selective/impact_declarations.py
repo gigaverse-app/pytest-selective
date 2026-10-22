@@ -1,6 +1,5 @@
 """Reader-owned declarations: one path language and one YAML rule boundary."""
 
-import glob
 import re
 from pathlib import PurePosixPath
 
@@ -20,6 +19,25 @@ def is_declaration(path: str) -> bool:
     return path.endswith(SIDECAR_SUFFIX) or PurePosixPath(path).name == DIRECTORY_MANIFEST
 
 
+def _path_pattern(pattern: str) -> re.Pattern[str]:
+    """Compile our validated *, ?, ** language on every supported Python.
+
+    A slash is never matched by an ordinary wildcard; a whole ** segment can
+    consume zero or more directories. Hidden files are ordinary tracked inputs.
+    """
+    segments = pattern.split("/")
+    expression = ""
+    for index, segment in enumerate(segments):
+        last = index == len(segments) - 1
+        if segment == "**":
+            expression += ".*" if last else "(?:[^/]+/)*"
+        else:
+            expression += "".join("[^/]*" if c == "*" else "[^/]" if c == "?" else re.escape(c) for c in segment)
+            if not last:
+                expression += "/"
+    return re.compile(expression, re.DOTALL)
+
+
 def match_inputs(pattern: str, files: set[str], location: str, directory: str = ".") -> set[str]:
     parts = pattern.split("/")
     if (
@@ -29,7 +47,7 @@ def match_inputs(pattern: str, files: set[str], location: str, directory: str = 
     ):
         raise DependencyDeclarationError(f"{location}: invalid repository-relative dependency pattern {pattern!r}")
     rooted = pattern if directory == "." else f"{directory}/{pattern}"
-    matcher = re.compile(glob.translate(rooted, recursive=True, include_hidden=True, seps="/"))
+    matcher = _path_pattern(rooted)
     targets = {path for path in files if matcher.fullmatch(path)}
     if not targets:
         raise DependencyDeclarationError(f"{location}: test dependency {pattern!r} matches no tracked files")

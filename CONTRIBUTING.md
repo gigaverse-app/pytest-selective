@@ -1,6 +1,6 @@
 # Contributing to pytest-selective
 
-Use Python 3.14+, Git, and uv. The planner operates on immutable Git trees;
+Use Python 3.11+, Git 2.24+, and uv. The planner operates on immutable Git trees;
 tests should exercise real temporary repositories through the existing helpers
 in `tests/testing/git_repo.py`.
 
@@ -34,10 +34,10 @@ Keep performance claims tied to reproducible measurements and their limitations.
 
 ## CI and dependency maintenance
 
-CI tests Python 3.14 on Linux, Windows, and macOS. A separate job checks pytest
-8.0.0, the audit extra's lower bound. It also checks hooks, builds both distribution
+CI tests Python 3.11 and 3.14 on Linux, Windows, and macOS. A separate job checks
+pytest 8.0.0 on Python 3.11, the audit extra's lower bounds. It also checks hooks, builds both distribution
 formats, validates PyPI metadata, and installs each distribution in an isolated
-environment. Evidence artifacts carry coverage and tutorial output.
+environment on both Python versions. Evidence artifacts carry coverage and tutorial output.
 
 Use `uv lock --upgrade-package NAME` for a targeted dependency update and run the
 affected checks. Dependabot proposes weekly uv and GitHub Actions updates.

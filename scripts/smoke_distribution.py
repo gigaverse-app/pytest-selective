@@ -3,6 +3,7 @@
 import os
 import subprocess
 import tempfile
+from itertools import product
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,11 +14,11 @@ def main() -> None:
     if len(distributions) != 2:
         raise SystemExit("Expected exactly one wheel and one sdist in dist/")
     environment = {key: value for key, value in os.environ.items() if key not in {"PYTHONPATH", "VIRTUAL_ENV"}}
-    for distribution in distributions:
+    for distribution, version in product(distributions, ("3.11", "3.14")):
         with tempfile.TemporaryDirectory(prefix="selective-install-") as temporary:
             folder = Path(temporary)
             venv = folder / "venv"
-            subprocess.run(["uv", "venv", "--python", "3.14", str(venv)], check=True, env=environment)
+            subprocess.run(["uv", "venv", "--python", version, str(venv)], check=True, env=environment)
             python = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
             cli = venv / ("Scripts/pytest-selective.exe" if os.name == "nt" else "bin/pytest-selective")
             subprocess.run(
@@ -41,7 +42,10 @@ def main() -> None:
                 ["uv", "pip", "install", "--python", str(python), f"{distribution}[audit]"], check=True, env=environment
             )
             subprocess.run([str(python), str(ROOT / "scripts/tutorial.py")], cwd=folder, check=True, env=environment)
-            print(f"Verified {distribution.name}: CLI, typing marker, optional pytest, real selection", flush=True)
+            print(
+                f"Verified {distribution.name} on Python {version}: CLI, typing marker, optional pytest, real selection",
+                flush=True,
+            )
 
 
 if __name__ == "__main__":
