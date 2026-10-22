@@ -204,3 +204,8 @@ uv run python scripts/smoke_distribution.py
 <sub>[CI-esta](https://github.com/gigaverse-app/ci-esta) reports this repository's
 CI timing and renders pytest-selective's selection explanations next to it. It is
 optional; pytest-selective does not depend on it.</sub>
+
+### How this project keeps CI fast
+
+See the [CI toolkit integration](docs/ci-toolkit.md) for lane selection, validated
+environment caches, required gates and real dependency critical-path reports.
