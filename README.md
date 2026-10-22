@@ -21,7 +21,8 @@ infrastructure. **Alpha:** the API may change before 1.0.
 [Quick tutorial](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/tutorial.md) ·
 [Adoption guide](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/configuration.md) ·
 [GitHub Actions](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/ci.md) ·
-[Evidence and limits](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/evidence.md)
+[Evidence and limits](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/evidence.md) ·
+[Keep selection narrow](docs/pytest-hygiene.md)
 
 ## A small change should have an explainable test plan
 

@@ -32,6 +32,7 @@ audit = ["pytest>=8"]
 
 [project.scripts]
 pytest-selective = "pytest_selective.impact_cli:main"
+pytest-selective-expansion = "pytest_selective.pytest_expansion:main"
 
 [project.urls]
 Homepage = "https://github.com/gigaverse-app/pytest-selective"

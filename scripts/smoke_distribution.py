@@ -25,6 +25,12 @@ def main() -> None:
                 ["uv", "pip", "install", "--python", str(python), str(distribution)], check=True, env=environment
             )
             subprocess.run([str(cli), "--help"], cwd=folder, check=True, env=environment, stdout=subprocess.DEVNULL)
+            expansion = venv / (
+                "Scripts/pytest-selective-expansion.exe" if os.name == "nt" else "bin/pytest-selective-expansion"
+            )
+            subprocess.run(
+                [str(expansion), "--help"], cwd=folder, check=True, env=environment, stdout=subprocess.DEVNULL
+            )
             subprocess.run(
                 [
                     str(python),
