@@ -1,12 +1,11 @@
 """Exercise this repository's actual routing policy against real Git changes."""
 
-import subprocess
 from pathlib import Path
 
 import pytest
 
 from pytest_selective.ci import LaneConfig, plan
-from tests.testing.git_repo import commit, write
+from tests.testing.git_repo import commit, init, write
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -33,7 +32,7 @@ ROOT = Path(__file__).resolve().parents[1]
     ],
 )
 def test_repository_routes_prose_but_preserves_executable_inputs(tmp_path, path, expected):
-    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    init(tmp_path)
     write(tmp_path, "pyproject.toml", (ROOT / "pyproject.toml").read_text())
     write(tmp_path, "src/sample.py", "VALUE = 1")
     write(tmp_path, "tests/test_sample.py", "from sample import VALUE\ndef test_value(): assert VALUE")

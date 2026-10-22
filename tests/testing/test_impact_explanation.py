@@ -34,7 +34,7 @@ from pytest_selective.impact_models import (
     SelectionExplanation,
 )
 from pytest_selective.impact_selection import affected
-from tests.testing.git_repo import commit, write
+from tests.testing.git_repo import commit, init, write
 
 #: Enough test files behind one module for it to count as a funnel, and to widen a blast radius.
 HUB_TESTS = max(FUNNEL_MIN_TESTS, WIDENED_MIN_TESTS) + 5
@@ -46,7 +46,7 @@ HUB_IMPORT = "from app.hub import VALUE\n"
 def repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     root.mkdir()
-    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    init(root)
     write(root, "src/app/__init__.py")
     write(root, "src/app/leaf.py", "VALUE = 1\n")
     write(root, "src/app/helper.py", "HELP = 1\n")
@@ -520,7 +520,7 @@ def test_a_repository_without_tests_has_no_startup_floor(
 ) -> None:
     root = tmp_path / "empty"
     root.mkdir()
-    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    init(root)
     write(root, "src/app/__init__.py")
     head = commit(root)
 

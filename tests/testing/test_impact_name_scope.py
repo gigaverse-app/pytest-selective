@@ -1,6 +1,5 @@
 """A change to a name-scoped module selects the readers of the names it changes, or its ordinary dependents."""
 
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -15,7 +14,7 @@ from pytest_selective.impact_name_scope import (
     reads_unnamed,
 )
 from pytest_selective.impact_selection import affected
-from tests.testing.git_repo import commit, write
+from tests.testing.git_repo import commit, init, write
 
 SETTINGS = "src/proj/settings.py"
 BASE_SETTINGS = """\
@@ -44,7 +43,7 @@ POLICY = NameScopedModule(
 def repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     root.mkdir()
-    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    init(root)
     write(root, "src/framework/__init__.py")
     write(root, "src/framework/conf.py", "settings = object()\n")
     write(root, "src/proj/__init__.py")
