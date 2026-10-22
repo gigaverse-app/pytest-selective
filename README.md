@@ -55,11 +55,14 @@ Redis, Celery workers and real framework checkouts, so skipping an unaffected
 | Due: one library test | 6m03s | **3m24s** | 747 → 388 (−48%) |
 | pytest-obligation: one MongoDB test | 5m22s | **54s** | 1,602 → 93 (−94%) |
 | pytest-obligation: package README | 6m03s | **20s** | 1,691 → 57 (−97%) |
+| pytest-selective itself: README | 3m31s | **26s** | 627 → 48 (−92%) |
 
 Each row is one successful pair on the same PR head and merge checkout: the
 selective run first, then a `test:full` control. Both include planning time.
 Single observations, not billed minutes or a promise for every PR. An affected
-lane still runs complete, with its conformance evidence checks.
+lane still runs complete, with its conformance evidence checks. A Due docs-only
+PR also finished in 26s (91 runner-seconds), an observed run without a paired
+control ([docs-routing evidence](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/benchmarks/2026-10-22-routing.md)).
 
 Adoption: [Due #68](https://github.com/gigaverse-app/due/pull/68) and
 [pytest-obligation #93](https://github.com/gigaverse-app/pytest-obligation/pull/93),
