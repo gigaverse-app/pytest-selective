@@ -129,10 +129,32 @@ committed revisions, inspectable JSON plans, runtime dependency audits, and
 planning before application startup. Both use static dependency analysis; choose
 based on your workflow, and validate selection against your own suite.
 
-[Due](https://github.com/gigaverse-app/due) manages durable application work;
-[pytest-obligation](https://github.com/gigaverse-app/pytest-obligation) generates
-failure and recovery proofs. They solve different problems and inspired this
-project's emphasis on runnable evidence and explicit limits.
+## Build durable work, test recovery, select the right CI work
+
+[![Durable runtime: Due](https://img.shields.io/badge/durable_runtime-Due-0F766E)](https://github.com/gigaverse-app/due)
+[![Recovery proofs: pytest-obligation](https://img.shields.io/badge/recovery_proofs-pytest--obligation-7C3AED)](https://github.com/gigaverse-app/pytest-obligation)
+[![Test selection: pytest-selective](https://img.shields.io/badge/test_selection-pytest--selective-2563EB)](https://github.com/gigaverse-app/pytest-selective)
+
+| Project | What you gain | How it fits with the others |
+| --- | --- | --- |
+| [Due](https://github.com/gigaverse-app/due) | Durable Django/PostgreSQL work that can recover after a worker or message is lost | Gives your application an execution and recovery path to test |
+| [pytest-obligation](https://github.com/gigaverse-app/pytest-obligation) | Failure and recovery tests bound to your real workflow | Exercises Due-backed or other application workflows and reports the guarantees actually assessed |
+| [pytest-selective](https://github.com/gigaverse-app/pytest-selective) | Explainable Git-based plans before application startup | Selects affected files or activates complete conformance lanes without trimming their evidence checks |
+
+For example, use Due to keep a document publication owed after a worker dies;
+bind pytest-obligation to the real publication and recovery path; then use
+pytest-selective to decide when that **complete proof lane** must run. You gain
+recoverable application work, evidence about failure behavior, and focused CI
+planning. Keep full-suite checkpoints and explicit dependency declarations.
+
+Each project is useful independently. These badges describe their roles, not an
+automatic integration or a guarantee for arbitrary application code. Due's
+[conformance guide](https://github.com/gigaverse-app/due/blob/main/package/docs/conformance.md)
+shows the binding, and the
+[lane guide](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/ci.md#select-whole-ci-lanes)
+explains complete-lane selection. Runtime requirements differ: Due and the
+selector require Python 3.14+; pytest-obligation's core supports Python 3.11+.
+Planning can run separately from your tests.
 
 ## Contribute
 
