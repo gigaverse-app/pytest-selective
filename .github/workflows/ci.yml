@@ -20,6 +20,6 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: uv sync
-      - run: uv run pytest -q
+      - run: uv run pytest -q -n 4
       - run: uv run ruff check .
       - run: uv build
