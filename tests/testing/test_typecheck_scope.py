@@ -7,7 +7,6 @@ check clean, only files whose import closure contains a change can gain a diagno
 """
 
 import json
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -15,7 +14,7 @@ import pytest
 from pytest_selective.impact_graph import GraphCache
 from pytest_selective.impact_models import ImpactConfig
 from pytest_selective.typecheck_scope import PyrightSelection, UnsupportedPattern, scope
-from tests.testing.git_repo import commit, write
+from tests.testing.git_repo import commit, init, write
 
 GLOBAL = ["pyrightconfig.json", "pyproject.toml", "uv.lock", "**/*.pyi", "deployment/**"]
 
@@ -24,7 +23,7 @@ GLOBAL = ["pyrightconfig.json", "pyproject.toml", "uv.lock", "**/*.pyi", "deploy
 def repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     root.mkdir()
-    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    init(root)
     write(root, "src/pkg/__init__.py")
     write(root, "src/pkg/leaf.py", "def value() -> int:\n    return 1\n")
     write(root, "src/pkg/middle.py", "from pkg.leaf import value\n\ndef twice() -> int:\n    return value() * 2\n")

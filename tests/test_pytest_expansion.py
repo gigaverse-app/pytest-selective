@@ -12,7 +12,7 @@ from pytest_selective import pytest_expansion
 from pytest_selective.impact_graph import GraphCache
 from pytest_selective.impact_models import ImpactConfig
 from pytest_selective.impact_selection import affected
-from tests.testing.git_repo import head
+from tests.testing import git_repo
 
 SCRIPT = Path(__file__).resolve().parents[1] / "src/pytest_selective/pytest_expansion.py"
 ACTIVATION = "# gv:test-requires-expansion-reason\n"
@@ -31,16 +31,12 @@ def write(root: Path, relative: str, source: str) -> None:
 
 
 def commit(root: Path) -> str:
-    git(root, "add", ".")
-    git(root, "-c", "maintenance.auto=false", "commit", "--quiet", "-m", "test snapshot")
-    return head(root)
+    return git_repo.commit(root, "test snapshot")
 
 
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
-    git(tmp_path, "init", "--quiet")
-    git(tmp_path, "config", "user.name", "Policy test")
-    git(tmp_path, "config", "user.email", "policy@example.invalid")
+    git_repo.init(tmp_path)
     write(tmp_path, "conftest.py", BASE)
     commit(tmp_path)
     return tmp_path
@@ -262,7 +258,7 @@ def test_moving_a_loaded_plugin_is_not_expansion(effects_plugin: Path) -> None:
 
 
 def test_a_new_import_inside_a_moved_file_is_still_expansion(effects_plugin: Path) -> None:
-    base = git(effects_plugin, "rev-parse", "HEAD")
+    base = git_repo.head(effects_plugin)
     move(effects_plugin, EFFECTS, MOVED_EFFECTS)
     write(effects_plugin, MOVED_EFFECTS, NEW_IMPORT + EFFECTS_SOURCE)
     write(effects_plugin, "conftest.py", plugins(MOVED_EFFECTS))
@@ -351,7 +347,7 @@ def test_deleting_loaded_infrastructure_is_not_an_error(effects_plugin: Path, de
 
 
 def test_committed_head_and_pr_base_are_checked(repo: Path) -> None:
-    base = git(repo, "rev-parse", "HEAD")
+    base = git_repo.head(repo)
     write(repo, "conftest.py", BASE + "\n@pytest.fixture\ndef customer(): pass\n")
     commit(repo)
     # Local default checks uncommitted changes. CI must check the whole PR,
@@ -510,7 +506,7 @@ def test_composite_executes_without_installed_package_and_propagates_failure(rep
     action_path = SCRIPT.parents[2] / ".github/actions/pytest-expansion"
     action = yaml.safe_load((action_path / "action.yml").read_text())
     assert len(action["runs"]["steps"]) == 1  # No second checkout, setup or install.
-    base = git(repo, "rev-parse", "HEAD")
+    base = git_repo.head(repo)
     write(repo, "conftest.py", BASE + "\n" + (REASON if justified else "") + "@pytest.fixture\ndef addition(): pass\n")
     commit(repo)
     result = subprocess.run(

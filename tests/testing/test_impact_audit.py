@@ -17,7 +17,7 @@ from pytest_selective.impact_models import (
     ImpactConfig,
     UndeclaredRead,
 )
-from tests.testing.git_repo import commit, write
+from tests.testing.git_repo import commit, init, write
 
 PLUGIN = "pytest_selective.impact_audit_plugin"
 EXIT_UNDECLARED = 2
@@ -120,7 +120,7 @@ def audited_run(tmp_path_factory: pytest.TempPathFactory) -> AuditedRun:
     """The fixture repository's suite, run once under the recorder with a relative record directory."""
     repo = tmp_path_factory.mktemp("audited") / "repo"
     repo.mkdir()
-    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    init(repo)
     for path, content in READERS.items():
         write(repo, path, content)
     commit(repo)
