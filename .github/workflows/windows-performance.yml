@@ -46,8 +46,11 @@ jobs:
             Push-Location (Join-Path $env:GITHUB_WORKSPACE $arm)
             try {
               $sha = git rev-parse HEAD
+              # Keep repeated arms from timing cleanup of an earlier arm's Git fixtures.
+              $temp = Join-Path $env:RUNNER_TEMP "matched-pytest-$sample"
+              if (Test-Path -LiteralPath $temp) { throw "Temporary path already exists: $temp" }
               $clock = [System.Diagnostics.Stopwatch]::StartNew()
-              uv run --locked pytest -q -n 4 --durations=20 --cov --cov-report="xml:$results/$sample-coverage.xml" --junitxml="$results/$sample-tests.xml" *> "$results/$sample.log"
+              uv run --locked pytest -q -n 4 --basetemp="$temp" --durations=20 --cov --cov-report="xml:$results/$sample-coverage.xml" --junitxml="$results/$sample-tests.xml" *> "$results/$sample.log"
               $result = $LASTEXITCODE
               $clock.Stop()
               Get-Content "$results/$sample.log" | Select-Object -Last 25
