@@ -37,6 +37,10 @@ jobs:
           cache-suffix: ${{ github.job }}
       - run: uv sync --locked
       - run: uv run --locked pre-commit run --all-files
+      - name: Validate routing even when the platform matrix is skipped
+        run: uv run --locked pytest -q tests/test_repository_ci.py
+      - name: Validate GitHub Actions
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
   tests:
     needs: select-tests
     if: >-
@@ -89,6 +93,7 @@ jobs:
       - run: uv sync --locked
       - run: uv build
       - run: uv run --locked twine check --strict dist/*
+      - run: uv run --locked python scripts/check_metadata.py
       - run: uv run --locked python scripts/smoke_distribution.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

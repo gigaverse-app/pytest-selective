@@ -24,5 +24,15 @@
         ".python-version"
       ]
     }
-  }
+  },
+  "global_inputs": [
+    "**/pyproject.toml",
+    "pyproject.toml",
+    "**/uv.lock",
+    "uv.lock",
+    ".github/test-lanes.json",
+    ".github/workflows/ci.yml",
+    ".github/workflows/release.yml",
+    ".github/actions/**"
+  ]
 }
