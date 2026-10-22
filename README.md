@@ -42,28 +42,30 @@ creates real commits, introduces a pricing regression, and runs pytest on the
 selected files. One of three files is selected and catches the regression.
 This is a reproducible selection example, **not a wall-time speedup claim**.
 
-## Measured CI savings
+## Used by Due and pytest-obligation
 
-On real GitHub Actions runs, whole-lane selection kept the affected work and
-skipped unrelated environments:
+[Due](https://github.com/gigaverse-app/due) and
+[pytest-obligation](https://github.com/gigaverse-app/pytest-obligation) plan every
+pull request with pytest-selective. Their conformance suites need PostgreSQL,
+Redis, Celery workers and real framework checkouts, so skipping an unaffected
+**lane** saves minutes. Measured on real GitHub Actions runs:
 
-| Change | Full runner-seconds | Selected runner-seconds | Reduction |
+| Change | Full CI | Selective CI | Runner-seconds |
 | --- | ---: | ---: | ---: |
-| Due library test, main CI | 747 | 388 | 48.1% |
-| pytest-obligation MongoDB test | 1,602 | 93 | 94.2% |
-| pytest-obligation package README | 1,691 | 57 | 96.6% |
+| Due: one library test | 6m03s | **3m24s** | 747 → 388 (−48%) |
+| pytest-obligation: one MongoDB test | 5m22s | **54s** | 1,602 → 93 (−94%) |
+| pytest-obligation: package README | 6m03s | **20s** | 1,691 → 57 (−97%) |
 
-Each row is one successful sequential pair on the same PR head and merge
-checkout, using `test:full` for the control. Runner-seconds sum executed job
-durations, including setup and cleanup. These are observations, not billed
-minutes or expected savings for every PR. Both runs include planning overhead.
-Due's separate widget benchmark is excluded from the first row.
+Each row is one successful pair on the same PR head and merge checkout: the
+selective run first, then a `test:full` control. Both include planning time.
+Single observations, not billed minutes or a promise for every PR. An affected
+lane still runs complete, with its conformance evidence checks.
 
-[Run links, raw timestamps, method and limits](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/benchmarks/2026-10-22.md)
-include the much slower widget comparison and its 624-second browser-install
-outlier. The savings come from pytest-selective routing and explicit consumer
-inputs. [CI-esta](https://github.com/gigaverse-app/ci-esta) provides timing reports
-and evidence gates; these measurements do not claim savings from receipt reuse.
+Adoption: [Due #68](https://github.com/gigaverse-app/due/pull/68) and
+[pytest-obligation #93](https://github.com/gigaverse-app/pytest-obligation/pull/93),
+each with its own lane map (`.github/test-lanes.json`).
+[Run links, raw timestamps, method and limits](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/benchmarks/2026-10-22.md),
+including Due's widget benchmark, which selection skips entirely.
 
 ## Try it in two minutes
 
@@ -156,48 +158,6 @@ based on your workflow, and validate selection against your own suite.
 See the [lessons from pytest-impacted](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/pytest-impacted.md)
 for portability and Git-resolution improvements adopted from that comparison.
 
-## Build durable work, test recovery, select the right CI work
-
-[![Durable runtime: Due](https://img.shields.io/badge/durable_runtime-Due-0F766E)](https://github.com/gigaverse-app/due)
-[![Recovery proofs: pytest-obligation](https://img.shields.io/badge/recovery_proofs-pytest--obligation-7C3AED)](https://github.com/gigaverse-app/pytest-obligation)
-[![Test selection: pytest-selective](https://img.shields.io/badge/test_selection-pytest--selective-2563EB)](https://github.com/gigaverse-app/pytest-selective)
-
-| Project | What you gain | How it fits with the others |
-| --- | --- | --- |
-| [Due](https://github.com/gigaverse-app/due) | Durable Django/PostgreSQL work that can recover after a worker or message is lost | Gives your application an execution and recovery path to test |
-| [pytest-obligation](https://github.com/gigaverse-app/pytest-obligation) | Failure and recovery tests bound to your real workflow | Exercises Due-backed or other application workflows and reports the guarantees actually assessed |
-| [pytest-selective](https://github.com/gigaverse-app/pytest-selective) | Explainable Git-based plans before application startup | Selects affected files or activates complete conformance lanes without trimming their evidence checks |
-
-For example, use Due to keep a document publication owed after a worker dies;
-bind pytest-obligation to the real publication and recovery path; then use
-pytest-selective to decide when that **complete proof lane** must run. You gain
-recoverable application work, evidence about failure behavior, and focused CI
-planning. Keep full-suite checkpoints and explicit dependency declarations.
-
-Each project is useful independently. These badges describe their roles, not an
-automatic integration or a guarantee for arbitrary application code. Due's
-[conformance guide](https://github.com/gigaverse-app/due/blob/main/package/docs/conformance.md)
-shows the binding, and the
-[lane guide](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/ci.md#select-whole-ci-lanes)
-explains complete-lane selection. Runtime requirements differ: Due requires
-Python 3.14+; pytest-obligation's core and pytest-selective support Python 3.11+.
-Planning can run separately from your tests.
-
-## CI observability and evidence reuse
-
-[CI-esta](https://github.com/gigaverse-app/ci-esta) renders pytest-selective's
-selection explanations alongside GitHub Actions timing and configured runner-cost
-estimates. It imports the shared explanation models instead of maintaining a
-second selector. It also provides completion receipts and strict aggregate gates
-for reusing already-proven lanes. Selection asks what may be affected; reuse asks
-whether the declared work already passed. Keep conservative fallbacks for both.
-
-The [integration guide](https://github.com/gigaverse-app/ci-esta/blob/main/docs/integrations.md)
-connects these workflows to
-[pytest-obligation](https://github.com/gigaverse-app/pytest-obligation)'s executed
-conformance evidence and [Due](https://github.com/gigaverse-app/due)'s durable-work
-runtime. CI-esta is optional; pytest-selective does not depend on it.
-
 ## Contribute
 
 ```bash
@@ -214,3 +174,11 @@ uv run python scripts/smoke_distribution.py
 [Documentation](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/README.md) ·
 [Release process](https://github.com/gigaverse-app/pytest-selective/blob/main/RELEASING.md) ·
 [Report a bug](https://github.com/gigaverse-app/pytest-selective/issues/new?template=bug_report.yml)
+
+---
+
+[![CI measured by CI-esta](https://img.shields.io/badge/CI_measured_by-CI--esta-EA580C)](https://github.com/gigaverse-app/ci-esta)
+
+<sub>[CI-esta](https://github.com/gigaverse-app/ci-esta) reports this repository's
+CI timing and renders pytest-selective's selection explanations next to it. It is
+optional; pytest-selective does not depend on it.</sub>
