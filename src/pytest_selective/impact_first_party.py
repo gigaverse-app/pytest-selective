@@ -20,6 +20,7 @@ import os
 import shutil
 import stat
 import subprocess
+import sys
 import tomllib
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -192,11 +193,14 @@ def _git_environment(spec: FirstPartyPackage, token: str | None) -> dict[str, st
 def _remove_tree(path: Path) -> None:
     """Delete a clone; git marks object files read-only, which Windows refuses to delete."""
 
-    def writable(function, target, _error):  # noqa: ANN001 - shutil's onexc callback contract
+    def writable(function, target, _error):  # noqa: ANN001 - shutil's callback contract
         os.chmod(target, stat.S_IWRITE)
         function(target)
 
-    shutil.rmtree(path, onexc=writable)
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=writable)
+    else:
+        shutil.rmtree(path, onerror=writable)
 
 
 def _has_commit(repo: Path, commit: str) -> bool:

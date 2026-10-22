@@ -1,6 +1,7 @@
 """Import extraction preserves Python syntax and AST traversal order."""
 
 import ast
+import sys
 from textwrap import dedent
 from unittest.mock import patch
 
@@ -46,6 +47,8 @@ from pytest_selective.ast_imports import iter_imports
     ],
 )
 def test_all_imports_keep_ast_walk_order(source: str) -> None:
+    if "[T]" in source and sys.version_info < (3, 12):
+        pytest.skip("PEP 695 syntax requires a Python 3.12+ parser")
     tree = ast.parse(source)
     expected = [node for node in ast.walk(tree) if isinstance(node, (ast.Import, ast.ImportFrom))]
 

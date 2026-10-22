@@ -298,7 +298,7 @@ def reads_unnamed(
         return False
     try:
         tree = ast.parse(source)
-    except SyntaxError, ValueError:
+    except (SyntaxError, ValueError):
         return True
     bound, unnamed = _bindings(tree, packages, accessors, modules)
     if unnamed:
@@ -324,7 +324,7 @@ def _code(source: bytes) -> bytes:
     try:
         tree = ast.parse(source)
         tokens = list(tokenize.tokenize(io.BytesIO(source).readline))
-    except SyntaxError, ValueError, tokenize.TokenError:
+    except (SyntaxError, ValueError, tokenize.TokenError):
         return source
     docstrings = {
         (first.lineno, first.col_offset)

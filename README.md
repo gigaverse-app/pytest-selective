@@ -6,7 +6,8 @@ Extracted from the dependency-graph selector used by Gigaverse's backend, AI,
 and shared Python infrastructure. Planning reads immutable Git objects; it does
 not import your application, collect tests, or start its services.
 
-The planner requires Python 3.14 and Git. Your tests may run with a different Python version.
+The planner requires Python 3.11+ and Git 2.24+. Use a planner Python version
+at least as new as your source syntax. The CI action uses Python 3.14. Your tests may run with a different Python version.
 
 ## Install and select
 
@@ -70,6 +71,7 @@ uv build
 ~~~
 
 See [provenance](PROVENANCE.md) for the extraction boundary and original ownership.
+See [lessons from pytest-impacted](docs/pytest-impacted.md) for subsequent improvements.
 
 ## Select whole CI lanes
 
