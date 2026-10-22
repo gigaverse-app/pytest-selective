@@ -66,6 +66,12 @@ def test_invalid_dependency_is_not_a_successful_plan(repository):
         plan(repo, config, base, commit(repo))
 
 
+def test_deleted_test_still_runs_lane_completeness_checks(repository):
+    repo, config, base = repository
+    (repo / "tests/live/test_other.py").unlink()
+    assert plan(repo, config, base, commit(repo)).lanes == {"unit": False, "live": True}
+
+
 def test_cli_writes_boolean_outputs_and_does_not_execute_tests(repository, capsys):
     repo, config, base = repository
     write(repo, "src/sample/value.py", "raise RuntimeError('planning must not import this')")

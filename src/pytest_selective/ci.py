@@ -65,7 +65,8 @@ def plan(repo: Path, config: LaneConfig, base: str, head: str, *, full: bool = F
             or report.mode == "full"
             or any(
                 test == root or test.startswith(root.rstrip("/") + "/")
-                for test in report.selected
+                # A removed test must still rerun its lane's completeness checks.
+                for test in [*report.selected, *report.changed]
                 for root in lane.roots
             )
             or any(matches(path, lane.inputs) for path in report.changed)
