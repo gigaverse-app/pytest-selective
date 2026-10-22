@@ -52,7 +52,7 @@ def _measured_durations(path: Path) -> dict[str, float]:
     """
     try:
         return load_durations(path)
-    except OSError, ValueError:
+    except (OSError, ValueError):
         return {}
 
 
@@ -234,7 +234,7 @@ def _floor_budget(args: argparse.Namespace) -> int:
         return 0
     try:
         explanation = SelectionExplanation.model_validate_json(args.explanation.read_text(encoding="utf-8"))
-    except OSError, ValueError:
+    except (OSError, ValueError):
         print("::warning::Startup-floor budget not checked: planning produced no explanation")
         return 0
     floor = explanation.floor
