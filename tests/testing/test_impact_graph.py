@@ -2335,6 +2335,20 @@ def test_missing_custom_collection_config_cannot_prove_selection(
         affected(repo, head, head, config, cache)
 
 
+def test_fixture_commit_ids_match_git_for_loose_packed_and_detached_heads(repo: Path) -> None:
+    from tests.testing.git_repo import head
+
+    committed = commit(repo)
+    assert head(repo) == subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
+    subprocess.run(["git", "-C", str(repo), "pack-refs", "--all", "--prune"], check=True)
+    assert head(repo) == committed
+    subprocess.run(["git", "-C", str(repo), "checkout", "--detach", "-q", committed], check=True)
+    assert head(repo) == committed
+    linked = repo.parent / "linked"
+    subprocess.run(["git", "-C", str(repo), "worktree", "add", "--detach", str(linked), committed], check=True)
+    assert head(linked) == committed
+
+
 def counted_git(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     from pytest_selective import impact_graph
 

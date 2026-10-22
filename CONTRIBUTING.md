@@ -37,7 +37,7 @@ Keep performance claims tied to reproducible measurements and their limitations.
 CI tests Python 3.11 and 3.14 on Linux, Windows, and macOS. A separate job checks
 pytest 8.0.0 on Python 3.11, the audit extra's lower bounds. It also checks hooks, builds both distribution
 formats, validates PyPI metadata, and installs each distribution in an isolated
-environment on both Python versions. Evidence artifacts carry coverage and tutorial output; Windows measures coverage on Python 3.14 only.
+environment on both Python versions. Evidence artifacts carry coverage and tutorial output on every platform and Python version.
 
 Use `uv lock --upgrade-package NAME` for a targeted dependency update and run the
 affected checks. Dependabot proposes weekly uv and GitHub Actions updates.

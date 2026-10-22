@@ -73,3 +73,12 @@ before/after table with evidence. Follow the user's existing PR/merge scope.
 and overlapping runs separately; receipt reuse is a distinct optional decision.
 The [92.3% README runner-time reduction](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/benchmarks/2026-10-22-routing.md)
 is a worked example, not a target to promise for the user's repository.
+
+
+For measured scheduling, use CI-esta's
+[JUnit timing feedback](https://github.com/gigaverse-app/ci-esta/blob/main/docs/learned-test-timings.md)
+with the selector's complete file inventory. Timing hints change placement,
+never eligibility. Measure the dependency critical path before adding shards;
+preserve service isolation and compare against existing xdist. Review every
+committed pytest configuration, including nested and newly added config files,
+before refreshing collection-policy fingerprints.
