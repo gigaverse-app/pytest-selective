@@ -10,6 +10,11 @@ inputs:
   full:
     description: Run every lane for main, schedules, or an explicit full-test request.
     default: 'false'
+  artifact-name:
+    description: >
+      Upload the lane plan under this name, where CI-esta's report renders it as
+      the sticky's lane section. Empty skips the upload.
+    default: test-lane-selection
 outputs:
   lanes:
     description: JSON object mapping lane names to booleans.
@@ -45,3 +50,11 @@ runs:
           cat test-lanes.json
           echo '```'
         } >> "$GITHUB_STEP_SUMMARY"
+    - if: ${{ inputs.artifact-name != '' }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: test-lanes.json
+        if-no-files-found: error
+        # A rerun of the job replaces its plan instead of failing on the existing name.
+        overwrite: true

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `plan-lanes` uploads its plan as the `test-lane-selection` artifact, which CI-esta renders as the sticky's lane section.
 - Guided README, configuration reference, CI integration, and runnable regression tutorial.
 - Coverage artifacts, Linux/Windows/macOS CI, minimum-pytest checks, and isolated wheel/sdist smoke tests.
 - Locked Ruff pre-commit hooks, local documentation link checks, and dependency updates.
