@@ -25,14 +25,15 @@ from pytest_selective.impact_graph import (
 )
 from pytest_selective.impact_models import DeferredStringsRule, DependencyRule, ImpactConfig
 from pytest_selective.impact_selection import affected
-from tests.testing.git_repo import commit, write
+from tests.testing.git_repo import commit, init, write
+from tests.testing.git_repo import head as head_of
 
 
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     root.mkdir()
-    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    init(root)
     write(root, "src/pkg/__init__.py")
     write(root, "src/pkg/leaf.py", "VALUE = 1")
     write(root, "src/pkg/helper.py", "from .leaf import VALUE")
@@ -588,7 +589,7 @@ def moved_main(repo: Path) -> MovedMain:
     moved = commit(repo)
     git_in(repo, "checkout", "-q", "pr")
     git_in(repo, "merge", "-q", "--no-edit", moved)
-    return MovedMain(main=moved, tested=tested, head=git_in(repo, "rev-parse", "HEAD"))
+    return MovedMain(main=moved, tested=tested, head=head_of(repo))
 
 
 class CliResult(BaseModel):
@@ -2113,7 +2114,7 @@ def test_undescribable_base_falls_back_to_the_complete_suite(
 ) -> None:
     """INVARIANT: only the head can fail planning with exit 2; a base problem is exit 1 (complete suite)."""
     config_file = history(repo, django_graph, tmp_path)
-    base = git_in(repo, "rev-parse", "HEAD")
+    base = head_of(repo)
     head = commit(repo)
     result = affected_cli(repo, config_file, tmp_path, "--base", base, "--head", head)
     error = capsys.readouterr().err
@@ -2126,7 +2127,7 @@ def test_undescribable_alternate_base_keeps_the_proven_selection(
     repo: Path, django_graph: ImpactConfig, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     config_file = config_this_version_rejects_at_the_base(repo, django_graph, tmp_path)
-    alternate = git_in(repo, "rev-parse", "HEAD")
+    alternate = head_of(repo)
     base = commit(repo)
     write(repo, "tests/right/test_two.py", "def test_other(): assert 2")
     head = commit(repo)
@@ -2301,3 +2302,48 @@ def test_missing_custom_collection_config_cannot_prove_selection(
     head = commit(repo)
     with pytest.raises(ValueError, match="configuration missing"):
         affected(repo, head, head, config, cache)
+
+
+def counted_git(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    from pytest_selective import impact_graph
+
+    calls: list[str] = []
+    original = impact_graph.git
+
+    def git(repo: Path, *args: str, data: bytes | None = None) -> bytes:
+        calls.append(args[0])
+        return original(repo, *args, data=data)
+
+    monkeypatch.setattr(impact_graph, "git", git)
+    return calls
+
+
+def test_inventory_reuses_listings_of_known_commits(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Fixture trees repeat across tests; a unique file keeps this listing uncached.
+    write(repo, "unique.txt", str(repo))
+    base = commit(repo)
+    calls = counted_git(monkeypatch)
+    first = inventory(repo, base)
+    assert inventory(repo, base) == first
+    assert calls == ["rev-parse", "ls-tree"]
+
+
+def test_inventory_re_resolves_moving_revisions(repo: Path) -> None:
+    commit(repo)
+    before = inventory(repo, "HEAD")
+    write(repo, "src/pkg/new.py", "NEW = 1")
+    commit(repo)
+    after = inventory(repo, "HEAD")
+    assert "src/pkg/new.py" in after.files
+    assert after.tree != before.tree
+
+
+def test_inventory_does_not_lend_one_repository_s_commits_to_another(repo: Path, tmp_path: Path) -> None:
+    known = commit(repo)
+    inventory(repo, known)
+    other = tmp_path / "other"
+    init(other)
+    write(other, "README.md", "other")
+    commit(other)
+    with pytest.raises(subprocess.CalledProcessError):
+        inventory(other, known)

@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from pytest_selective.impact_cli import main
-from tests.testing.git_repo import commit, write
+from tests.testing.git_repo import commit, init, write
 
 
 def test_tutorial_runs_real_git_selection_and_pytest(tmp_path: Path) -> None:
@@ -23,7 +23,7 @@ def test_adoption_fingerprints_and_reader_owned_data(tmp_path: Path) -> None:
     """The configuration guide must select a data reader after policy enrollment."""
     root = tmp_path / "repo"
     root.mkdir()
-    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    init(root)
     write(root, "pyproject.toml", '[tool.pytest.ini_options]\ntestpaths = ["tests"]\n')
     write(root, "tests/test_prices.py", "def test_prices(): pass\n")
     write(root, "tests/test_other.py", "def test_other(): pass\n")
