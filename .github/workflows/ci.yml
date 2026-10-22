@@ -31,14 +31,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: gigaverse-app/ci-esta/.github/actions/setup-cached-uv@78e5e2b078ce6d9b4df488a102c387f3548aa00a
+      - uses: gigaverse-app/ci-esta/.github/actions/setup-cached-uv@e9d279269e80a4e68435dbd65cdb9dbd23048f7b
         with:
           python-version: '3.14'
       - run: uv run --locked pre-commit run --all-files
       - name: Check aggregate gate against the execution lanes
         run: >-
           uv run --no-project --python 3.14
-          --with "ci-esta @ https://github.com/gigaverse-app/ci-esta/archive/78e5e2b078ce6d9b4df488a102c387f3548aa00a.tar.gz"
+          --with "ci-esta @ https://github.com/gigaverse-app/ci-esta/archive/e9d279269e80a4e68435dbd65cdb9dbd23048f7b.tar.gz"
           ci-esta check-workflow --workflow .github/workflows/ci.yml --lanes .github/test-lanes.json
       - name: Validate routing even when the platform matrix is skipped
         run: uv run --locked pytest -q tests/test_repository_ci.py
@@ -57,7 +57,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: gigaverse-app/ci-esta/.github/actions/setup-cached-uv@78e5e2b078ce6d9b4df488a102c387f3548aa00a
+      - uses: gigaverse-app/ci-esta/.github/actions/setup-cached-uv@e9d279269e80a4e68435dbd65cdb9dbd23048f7b
         with:
           python-version: ${{ matrix.python }}
       - name: Use native Git for Windows
@@ -66,7 +66,11 @@ jobs:
         run: ./scripts/use_native_windows_git.ps1
       - name: Record coverage runtime
         run: uv run --locked python -m coverage --version
-      - run: uv run --locked pytest -q -n 4 --durations=20 --cov --cov-report=term-missing --cov-report=xml
+      - run: uv run --locked pytest -q -n 4 --durations=20 --junitxml=test-timings.xml --cov --cov-report=term-missing --cov-report=xml
+      - uses: gigaverse-app/ci-esta/.github/actions/learn-test-timings@e9d279269e80a4e68435dbd65cdb9dbd23048f7b
+        with:
+          junit-pattern: test-timings.xml
+          artifact-name: test-timings-${{ matrix.python }}-${{ matrix.os }}
       - run: uv run --locked python scripts/tutorial.py --output tutorial-report.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -82,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: gigaverse-app/ci-esta/.github/actions/setup-cached-uv@78e5e2b078ce6d9b4df488a102c387f3548aa00a
+      - uses: gigaverse-app/ci-esta/.github/actions/setup-cached-uv@e9d279269e80a4e68435dbd65cdb9dbd23048f7b
         with:
           python-version: '3.11'
       - run: uv pip install 'pytest==8.0.0'
@@ -91,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: gigaverse-app/ci-esta/.github/actions/setup-cached-uv@78e5e2b078ce6d9b4df488a102c387f3548aa00a
+      - uses: gigaverse-app/ci-esta/.github/actions/setup-cached-uv@e9d279269e80a4e68435dbd65cdb9dbd23048f7b
         with:
           python-version: '3.14'
       - run: uv build
@@ -110,7 +114,7 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: gigaverse-app/ci-esta/.github/actions/validation-gate@78e5e2b078ce6d9b4df488a102c387f3548aa00a
+      - uses: gigaverse-app/ci-esta/.github/actions/validation-gate@e9d279269e80a4e68435dbd65cdb9dbd23048f7b
         with:
           needs: ${{ toJSON(needs) }}
           lanes: ${{ needs.select-tests.outputs.lanes || '{}' }}
