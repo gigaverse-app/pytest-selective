@@ -61,9 +61,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Use native Git for Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: ./scripts/use_native_windows_git.ps1
+        uses: gigaverse-app/ci-esta/.github/actions/native-windows-git@e076f7310f11246f9912c1460e75c4f114ddd3fd
       - name: Record coverage runtime
         run: uv run --locked python -m coverage --version
       - run: uv run --locked pytest -q -n 4 --durations=20 --junitxml=test-timings.xml --cov --cov-report=term-missing --cov-report=xml
