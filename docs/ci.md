@@ -20,10 +20,10 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v10
       - id: impact
         uses: gigaverse-app/pytest-selective/.github/actions/test-impact@REVIEWED_COMMIT_SHA
         with:
