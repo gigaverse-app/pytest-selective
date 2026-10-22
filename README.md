@@ -213,3 +213,5 @@ uv run python scripts/smoke_distribution.py
 [Documentation](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/README.md) ·
 [Release process](https://github.com/gigaverse-app/pytest-selective/blob/main/RELEASING.md) ·
 [Report a bug](https://github.com/gigaverse-app/pytest-selective/issues/new?template=bug_report.yml)
+
+<!-- CI routing measurement: documentation only. -->
