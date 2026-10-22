@@ -1,0 +1,29 @@
+name: Bug report
+description: Report a missed test, unexpected selection, or installation problem.
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and observed behavior
+      description: Include selected paths and the test you expected to run.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Provide a small repository or commits, config, and the exact command. Remove secrets and private code.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Package commit/version, Python, pytest, Git, operating system, and relevant plugins.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Selection report and full-suite result
+      description: Include sanitized JSON, explanation, or logs. State whether the complete suite catches the failure.
