@@ -160,7 +160,11 @@ def pin(
 def select(consumer: Path, base: str, head: str, config: ImpactConfig, cache: GraphCache, tmp_path: Path):
     # The fingerprint covers only `[tool.pytest]`, which no pin move here touches, so the head's
     # reviewed policy is also the base's.
-    reviewed = config.model_copy(update={"pytest_policy": policy_fingerprints(consumer, inventory(consumer, head))})
+    reviewed = config.model_copy(
+        update={
+            "pytest_policy": policy_fingerprints(consumer, inventory(consumer, head), tuple(config.pytest_config_files))
+        }
+    )
     return affected(consumer, base, head, reviewed, cache, dependency_cache=tmp_path / "deps")
 
 
@@ -407,7 +411,11 @@ def test_the_published_selection_uses_the_narrowed_pin(
     base = pin(consumer, dependency.as_uri(), "PR1", old)
     new = commit(dependency, "repin without file changes")
     head = pin(consumer, dependency.as_uri(), "v1", new)
-    reviewed = config.model_copy(update={"pytest_policy": policy_fingerprints(consumer, inventory(consumer, head))})
+    reviewed = config.model_copy(
+        update={
+            "pytest_policy": policy_fingerprints(consumer, inventory(consumer, head), tuple(config.pytest_config_files))
+        }
+    )
     config_path = tmp_path / "impact.json"
     config_path.write_text(reviewed.model_dump_json())
     output = tmp_path / "github-output"
@@ -520,8 +528,9 @@ def test_a_data_file_in_a_subpackage_without_python_reaches_every_importer(
     assert report.dependencies_unchanged is False
 
 
+@pytest.mark.parametrize("custom_config", [False, True])
 def test_a_package_loaded_as_a_pytest_plugin_keeps_the_complete_suite(
-    dependency: Path, consumer: Path, config: ImpactConfig, cache: GraphCache, tmp_path: Path
+    dependency: Path, consumer: Path, config: ImpactConfig, cache: GraphCache, tmp_path: Path, custom_config: bool
 ) -> None:
     """
     INVARIANT: a package pytest loads by configuration is global, whatever imports it.
@@ -530,6 +539,10 @@ def test_a_package_loaded_as_a_pytest_plugin_keeps_the_complete_suite(
     analysis would never reach its changes.
     """
     plugin = f"-p {MODULE}.testing.plugin"
+    if custom_config:
+        config.pytest_config_files = ["ci/custom.conf"]
+        write(consumer, "ci/custom.conf", f"[pytest]\naddopts = {plugin}\n")
+        plugin = ""
     old = commit(dependency)
     base = pin(consumer, dependency.as_uri(), "PR1", old, pytest_addopts=plugin)
     write(dependency, f"src/{MODULE}/testing/sharding.py", "SHARDS = 2\n")

@@ -2221,3 +2221,83 @@ def test_cli_shard_sizing_survives_a_missing_duration_manifest(
         == 0
     )
     assert "shard_count=1" in output.read_text()
+
+
+@pytest.mark.parametrize(
+    "path, source",
+    [
+        ("pytest.toml", '[pytest]\naddopts = "-q"\n'),
+        (".pytest.toml", '[pytest]\naddopts = "-q"\n'),
+        (".pytest.ini", "[pytest]\naddopts = -q\n"),
+        ("tests/pytest.toml", '[pytest]\naddopts = "-q"\n'),
+        ("pytest.ini", "[pytest]\naddopts = -q\n"),
+        ("tox.ini", "[pytest]\naddopts = -q\n"),
+        ("setup.cfg", "[tool:pytest]\naddopts = -q\n"),
+        ("pyproject.toml", '[tool.pytest]\naddopts = "-q"\n'),
+    ],
+)
+def test_collection_config_add_edit_delete_requires_review(
+    repo: Path,
+    config: ImpactConfig,
+    cache: GraphCache,
+    path: str,
+    source: str,
+) -> None:
+    """Every pytest config spelling affects collection, including addition and deletion."""
+    base = commit(repo)
+    write(repo, path, source)
+    added = commit(repo)
+    with pytest.raises(ValueError, match="pytest configuration changed"):
+        affected(repo, base, added, config, cache)
+    config.pytest_policy = policy_fingerprints(repo, inventory(repo, added))
+    cache.snapshot(repo, added, config)
+    write(repo, path, source.replace("-q", "-x"))
+    edited = commit(repo)
+    with pytest.raises(ValueError, match="pytest configuration changed"):
+        affected(repo, added, edited, config, cache)
+    (repo / path).unlink()
+    deleted = commit(repo)
+    with pytest.raises(ValueError, match="pytest configuration changed"):
+        affected(repo, added, deleted, config, cache)
+
+
+def test_explicit_pytest_config_is_fingerprinted_and_cannot_skip_collection_changes(
+    repo: Path,
+    config: ImpactConfig,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A config supplied to pytest -c must also be part of planning and cache identity."""
+    config = ImpactConfig.model_validate({**config.model_dump(), "pytest_config_files": ["ci/custom.conf"]})
+    write(repo, "ci/custom.conf", "[pytest]\npython_files=test_*.py\n")
+    base = commit(repo)
+    config_path = tmp_path / "selection.json"
+    config_path.write_text(config.model_dump_json())
+    args = ["--repo", str(repo), "--config", str(config_path), "--cache", str(tmp_path / "cache.db")]
+    assert main(["fingerprints", *args]) == 0
+    config.pytest_policy = json.loads(capsys.readouterr().out)
+    assert "ci/custom.conf" in config.pytest_policy
+    config_path.write_text(config.model_dump_json())
+    assert main(["warm", *args]) == 0
+    capsys.readouterr()
+    write(repo, "ci/custom.conf", "[pytest]\npython_files=check_*.py\n")
+    commit(repo)
+    assert main(["affected", "--base", base, *args]) == 1
+    assert "pytest configuration changed" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("path", ["/tmp/pytest.ini", "../pytest.ini", "ci/*.ini", "C:/pytest.ini", "ci//pytest.ini"])
+def test_custom_collection_config_requires_literal_repository_path(path: str) -> None:
+    with pytest.raises(ValueError, match="repository-relative"):
+        ImpactConfig(test_roots=["tests"], pytest_config_files=[path])
+
+
+def test_missing_custom_collection_config_cannot_prove_selection(
+    repo: Path,
+    config: ImpactConfig,
+    cache: GraphCache,
+) -> None:
+    config.pytest_config_files = ["missing.ini"]
+    head = commit(repo)
+    with pytest.raises(ValueError, match="configuration missing"):
+        affected(repo, head, head, config, cache)

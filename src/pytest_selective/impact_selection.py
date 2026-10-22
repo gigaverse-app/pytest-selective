@@ -65,6 +65,7 @@ def _narrow_first_party_pin(
     cache: GraphCache,
     dependency_cache: Path,
     dependency_token: str | None,
+    pytest_config_files: tuple[str, ...] = (),
 ) -> NarrowedPin:
     """Prove the pin move, then return the consumer files it reaches and why."""
     before, after = snapshots
@@ -78,7 +79,7 @@ def _narrow_first_party_pin(
         before_manifest=_blob(repo, before, spec.manifest),
         after_manifest=_blob(repo, after, spec.manifest),
     )
-    refuse_pytest_plugin(spec, repo, after.files)
+    refuse_pytest_plugin(spec, repo, after.files, pytest_config_files)
     change = package_change(spec, move, cache=cache, cache_dir=dependency_cache, token=dependency_token)
     candidates: dict[str, list[str]] = {}
     for snapshot in snapshots:
@@ -174,6 +175,7 @@ def affected(
                 cache,
                 dependency_cache or repo / ".test-impact" / "dependencies",
                 dependency_token,
+                tuple(config.pytest_config_files),
             )
         except ValueError as error:
             reasons.append(f"{spec.name} pin not narrowed: {error}; {spec.lock} and {spec.manifest} stay global inputs")
