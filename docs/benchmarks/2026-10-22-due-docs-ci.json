@@ -1,0 +1,74 @@
+[
+  {
+    "repository": "gigaverse-app/due",
+    "run_id": 39849835910,
+    "url": "https://github.com/gigaverse-app/due/actions/runs/39849835910",
+    "workflow": "CI",
+    "head_sha": "68cebb2d751f3e5f482d2309f80b9efecab1420b",
+    "attempt": 1,
+    "created_at": "2026-10-22T20:33:07Z",
+    "completed_at": "2026-10-22T20:33:33+00:00",
+    "elapsed_seconds": 26.0,
+    "runner_seconds": 80.0,
+    "executed_jobs": 6,
+    "skipped_job_records": 2,
+    "jobs": [
+      {
+        "id": 120072736331,
+        "name": "lint",
+        "conclusion": "success",
+        "started_at": "2026-10-22T20:33:11Z",
+        "completed_at": "2026-10-22T20:33:32Z"
+      },
+      {
+        "id": 120072736600,
+        "name": "select-tests",
+        "conclusion": "success",
+        "started_at": "2026-10-22T20:33:11Z",
+        "completed_at": "2026-10-22T20:33:21Z"
+      },
+      {
+        "id": 120072736626,
+        "name": "ci-contracts",
+        "conclusion": "success",
+        "started_at": "2026-10-22T20:33:11Z",
+        "completed_at": "2026-10-22T20:33:33Z"
+      },
+      {
+        "id": 120072736802,
+        "name": "build",
+        "conclusion": "success",
+        "started_at": "2026-10-22T20:33:11Z",
+        "completed_at": "2026-10-22T20:33:30Z"
+      },
+      {
+        "id": 120072846086,
+        "name": "tests (locked)",
+        "conclusion": "success",
+        "started_at": "2026-10-22T20:33:24Z",
+        "completed_at": "2026-10-22T20:33:28Z"
+      },
+      {
+        "id": 120072846387,
+        "name": "tests (minimum)",
+        "conclusion": "success",
+        "started_at": "2026-10-22T20:33:23Z",
+        "completed_at": "2026-10-22T20:33:27Z"
+      },
+      {
+        "id": 120072848580,
+        "name": "Execute tests (${{ matrix.django }})",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T20:33:22Z",
+        "completed_at": "2026-10-22T20:33:22Z"
+      },
+      {
+        "id": 120072849258,
+        "name": "typecheck",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T20:33:22Z",
+        "completed_at": "2026-10-22T20:33:22Z"
+      }
+    ]
+  }
+]

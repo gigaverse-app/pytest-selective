@@ -49,6 +49,7 @@ skipped unrelated environments:
 
 | Change | Full runner-seconds | Selected runner-seconds | Reduction |
 | --- | ---: | ---: | ---: |
+| pytest-selective README | 627 | 48 | 92.3% |
 | Due library test, main CI | 747 | 388 | 48.1% |
 | pytest-obligation MongoDB test | 1,602 | 93 | 94.2% |
 | pytest-obligation package README | 1,691 | 57 | 96.6% |
@@ -57,7 +58,14 @@ Each row is one successful sequential pair on the same PR head and merge
 checkout, using `test:full` for the control. Runner-seconds sum executed job
 durations, including setup and cleanup. These are observations, not billed
 minutes or expected savings for every PR. Both runs include planning overhead.
-Due's separate widget benchmark is excluded from the first row.
+The Due row excludes its separate widget benchmark.
+
+The pytest-selective README pair also reduced elapsed time from **211s to 26s**
+while preserving routing regressions, Markdown checks, strict package metadata
+and installed-wheel validation. Due's updated docs-only probe completed in
+**26s**, using **91 runner-seconds** across main CI and the widget planner;
+that is an observed run, not a paired speedup claim.
+[Docs-routing evidence and raw timings](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/benchmarks/2026-10-22-routing.md).
 
 [Run links, raw timestamps, method and limits](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/benchmarks/2026-10-22.md)
 include the much slower widget comparison and its 624-second browser-install
