@@ -69,26 +69,33 @@ def declared_plugins(tree: ast.Module) -> list[str] | None:
     for statement in _statements(tree):
         value: ast.expr | None = None
         append = False
-        if isinstance(statement, ast.Assign):
-            targets = statement.targets
+        if isinstance(statement, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+            targets = statement.targets if isinstance(statement, ast.Assign) else [statement.target]
             if any(not _name(target) and _mentions(target) for target in targets):
                 return None
             if any(_name(target) for target in targets):
                 if len(targets) != 1:
                     return None  # Another binding can mutate the same list.
                 value = statement.value
-            elif _mentions(statement.value):
+                if isinstance(statement, ast.AugAssign) and not isinstance(statement.op, ast.Add):
+                    return None
+            elif statement.value is not None and _mentions(statement.value):
                 return None  # Escaped through an alias or arbitrary callback.
-        elif isinstance(statement, (ast.AnnAssign, ast.AugAssign)) and _name(statement.target):
-            value = statement.value
-            if isinstance(statement, ast.AugAssign) and not isinstance(statement.op, ast.Add):
-                return None
         elif isinstance(statement, ast.Expr) and isinstance(call := statement.value, ast.Call):
             if isinstance(call.func, ast.Attribute) and _name(call.func.value):
                 if call.func.attr not in {"append", "extend"} or len(call.args) != 1 or call.keywords:
                     return None
                 value = call.args[0]
                 append = call.func.attr == "append"
+            elif _mentions(call):
+                return None
+        elif isinstance(statement, ast.Expr) and _mentions(statement.value):
+            return None
+        elif isinstance(statement, (ast.For, ast.AsyncFor)) and _mentions(statement.target):
+            return None
+        elif isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            if statement.name == "pytest_plugins":
+                return None
         elif isinstance(statement, (ast.Import, ast.ImportFrom)):
             if any((alias.asname or alias.name) == "pytest_plugins" for alias in statement.names):
                 return None

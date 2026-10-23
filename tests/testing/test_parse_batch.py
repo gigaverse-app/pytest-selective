@@ -33,7 +33,9 @@ def test_unavailable_process_pool_preserves_serial_analysis(monkeypatch: pytest.
 
 
 @pytest.mark.parametrize("response", [b'{"version":"old", "records":[]}', b"truncated output"])
-def test_untrustworthy_worker_output_retries_the_complete_batch(monkeypatch: pytest.MonkeyPatch, response: bytes) -> None:
+def test_untrustworthy_worker_output_retries_the_complete_batch(
+    monkeypatch: pytest.MonkeyPatch, response: bytes
+) -> None:
     def worker_output(*args, **kwargs):
         return subprocess.CompletedProcess(args, 0, stdout=response)
 

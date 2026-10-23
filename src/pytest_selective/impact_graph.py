@@ -47,7 +47,7 @@ from pytest_selective.impact_models import (
 from pytest_selective.parse_batch import parse_records
 from pytest_selective.pytest_plugins import declared_plugins
 
-VERSION = "20"
+VERSION = "21"
 OPAQUE_CALLS = {
     "__import__",
     "import_module",
