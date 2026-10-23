@@ -1,5 +1,9 @@
 # pytest-selective
 
+[![Documentation](https://readthedocs.org/projects/pytest-selective/badge/?version=latest)](https://pytest-selective.readthedocs.io/en/latest/)
+
+[Read the documentation](https://pytest-selective.readthedocs.io/en/latest/) · [Related tools](https://pytest-selective.readthedocs.io/en/latest/ecosystem/)
+
 **Run affected Python tests. See why they matter.**
 
 [![CI](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml)

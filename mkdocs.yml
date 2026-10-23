@@ -1,0 +1,103 @@
+site_name: pytest-selective
+site_description: Run affected Python tests safely, explain every selection, and skip
+  unrelated CI lanes.
+site_url: !ENV [READTHEDOCS_CANONICAL_URL, "https://pytest-selective.readthedocs.io/en/latest/"]
+repo_url: https://github.com/gigaverse-app/pytest-selective
+repo_name: gigaverse-app/pytest-selective
+edit_uri: ''
+docs_dir: documentation
+site_dir: site
+strict: true
+exclude_docs: '*.py
+
+  *.txt
+
+  *.in
+
+  overrides/
+
+  '
+theme:
+  name: material
+  custom_dir: documentation/overrides
+  language: en
+  font: false
+  palette:
+    primary: teal
+    accent: cyan
+  features:
+  - navigation.sections
+  - navigation.top
+  - search.suggest
+  - search.highlight
+  - content.code.copy
+plugins:
+- search
+hooks:
+- documentation/hooks.py
+markdown_extensions:
+- admonition
+- attr_list
+- tables
+- pymdownx.details
+- pymdownx.highlight
+- pymdownx.superfences:
+    custom_fences:
+      - name: mermaid
+        class: mermaid
+        format: !!python/name:pymdownx.superfences.fence_code_format
+- toc:
+    permalink: true
+validation:
+  nav:
+    omitted_files: info
+  links:
+    not_found: warn
+    unrecognized_links: warn
+    anchors: warn
+extra:
+  published_sources:
+  - docs/tutorials/skip-unrelated-ci.md
+  - docs/actions.md
+  - docs/agents.md
+  - docs/benchmarks/2026-10-22-routing.md
+  - docs/benchmarks/2026-10-22.md
+  - docs/benchmarks/2026-10-23-windows-saleor.md
+  - docs/benchmarks/windows-runtime.md
+  - docs/ci-toolkit.md
+  - docs/ci.md
+  - docs/comparison-pytest-impacted.md
+  - docs/configuration.md
+  - docs/evidence.md
+  - docs/local-development.md
+  - docs/pytest-hygiene.md
+  - docs/pytest-impacted.md
+  - docs/selection-health.md
+  - docs/tutorial.md
+  - CONTRIBUTING.md
+  - RELEASING.md
+nav:
+- Start here: index.md
+- Skip unrelated CI jobs safely: docs/tutorials/skip-unrelated-ci.md
+- Quickstart: docs/tutorial.md
+- Guides:
+  - Actions: docs/actions.md
+  - Agents: docs/agents.md
+  - Ci toolkit: docs/ci-toolkit.md
+  - Ci: docs/ci.md
+  - Comparison pytest impacted: docs/comparison-pytest-impacted.md
+  - Configuration: docs/configuration.md
+  - Evidence: docs/evidence.md
+  - Local development: docs/local-development.md
+  - Pytest hygiene: docs/pytest-hygiene.md
+  - Pytest impacted: docs/pytest-impacted.md
+  - Selection health: docs/selection-health.md
+- Evidence:
+  - 2026 10 22 routing: docs/benchmarks/2026-10-22-routing.md
+  - 2026 10 22: docs/benchmarks/2026-10-22.md
+  - 2026 10 23 windows saleor: docs/benchmarks/2026-10-23-windows-saleor.md
+  - windows runtime: docs/benchmarks/windows-runtime.md
+- Related tools: ecosystem.md
+- Contributing: CONTRIBUTING.md
+- Releasing: RELEASING.md
+- Documentation publishing: publishing.md

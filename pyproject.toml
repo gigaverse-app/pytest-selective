@@ -38,7 +38,7 @@ selective = "pytest_selective.plugin"
 
 [project.urls]
 Homepage = "https://github.com/gigaverse-app/pytest-selective"
-Documentation = "https://github.com/gigaverse-app/pytest-selective/blob/main/docs/README.md"
+Documentation = "https://pytest-selective.readthedocs.io/en/latest/"
 Repository = "https://github.com/gigaverse-app/pytest-selective"
 Issues = "https://github.com/gigaverse-app/pytest-selective/issues"
 Changelog = "https://github.com/gigaverse-app/pytest-selective/blob/main/CHANGELOG.md"
