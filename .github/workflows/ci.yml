@@ -28,7 +28,7 @@ jobs:
         with:
           config: .github/test-lanes.json
           base: ${{ github.event.pull_request.base.sha || github.event.before }}
-          full: ${{ github.run_attempt > 1 || github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'test:full') }}
+          full: ${{ github.run_attempt > 1 || contains(fromJSON('["workflow_dispatch","workflow_call","schedule","release"]'), github.event_name) || contains(github.event.pull_request.labels.*.name, 'test:full') }}
       - name: Share the repository graph and execution inputs with file selection
         env:
           PYTHONPATH: src
@@ -41,7 +41,7 @@ jobs:
           config: ${{ runner.temp }}/test-impact.json
           base: ${{ github.event.pull_request.base.sha || github.event.before }}
           full-roots: tests
-          full: ${{ github.run_attempt > 1 || github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'test:full') }}
+          full: ${{ github.run_attempt > 1 || contains(fromJSON('["workflow_dispatch","workflow_call","schedule","release"]'), github.event_name) || contains(github.event.pull_request.labels.*.name, 'test:full') }}
       - id: paths
         name: Forward exact selected paths without shell splitting
         env:
@@ -67,8 +67,6 @@ jobs:
           uv run --no-project --python 3.14
           --with "ci-esta>=1.1.0,<2.0.0"
           ci-esta check-workflow --workflow .github/workflows/ci.yml --lanes .github/test-lanes.json
-      - name: Validate routing even when the platform matrix is skipped
-        run: uv run --locked pytest -q tests/test_repository_ci.py
       - name: Validate GitHub Actions
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
   tests:

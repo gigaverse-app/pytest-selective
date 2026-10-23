@@ -193,7 +193,8 @@ when the README is embedded in the built package.
 The action returns a `lanes` JSON object. Expose it as a planning-job output,
 then gate each expensive job with `always() && !cancelled()` and either a true
 lane value **or a failed planning job**. This preserves tests if planning fails.
-Run the action with `full: true` on main, schedules, and full-test overrides.
+Run the action with `full: true` for manual/release checkpoints, schedules, and
+full-test overrides. Ordinary PRs and main pushes use dependency selection.
 Selected jobs retain all of their existing tests and evidence checks.
 
 

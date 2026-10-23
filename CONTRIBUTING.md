@@ -61,7 +61,7 @@ test files once; the platform matrix and minimum-pytest job execute that same
 plan. CI-esta receives both lane and file explanations, learns JUnit timings,
 and validates the aggregate gate. Source and test edits follow dependencies;
 scripts, dependency/pytest policy and execution workflow changes retain full
-validation. Main, manual/called runs and the `test:full` label run it in full; a
+validation. Manual/called/release runs and the `test:full` label run it in full; a
 failed planner also runs all tests. Installed-distribution smoke checks use the
 same runtime-input decision; README-only changes skip those checks while still
 verifying the README embedded in both release archives. Repository routing
@@ -141,3 +141,14 @@ the Linux filesystem. See the
 [Windows setup guide](https://dallay.github.io/agentsync/guides/windows-symlink-setup/).
 If AgentSync backs up an existing `CLAUDE.md`, review and preserve any unique
 guidance in `AGENTS.md`; do not commit the backup as another instruction source.
+
+## Documentation-only CI
+
+Documentation-only PRs execute zero tests unless a test or lane explicitly
+declares that documentation as an input. This includes CI contract tests,
+installed-wheel smoke and public-action smoke. Metadata/link/build checks may
+still validate documentation without running runtime tests. Declare execution
+workflows, selector configuration, helpers, locks and non-import inputs; missing
+history or failed planning must execute the full affected lanes and fail the
+required planning gate. Ordinary PRs and pushes use selection; manual/release/scheduled/full overrides
+remain complete checkpoints.
