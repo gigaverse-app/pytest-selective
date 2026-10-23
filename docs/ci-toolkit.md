@@ -61,7 +61,9 @@ Never turn the fraction of files or lanes skipped into a measured time saving.
 
 Ordinary label edits no longer launch the CI validation workflows. Add `test:full`
 before the next code update to force full validation, or use an explicit rerun
-or manual dispatch for immediate full execution. Source updates, main pushes,
-manual checkpoints and all required gates retain their existing coverage.
+or manual dispatch for immediate full execution. Ordinary PRs and main pushes
+use dependency selection, including for contract and installed-package tests.
+Unreferenced documentation runs zero tests; explicit full checkpoints and
+failed-planning fallbacks retain complete coverage and required gates.
 The Python graph remains owned by pytest-selective; Bun reporting requires no
 Python selector and does not belong in this repository's runtime.

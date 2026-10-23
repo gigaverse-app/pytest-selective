@@ -114,10 +114,15 @@ Exercise actual Git commits, not a function that classifies extensions:
 | Lockfile, collection policy, or execution workflow | Required lanes run |
 | Missing history or operational uncertainty | Conservative full execution |
 | Invalid configuration | Diagnostic and failed required gate |
-| Main, manual checkpoint, explicit rerun, or `test:full` | Full execution |
+| Ordinary PR or main push containing only unreferenced docs | Zero tests |
+| Manual/release checkpoint, explicit rerun, or `test:full` | Full execution |
 
-Add these routing checks to an always-running quality job. Retain a scheduled
-full checkpoint. Do not advance a known-passing base past unresolved failures.
+Select these routing tests through declared dependencies on configuration,
+execution workflows, helpers and the inputs they inspect. Include wheel smoke,
+tutorials and separate action workflows in the same test-admission inventory.
+Unreferenced documentation should execute zero tests, including after merge.
+Metadata and documentation validators can still run. Retain a scheduled full
+checkpoint. Do not advance a known-passing base past unresolved failures.
 Use [job-specific workflow inputs](../ci.md#depend-on-one-workflow-job) only when
 you can enumerate every job, action, and reusable workflow that affects a lane.
 
