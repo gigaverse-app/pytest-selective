@@ -57,7 +57,7 @@ the previous selection. With `full: 'true'`, the action requests a complete run.
 | Operational failure, such as missing Git history | Run `full-roots` |
 | Invalid dependency declaration / unparseable Python | Fail with a diagnostic; fix the input |
 
-Read the [action inputs](../test-impact/action.yml) for cache
+Read the [action inputs](../actions/test-impact/action.yml) for cache
 warming, shard planning, explanations, and optional first-party dependency pins.
 Advanced base reuse requires proof that the reused revision passed the applicable
 checks. Start with the PR base and full history.
@@ -112,7 +112,7 @@ file selection does not override those requirements.
 ## Select whole CI lanes
 
 For tests that must produce complete conformance evidence, use
-[`plan-lanes`](../plan-lanes/action.yml) or
+[`plan-lanes`](../actions/plan-lanes/action.yml) or
 `python -m pytest_selective.ci` with a config:
 
 ```json
@@ -142,7 +142,7 @@ Name the job instead: `<workflow path>#<job id>`.
   "lanes": {
     "unit": {"roots": ["tests/unit"], "inputs": [".github/workflows/ci.yml#tests"]}
   },
-  "global_inputs": ["uv.lock", "pyproject.toml", ".github/actions/**"]
+  "global_inputs": ["uv.lock", "pyproject.toml", "actions/**"]
 }
 ```
 

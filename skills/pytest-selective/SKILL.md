@@ -60,7 +60,8 @@ fixtures or test imports keep widening the graph. Audits only cover observed pat
 Use the [public root and named actions](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/actions.md)
 with named entry points under `gigaverse-app/pytest-selective/actions/NAME@REF`,
 and verify the chosen release contains those paths; do not put a new path on an
-older tag. Keep legacy action paths only for existing compatible consumers.
+older tag. When upgrading, migrate old paths to `actions/NAME` together with the
+revision; old layouts exist only in their original immutable releases.
 
 ## Prove the route before claiming a win
 

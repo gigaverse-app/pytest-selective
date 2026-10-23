@@ -62,7 +62,7 @@ Wrap the graph config under `graph` and add `lanes` in a separate lane config:
   "graph": {"module_roots": ["src", "."], "test_roots": ["tests"]},
   "global_inputs": [
     "pyproject.toml", "uv.lock", ".github/test-lanes.json",
-    ".github/workflows/ci.yml", ".github/actions/**"
+    ".github/workflows/ci.yml", "actions/**"
   ],
   "lanes": {
     "unit": {"roots": ["tests/unit"]},

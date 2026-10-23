@@ -1,4 +1,4 @@
-# gv:test-dependency: .github/actions/test-impact/action.yml
+# gv:test-dependency: actions/test-impact/action.yml
 import os
 import shlex
 import shutil
@@ -529,7 +529,7 @@ def test_a_repository_without_tests_has_no_startup_floor(
     assert startup_floor(snapshot, dependent_tests(snapshot)) == set()
 
 
-ACTION = Path(".github/actions/test-impact/action.yml")
+ACTION = Path("actions/test-impact/action.yml")
 EXPLANATION_FILE = "test-impact-explanation.json"
 
 

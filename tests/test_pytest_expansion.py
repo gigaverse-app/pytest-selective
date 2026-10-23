@@ -513,7 +513,7 @@ def test_ai_application_import_needs_reason_but_external_import_does_not(repo: P
 @pytest.mark.skipif(sys.platform == "win32", reason="Composite action uses POSIX shell; CLI contracts run on Windows")
 @pytest.mark.parametrize("justified", [False, True])
 def test_composite_executes_without_installed_package_and_propagates_failure(repo: Path, justified: bool) -> None:
-    action_path = SCRIPT.parents[2] / ".github/actions/pytest-expansion"
+    action_path = SCRIPT.parents[2] / "actions/pytest-expansion"
     action = yaml.safe_load((action_path / "action.yml").read_text())
     assert len(action["runs"]["steps"]) == 1  # No second checkout, setup or install.
     base = git_repo.head(repo)

@@ -14,18 +14,20 @@ release tag or an immutable commit SHA. Do not change an old version tag to make
 new paths appear. Python package versions and installed agent skills are separate:
 updating one does not update the others.
 
-Use `actions/NAME` for new workflows. Existing `.github/actions/NAME` and
-top-level `NAME` paths remain compatibility aliases with the same inputs,
-outputs and defaults. The root action remains the default test-impact entry point.
-Public entry points delegate to the canonical implementations at
-the **same pinned revision**; no second implementation or floating nested pin is
-involved. Maintainers regenerate metadata with
-`uv run python scripts/public_actions.py`; CI checks the forwarding contracts.
+Each `actions/NAME` directory contains the implementation and its helper files.
+The former `.github/actions/NAME` and top-level `NAME` directories have been
+removed from main. Update the path and revision together when migrating:
+`gigaverse-app/pytest-selective/actions/NAME@REVISION`. Old immutable releases keep their
+original layouts; a new path cannot be used with a release that predates it.
 
-Public wrappers use GitHub's self-repository reference (`$/`), supported on
-GitHub.com with runner 2.336.0 or newer. For older self-hosted runners or GitHub
-Enterprise Server without that syntax, retain the compatibility paths and their
-existing version pins. [GitHub reference documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax).
+The root default action delegates to its implementation at the **same pinned
+revision**. Only this root entry point is generated; after changing the primary
+action's inputs or outputs, run `uv run python scripts/public_actions.py`.
+
+The root convenience action uses GitHub's self-repository reference (`$/`),
+supported on GitHub.com with runner 2.336.0 or newer. Individual `actions/NAME`
+entry points call the implementations directly and do not require that syntax.
+[GitHub reference documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax).
 
 ## Action reference
 
