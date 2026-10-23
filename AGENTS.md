@@ -11,7 +11,7 @@ on pytest-selective itself.
 - Reproduce selection bugs using real temporary Git repositories and existing
   `tests/testing/git_repo.py` helpers. Cover base and head trees, deleted inputs,
   explicit declarations and the relevant fallback. Do not mock away selection.
-- Planner output is about committed revisions. Preserve full execution on
+- Planning supports committed revisions and explicit working-tree snapshots. Preserve full execution on
   operational uncertainty and diagnostics for invalid declarations. An empty
   selection is not an empty pytest argument list.
 - Keep consumer routing regressions in the always-running quality job. Update

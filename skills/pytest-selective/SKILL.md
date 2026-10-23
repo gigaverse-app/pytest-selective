@@ -14,6 +14,11 @@ than attempting Python import analysis.
 
 ## Choose the smallest useful change
 
+- For the local edit/test loop, start with `uv add --dev pytest-selective` and
+  `uv run pytest --selective`, preserving the project's normal pytest options.
+  This includes working-tree changes and preserves native collection. Use
+  `--no-selective` for a full control. If collection/import cost dominates, use
+  the pre-collection runner with reviewed configuration instead.
 - Use **whole-lane selection** first when a job must retain complete coverage,
   compatibility controls, generated tests or conformance evidence. Keep every
   command and evidence validator inside an admitted lane.
@@ -44,6 +49,17 @@ whole-suite coverage requirements. Missing history/operational failures must run
 complete configured roots. Repair invalid declarations; never consume a stale
 report after a failed command. A successful `none` plan skips pytest: invoking
 pytest with no paths runs the whole suite.
+
+## Audit assumptions and protect the improvement
+
+Use [selection health](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/selection-health.md)
+when selection is unexpectedly broad or non-import inputs are uncertain. Inspect
+dependency paths and startup floors; record representative runtime reads and
+repair missing declarations. Offer expansion/isolation guards where global
+fixtures or test imports keep widening the graph. Audits only cover observed paths.
+Use the [public root and named actions](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/actions.md)
+and verify the chosen release contains those paths; do not put a new path on an
+older tag. Keep legacy action paths only for existing compatible consumers.
 
 ## Prove the route before claiming a win
 

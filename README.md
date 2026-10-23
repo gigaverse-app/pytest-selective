@@ -2,11 +2,6 @@
 
 **Run affected Python tests. See why they matter.**
 
-Our [Windows critical-path experiment](docs/benchmarks/2026-10-23-windows-saleor.md)
-cut the full validation gate from **249s to 185s** against a fresh unchanged
-control, preserving every existing case, the full platform matrix and coverage.
-The report separates test execution from runner variation and includes raw evidence.
-
 [![CI](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/pytest-selective)](https://pypi.org/project/pytest-selective/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://github.com/gigaverse-app/pytest-selective/blob/main/pyproject.toml)
@@ -14,11 +9,6 @@ The report separates test execution from runner variation and includes raw evide
 [![Ruff](https://img.shields.io/badge/code%20style-Ruff-D7FF64?logo=ruff&logoColor=black)](https://github.com/gigaverse-app/pytest-selective/blob/main/.pre-commit-config.yaml)
 [![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/gigaverse-app/pytest-selective/blob/main/LICENSE)
 [![Agent skill](https://img.shields.io/badge/Agent_Skill-ready-2563EB)](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/agents.md)
-
-**Our README CI used 92.3% less runner time: 627s → 48s.** Elapsed time fell
-from 211s to 26s, with docs, routing and package checks preserved. One successful
-same-revision pair, not a universal speedup.
-[Inspect the runs and raw evidence](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/benchmarks/2026-10-22-routing.md).
 
 pytest-selective is a **Python test impact analysis** tool for incremental testing
 with pytest. It follows dependencies through both sides of a Git change, selects
@@ -42,6 +32,29 @@ CI-esta now uses this selector in its own CI: a matched README-only pair
 used **49 instead of 105 runner-seconds (53.3% less)** while keeping quality,
 routing and package checks. Its reports now compute dependency critical paths
 and slack. [See the source runs and method](https://github.com/gigaverse-app/ci-esta/blob/main/docs/benchmarks/2026-10-23-toolkit.md).
+
+## Choose how to use it
+
+| You want to… | Use | What it saves |
+| --- | --- | --- |
+| Test local edits with your existing pytest command | `uv add --dev pytest-selective`, then `uv run pytest --selective` | Unaffected test execution; staged, unstaged and untracked changes are included |
+| Avoid expensive collection and application imports | `pytest-selective run --config .github/test-impact.json -- -q` | Collection/imports for unaffected files as well as execution |
+| Plan affected files in GitHub Actions | `gigaverse-app/pytest-selective@main` | Plans before installing your application |
+| Keep whole-suite coverage or conformance checks | `gigaverse-app/pytest-selective/plan-lanes@main` | Entire unaffected jobs, including their services and setup |
+| Check assumptions about JSON, templates and other runtime inputs | Optional file-read recorder and dependency audit | Exposes observed reads missing from the declared graph |
+| Keep selection narrow as the project grows | Explanations, startup-floor budgets, expansion and isolation guards | Makes broad new fixture/import dependencies visible |
+
+Start with [local pytest](docs/local-development.md), [the complete CI recipe](docs/ci.md),
+or [dependency audits and hygiene](docs/selection-health.md). The native plugin
+collects normally; the pre-collection runner and CI planner can avoid that cost.
+Keep full checkpoints and use complete lanes when partial suites cannot satisfy
+your coverage contract.
+
+**Public-path availability:** root and short action paths are new on `main`;
+existing `v0.1` releases predate them. Evaluate with `@main`, or pin a reviewed
+commit containing the public `action.yml`. Adopt a compatible release tag after
+it includes these paths. Existing `.github/actions/...` paths remain supported.
+[Public action API](docs/actions.md).
 
 ## Have your agent set it up
 
@@ -123,7 +136,8 @@ complete requested suite. [Plugin configuration and limits](docs/local-developme
 For pre-collection selection, use `pytest-selective run`; for CI jobs with
 expensive setup or whole-suite evidence requirements, use lane selection.
 
-Requires **Python 3.11+, Git 2.24+, and uv**. Use a planner Python version at
+Requires **Python 3.11+ and Git 2.24+**. The examples use uv; the native plugin
+also works in your existing pytest environment. Use a planner Python version at
 least as new as your source syntax; the CI action uses Python 3.14. Your test
 runtime can use a different Python version when planning runs separately.
 The optional audit recorder requires Python 3.11+ in the test environment.
@@ -159,8 +173,8 @@ For source development, GitHub installation is also available:
 pip install "pytest-selective @ git+https://github.com/gigaverse-app/pytest-selective.git"
 ```
 
-Use compatible package ranges and `@v0.1` Actions tags in CI; lockfiles retain
-exact resolved artifacts. Then follow the
+Use compatible package ranges; lockfiles retain exact resolved artifacts.
+For action-path availability and release pins, see [the action API](docs/actions.md). Then follow the
 [configuration walkthrough](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/configuration.md)
 to declare module roots, test roots, collection-policy fingerprints, and non-Python inputs.
 
@@ -188,7 +202,7 @@ skip pytest, because invoking pytest without paths runs the whole suite.
 | Undeclared runtime reads | An opt-in pytest recorder and audit command |
 
 The CLI emits JSON for your runner. The
-[composite action](https://github.com/gigaverse-app/pytest-selective/blob/main/.github/actions/test-impact/action.yml)
+[composite action](https://github.com/gigaverse-app/pytest-selective/blob/main/test-impact/action.yml)
 adds caching and falls back to complete test roots on operational planning
 failures. Invalid dependency declarations fail with a diagnostic that must be fixed.
 
@@ -213,9 +227,9 @@ and evidence checks.
 ## Choose the right tool
 
 [pytest-impacted](https://github.com/promptromp/pytest-impacted) offers a pytest-native
-`--impacted` workflow, including working-tree changes. pytest-selective focuses on
-committed revisions, inspectable JSON plans, runtime dependency audits, and
-planning before application startup. Both use static dependency analysis; choose
+`--impacted` workflow, including working-tree changes. pytest-selective supports the same local edit/test loop and also offers
+inspectable JSON plans, runtime dependency audits, and planning before application
+startup. Both use static dependency analysis; choose
 based on your workflow, and validate selection against your own suite.
 See the [lessons from pytest-impacted](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/pytest-impacted.md)
 for portability and Git-resolution improvements adopted from that comparison.
@@ -249,7 +263,7 @@ optional; pytest-selective does not depend on it.</sub>
 
 See the [CI toolkit integration](docs/ci-toolkit.md) for lane selection, validated
 environment caches, required gates and real dependency critical-path reports.
-# Optimize the work that still has to run
+## Optimize the work that still has to run
 
 Selection and execution solve different parts of slow CI. Once selection keeps
 the required tests, use [CI-esta's critical-path report](https://github.com/gigaverse-app/ci-esta/blob/main/docs/critical-path-optimizations.md)

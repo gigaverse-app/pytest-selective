@@ -2,8 +2,22 @@
 
 Use Python 3.11+ and Git 2.24+. The planner interpreter must understand the
 target's syntax; it can be separate from the application environment. Install
-pytest-selective from a reviewed Git revision using the project's existing
-dependency workflow. Do not assume an unverified PyPI release exists.
+pytest-selective from PyPI using the project's dependency workflow. Keep the
+resolved version in its lockfile; use a source revision only for unreleased work.
+
+## Try native pytest first for local edits
+
+```bash
+uv add --dev pytest-selective
+uv run pytest --selective
+uv run pytest --selective --selective-base origin/main
+uv run pytest --no-selective
+```
+
+Preserve the normal test paths and flags. Native mode collects normally; use the
+[pre-collection runner](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/local-development.md#pre-collection-runner)
+when application imports dominate. CI and advanced dependencies use the reviewed
+configuration below.
 
 ## Start with the actual layout
 

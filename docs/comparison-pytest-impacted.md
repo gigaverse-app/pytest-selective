@@ -2,7 +2,9 @@
 
 This comparison uses [pytest-impacted at 8670157](https://github.com/promptromp/pytest-impacted/tree/8670157aca529be2f19cdb5df26f5476434db240),
 pytest-selective's baseline `12694bf`, and CI-esta's baseline `e9d2792`.
-The changes described as adopted below belong to this branch until merged.
+The adopted capabilities below are available on main; use the release notes to
+check availability in an older installed version. The benchmark revisions remain
+frozen for reproducibility.
 
 pytest-impacted is a useful source of ideas for the local edit/test loop.
 pytest-selective owns our dependency analysis and routing. CI-esta consumes that
@@ -120,7 +122,8 @@ missing history, empty selections and explicit full execution. Dependency-file
 tests cover addition, modification and deletion and assert both selected files
 and whole lanes. Parser tests retain syntax errors and encoding behavior.
 
-Hosted CI savings and adopter execution timings are not yet measured for this
-branch. Local parser timings do not substitute for those checks. The native
+The parser samples above measure parser work only. Separate hosted execution
+evidence is published in [the Windows report](benchmarks/2026-10-23-windows-saleor.md);
+do not attribute that whole-workflow improvement to parsing alone. The native
 pytest entry point now complements the pre-collection CLI runner; it makes no
 additional collection-time speedup claim. See [native plugin behavior](local-development.md).
