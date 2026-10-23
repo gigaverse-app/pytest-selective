@@ -170,10 +170,10 @@ def test_local_spawn_errors_retry_only_oversized_commands_once(repo: Path, failu
             with pytest.raises(OSError) as error:
                 main(arguments)
             assert error.value is (retry_error if failure == errno.E2BIG else initial_error)
-    assert attempts[0][3:] == ["tests/test_value.py", "-q"]
+    assert attempts[0][3:] == ["-p", "selective", "--no-selective", "tests/test_value.py", "-q"]
     if failure == errno.E2BIG:
         assert len(attempts) == 2
-        assert attempts[1][3:] == ["tests", "-q"]
+        assert attempts[1][3:] == ["-p", "selective", "--no-selective", "tests", "-q"]
     else:
         assert len(attempts) == 1
 

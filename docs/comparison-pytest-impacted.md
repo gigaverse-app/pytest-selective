@@ -14,8 +14,8 @@ It should not grow another dependency graph.
 | Capability | pytest-impacted | pytest-selective and CI-esta | Decision |
 | --- | --- | --- | --- |
 | Uncommitted edits | Staged, unstaged and untracked changes | Previously committed trees only | Adopted: `affected --working-tree` and `run`; private index preserves staging and HEAD |
-| Local execution | Standard pytest plugin | Previously planner output needed a separate runner | Adopted: `pytest-selective run` plans before starting pytest and handles an empty plan |
-| Collection overhead | Plugin marks unaffected items skipped after collection | Runner passes selected files before collection | Keep early selection: unrelated test modules need not import |
+| Local execution | Standard pytest plugin | Native `pytest --selective` and a pre-collection runner | Adopted opt-in plugin registration, CLI/ini options and conservative item handling; both interfaces reuse the same planner |
+| Collection overhead | Plugin marks unaffected items skipped after collection | Native plugin deselects after collection; runner passes selected files before collection | Choose native pytest compatibility or the runner's import savings |
 | Branch comparison | Merge-base by default, explicit tip comparison | Explicit base/head; CI supplies the intended base | Preserve explicit CI contract; local runner defaults to HEAD and accepts `--base` |
 | Dependency environments | Broad built-in lock, requirements and pytest configuration patterns | Lane defaults covered uv/pyproject; file selection needed declarations | Adopted shared environment defaults for file selection and lanes, including deletions |
 | Non-Python inputs | Configurable full invalidation globs | Reader-specific declarations, sidecars, and lane input globs | Preserve precision; new `global_inputs` also offers full invalidation |
@@ -31,7 +31,7 @@ It should not grow another dependency graph.
 | Graph caching | Process-local cached graph, explicit cache clearing | Persistent blob/tree/config/interpreter keys and checksummed records | Preserve content-addressed cache; local snapshots reuse it |
 | Traversal | Shared multi-source graph traversal | Shared multi-source closure already exists | No second implementation needed |
 | Custom strategies | Executable entry-point extensions | Declarative dependencies, deferred/name scopes and first-party package proofs | Keep the current extension contract; do not auto-load third-party planning code |
-| Doctests/custom collectors | Unknown item types are retained | File selection requires reviewed collection policy | Use full runs for custom collection; local runner is for ordinary pytest file suites |
+| Doctests/custom collectors | Unknown item types are retained | Native plugin retains doctests, unknown items and files outside its graph | Runner still requires reviewed collection policy; native mode preserves collection |
 | Explanations | Diagnostics and impacted markers | Dependency paths, graph expansion, floors, runtime read audit | Preserve and reuse the existing report models |
 | Whole CI lanes | Standalone file list | Complete lane selection before setup/services | Keep lane selection for conformance suites and coverage floors |
 | Timing and reuse | Selection tool | CI-esta reports jobs/steps, learns durations, verifies receipts and gates | Keep owned by CI-esta; selection alone does not prove reusable execution |
@@ -121,6 +121,6 @@ tests cover addition, modification and deletion and assert both selected files
 and whole lanes. Parser tests retain syntax errors and encoding behavior.
 
 Hosted CI savings and adopter execution timings are not yet measured for this
-branch. Local parser timings do not substitute for those checks. Native pytest
-entry-point integration and arbitrary custom collection remain separate from
-the new pre-collection CLI runner.
+branch. Local parser timings do not substitute for those checks. The native
+pytest entry point now complements the pre-collection CLI runner; it makes no
+additional collection-time speedup claim. See [native plugin behavior](local-development.md).

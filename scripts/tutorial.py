@@ -69,6 +69,22 @@ def demonstrate(root: Path, artifacts: Path) -> list[dict]:
     for label, path, content, mode, count, pytest_exit in scenarios:
         write(root, path, content)
         index_before = (root / ".git/index").read_bytes()
+        native = run(
+            root,
+            sys.executable,
+            "-m",
+            "pytest",
+            "-p",
+            "selective",
+            "--selective",
+            "--selective-config",
+            "impact.json",
+            "-q",
+            expected=pytest_exit or 0,
+        )
+        assert f"{mode}: {count}/3 test files" in native.stdout, native.stdout
+        if count < 3:
+            assert f"{3 - count} deselected" in native.stdout, native.stdout
         local = run(
             root,
             sys.executable,
@@ -116,6 +132,7 @@ def demonstrate(root: Path, artifacts: Path) -> list[dict]:
                 "selected": report["selected"],
                 "total_files": report["total_files"],
                 "pytest_exit": pytest_exit,
+                "native_pytest_exit": native.returncode,
                 "base": base,
                 "head": head,
                 "reasons": report["reasons"],

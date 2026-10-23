@@ -38,7 +38,8 @@ def main() -> None:
                     "-c",
                     "from importlib.resources import files; "
                     "assert files('pytest_selective').joinpath('py.typed').is_file(); "
-                    "from importlib.util import find_spec; assert find_spec('pytest') is None",
+                    "from importlib.metadata import entry_points; "
+                    "assert any(e.value == 'pytest_selective.plugin' for e in entry_points(group='pytest11'))",
                 ],
                 cwd=folder,
                 check=True,
@@ -48,8 +49,19 @@ def main() -> None:
                 ["uv", "pip", "install", "--python", str(python), f"{distribution}[audit]"], check=True, env=environment
             )
             subprocess.run([str(python), str(ROOT / "scripts/tutorial.py")], cwd=folder, check=True, env=environment)
+            # No -p or checkout on PYTHONPATH: wheel/sdist entry-point discovery
+            # must work in a separate consumer, including the safe no-Git path.
+            consumer = folder / "consumer"
+            consumer.mkdir()
+            (consumer / "test_installed.py").write_text("def test_installed(): pass\n", encoding="utf-8")
+            subprocess.run(
+                [str(python), "-I", "-m", "pytest", "--selective", "-q"],
+                cwd=consumer,
+                check=True,
+                env=environment,
+            )
             print(
-                f"Verified {distribution.name} on Python {version}: CLI, typing marker, optional pytest, real selection",
+                f"Verified {distribution.name} on Python {version}: CLI, typing marker, pytest plugin, real selection",
                 flush=True,
             )
 

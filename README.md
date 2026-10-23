@@ -17,8 +17,8 @@ same-revision pair, not a universal speedup.
 
 pytest-selective is a **Python test impact analysis** tool for incremental testing
 with pytest. It follows dependencies through both sides of a Git change, selects
-the affected test files, and explains the result. Plan before collecting tests,
-importing your application, or starting databases and workers.
+the affected test files, and explains the result. Use it directly as a pytest
+plugin, or plan before collection and service startup with the CLI and CI actions.
 
 Built from the selector used in Gigaverse's backend, AI, and shared Python
 infrastructure. The API may change before 1.0.
@@ -98,6 +98,25 @@ each with its own lane map (`.github/test-lanes.json`).
 including Due's widget benchmark, which selection skips entirely.
 
 ## Try it in two minutes
+
+Install the plugin in your test environment, then use ordinary pytest:
+
+```bash
+uv add --dev pytest-selective
+uv run pytest --selective
+uv run pytest --selective --selective-base origin/main -n auto
+uv run pytest --no-selective
+```
+
+Selection is opt-in. The default compares HEAD with staged, unstaged and
+nonignored untracked files. `--selective-base` compares against the exact ref
+you supply, including local edits. The plugin reuses the CLI's dependency graph,
+deselects unaffected collected tests, and keeps doctests and unknown collectors.
+Normal test paths, node IDs, `-k` and `-m` still apply. Missing history runs the
+complete requested suite. [Plugin configuration and limits](docs/local-development.md).
+
+For pre-collection selection, use `pytest-selective run`; for CI jobs with
+expensive setup or whole-suite evidence requirements, use lane selection.
 
 Requires **Python 3.11+, Git 2.24+, and uv**. Use a planner Python version at
 least as new as your source syntax; the CI action uses Python 3.14. Your test
