@@ -120,6 +120,9 @@ def test_recursive_plugin_registration_and_base_edges(tmp_path: Path, change: st
         ('pytest_plugins = ["support", dynamic]', None),
         ("from settings import pytest_plugins", None),
         ("pytest_plugins = []\npytest_plugins.extend(dynamic)", None),
+        ("pytest_plugins = []\npytest_plugins[:] = [dynamic]", None),
+        ('pytest_plugins, other = (["support"], 1)', None),
+        ('pytest_plugins = []\nplugins = pytest_plugins\nplugins.append("support")', None),
     ],
 )
 def test_static_plugin_declarations(source: str, expected: list[str] | None) -> None:

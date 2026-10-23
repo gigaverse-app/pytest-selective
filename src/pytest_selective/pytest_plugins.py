@@ -55,6 +55,10 @@ def _name(node: ast.AST) -> bool:
     return isinstance(node, ast.Name) and node.id == "pytest_plugins"
 
 
+def _mentions(node: ast.AST) -> bool:
+    return any(_name(child) for child in ast.walk(node))
+
+
 def declared_plugins(tree: ast.Module) -> list[str] | None:
     """Union module-scope declarations across branches; None means unproven.
 
@@ -66,8 +70,15 @@ def declared_plugins(tree: ast.Module) -> list[str] | None:
         value: ast.expr | None = None
         append = False
         if isinstance(statement, ast.Assign):
-            if any(_name(target) for target in statement.targets):
+            targets = statement.targets
+            if any(not _name(target) and _mentions(target) for target in targets):
+                return None
+            if any(_name(target) for target in targets):
+                if len(targets) != 1:
+                    return None  # Another binding can mutate the same list.
                 value = statement.value
+            elif _mentions(statement.value):
+                return None  # Escaped through an alias or arbitrary callback.
         elif isinstance(statement, (ast.AnnAssign, ast.AugAssign)) and _name(statement.target):
             value = statement.value
             if isinstance(statement, ast.AugAssign) and not isinstance(statement.op, ast.Add):
