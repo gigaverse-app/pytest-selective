@@ -40,7 +40,7 @@ and slack. [See the source runs and method](https://github.com/gigaverse-app/ci-
 | Test local edits with your existing pytest command | `uv add --dev pytest-selective`, then `uv run pytest --selective` | Unaffected test execution; staged, unstaged and untracked changes are included |
 | Avoid expensive collection and application imports | `pytest-selective run --config .github/test-impact.json -- -q` | Collection/imports for unaffected files as well as execution |
 | Plan affected files in GitHub Actions | `gigaverse-app/pytest-selective@main` | Plans before installing your application |
-| Keep whole-suite coverage or conformance checks | `gigaverse-app/pytest-selective/plan-lanes@main` | Entire unaffected jobs, including their services and setup |
+| Keep whole-suite coverage or conformance checks | `gigaverse-app/pytest-selective/actions/plan-lanes@main` | Entire unaffected jobs, including their services and setup |
 | Check assumptions about JSON, templates and other runtime inputs | Optional file-read recorder and dependency audit | Exposes observed reads missing from the declared graph |
 | Keep selection narrow as the project grows | Explanations, startup-floor budgets, expansion and isolation guards | Makes broad new fixture/import dependencies visible |
 
@@ -50,7 +50,7 @@ collects normally; the pre-collection runner and CI planner can avoid that cost.
 Keep full checkpoints and use complete lanes when partial suites cannot satisfy
 your coverage contract.
 
-**Public-path availability:** root and short action paths are new on `main`;
+**Public-path availability:** the root action and `actions/NAME` paths are new on `main`;
 existing `v0.1` releases predate them. Evaluate with `@main`, or pin a reviewed
 commit containing the public `action.yml`. Adopt a compatible release tag after
 it includes these paths. Existing `.github/actions/...` paths remain supported.

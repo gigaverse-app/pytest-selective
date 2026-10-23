@@ -1,7 +1,7 @@
 # Public GitHub Actions
 
 Use `gigaverse-app/pytest-selective@main` for test-impact. Specialized actions use
-`gigaverse-app/pytest-selective/ACTION@main`. Your workflow does not need a checkout of
+`gigaverse-app/pytest-selective/actions/ACTION@main`. Your workflow does not need a checkout of
 this toolkit or a Python package installation to load an action. Actions that
 analyze your project still need your project's checkout.
 
@@ -14,8 +14,10 @@ release tag or an immutable commit SHA. Do not change an old version tag to make
 new paths appear. Python package versions and installed agent skills are separate:
 updating one does not update the others.
 
-Existing `.github/actions/NAME` paths continue to work with the same inputs,
-outputs and defaults. Public entry points delegate to those implementations at
+Use `actions/NAME` for new workflows. Existing `.github/actions/NAME` and
+top-level `NAME` paths remain compatibility aliases with the same inputs,
+outputs and defaults. The root action remains the default test-impact entry point.
+Public entry points delegate to the canonical implementations at
 the **same pinned revision**; no second implementation or floating nested pin is
 involved. Maintainers regenerate metadata with
 `uv run python scripts/public_actions.py`; CI checks the forwarding contracts.
@@ -32,9 +34,9 @@ Each link below is the public action's complete input/output contract.
 | Entry point | Contract |
 | --- | --- |
 | `gigaverse-app/pytest-selective@main` | [Root action](../action.yml) |
-| `gigaverse-app/pytest-selective/plan-lanes@main` | [plan-lanes](../plan-lanes/action.yml) |
-| `gigaverse-app/pytest-selective/pytest-expansion@main` | [pytest-expansion](../pytest-expansion/action.yml) |
-| `gigaverse-app/pytest-selective/test-impact@main` | [test-impact](../test-impact/action.yml) |
+| `gigaverse-app/pytest-selective/actions/plan-lanes@main` | [plan-lanes](../actions/plan-lanes/action.yml) |
+| `gigaverse-app/pytest-selective/actions/pytest-expansion@main` | [pytest-expansion](../actions/pytest-expansion/action.yml) |
+| `gigaverse-app/pytest-selective/actions/test-impact@main` | [test-impact](../actions/test-impact/action.yml) |
 
 Reusable workflows are a different interface: GitHub requires them to live under
 `.github/workflows/` and callers use `jobs.<job>.uses`. Actions use

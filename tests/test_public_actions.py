@@ -10,9 +10,10 @@ SOURCES = sorted((ROOT / ".github/actions").glob("*/action.yml"))
 
 
 @pytest.mark.parametrize("source", SOURCES, ids=lambda p: p.parent.name)
-def test_public_action_forwards_the_complete_contract_at_the_same_revision(source):
+@pytest.mark.parametrize("directory", ["actions", ""])
+def test_public_action_forwards_the_complete_contract_at_the_same_revision(source, directory):
     original = yaml.safe_load(source.read_text())
-    public = yaml.safe_load((ROOT / source.parent.name / "action.yml").read_text())
+    public = yaml.safe_load((ROOT / directory / source.parent.name / "action.yml").read_text())
     assert public.get("inputs", {}) == original.get("inputs", {})
     assert public["runs"]["using"] == "composite"
     (step,) = public["runs"]["steps"]
@@ -26,5 +27,5 @@ def test_public_action_forwards_the_complete_contract_at_the_same_revision(sourc
 
 def test_root_action_is_the_primary_public_entry_point():
     assert yaml.safe_load((ROOT / "action.yml").read_text()) == yaml.safe_load(
-        (ROOT / "test-impact" / "action.yml").read_text()
+        (ROOT / "actions" / "test-impact" / "action.yml").read_text()
     )

@@ -37,7 +37,7 @@ jobs:
         run: |
           test "$MODE" = full
           test -n "$ROOTS"
-      - uses: ./plan-lanes
+      - uses: ./actions/plan-lanes
         id: lanes
         with:
           config: .github/test-lanes.json
