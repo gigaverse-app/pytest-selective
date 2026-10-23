@@ -8,7 +8,7 @@ inputs:
     description: Base commit containing the complete change set.
     required: true
   full:
-    description: Run every lane for main, schedules, or an explicit full-test request.
+    description: Run every lane for an explicit full-test checkpoint; ordinary PRs and pushes use selection.
     default: 'false'
   artifact-name:
     description: >
