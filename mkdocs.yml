@@ -59,6 +59,7 @@ validation:
 extra:
   published_sources:
   - docs/tutorials/skip-unrelated-ci.md
+  - docs/tutorials/sidecar-dependencies.md
   - docs/actions.md
   - docs/agents.md
   - docs/benchmarks/2026-10-22-routing.md
@@ -81,6 +82,7 @@ nav:
 - Getting started:
   - Quickstart: docs/tutorial.md
   - Run affected tests locally: docs/local-development.md
+  - Declare file inputs with sidecars: docs/tutorials/sidecar-dependencies.md
   - Skip unrelated CI jobs safely: docs/tutorials/skip-unrelated-ci.md
   - Let your agent set it up: docs/agents.md
 - Configure and run:

@@ -200,7 +200,7 @@ skip pytest, because invoking pytest without paths runs the whole suite.
 | A transitive dependency | Import chains and package initialization |
 | A deleted or renamed module | Dependencies in both the base and head trees |
 | Fixtures or startup code | Ancestor conftests and configured global modules |
-| Templates, schemas, or data files | Reader-owned declarations and YAML sidecars |
+| Templates, schemas, or data files | [Reader-owned declarations and YAML sidecars](docs/tutorials/sidecar-dependencies.md) |
 | A surprisingly large selection | Dependency paths, startup-floor and blast-radius explanations |
 | A large CI suite | Cached parsing, graph reuse, and duration-based shard planning |
 | Undeclared runtime reads | An opt-in pytest recorder and audit command |

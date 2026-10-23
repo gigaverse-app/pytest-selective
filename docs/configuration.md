@@ -54,6 +54,9 @@ runs the complete configured roots.
 
 ## Declare inputs that imports cannot describe
 
+Start with the [sidecar tutorial](tutorials/sidecar-dependencies.md) for a runnable
+fixture example, directory manifests, dependency comments, and dynamic Python inputs.
+
 For a test that reads a tracked JSON fixture, add a reader-owned comment:
 
 ```python
