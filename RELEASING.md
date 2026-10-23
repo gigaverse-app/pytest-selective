@@ -43,10 +43,17 @@ check out or build source with that permission.
    `pytest-selective --help` and run the tutorial using that installation.
 
 After a normal release publishes successfully, the workflow advances the
-compatible Actions tag (for example, `v0.1` for `v0.1.0`). Consumers can use
-`@v0.1` to receive patch releases. Package requirements use compatible ranges
-such as `pytest-selective>=0.1.0,<0.2.0`; lockfiles retain resolved versions and
-artifact hashes. Prereleases do not advance the Actions tag.
+Actions tag `v1`. The Actions API version is independent of the Python package
+version: publishing Python `0.x.y` does not prevent updating Actions `v1`.
+Consumers deliberately use `actions/NAME@v1` as a moving target. Change the
+Actions major only when deliberately establishing a new Actions API line.
+Package requirements use their own compatible ranges, such as
+`pytest-selective>=0.2,<0.3`; lockfiles retain resolved versions and artifact
+hashes. Prereleases do not advance the Actions tag.
+
+For an Actions-only publication, advance `v1` to the exact reviewed main commit
+after its complete CI passes. This updates the Git tag without creating a GitHub
+release or invoking PyPI publication. Do not move immutable package release tags.
 
 Manual dispatch is available for a version-matching **tag**, not a branch. The
 workflow intentionally does not skip existing uploads: investigate a partial

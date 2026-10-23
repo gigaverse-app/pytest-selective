@@ -7,7 +7,7 @@ the base forward after a failed run.
 ## GitHub Actions
 
 This job uses the repository's composite action and runs the plan on the checked-out
-head. Use the compatible `v0.1` release tag and adapt dependency installation to
+head. Use the moving `v1` release tag and adapt dependency installation to
 your project. The example assumes a uv project
 and test paths without spaces (the action's `test_roots` output is space-separated).
 
@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v10
       - id: impact
-        uses: gigaverse-app/pytest-selective@main
+        uses: gigaverse-app/pytest-selective@v1
         with:
           config: .github/test-impact.json
           base: ${{ github.event.pull_request.base.sha }}
