@@ -65,6 +65,11 @@ jobs:
       - name: Record coverage runtime
         run: uv run --locked python -m coverage --version
       - run: uv run --locked pytest -q -n 4 --durations=20 --junitxml=test-timings.xml --cov --cov-report=term-missing --cov-report=xml
+        env:
+          # Keep temporary Git repositories beside the checkout on the work disk.
+          TMP: ${{ runner.temp }}
+          TEMP: ${{ runner.temp }}
+          TMPDIR: ${{ runner.temp }}
       - uses: gigaverse-app/ci-esta/.github/actions/learn-test-timings@v0.1
         with:
           junit-pattern: test-timings.xml
