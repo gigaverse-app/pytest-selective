@@ -26,7 +26,6 @@ theme:
     primary: teal
     accent: cyan
   features:
-  - navigation.sections
   - navigation.top
   - search.suggest
   - search.highlight
@@ -71,33 +70,35 @@ extra:
   - docs/evidence.md
   - docs/local-development.md
   - docs/pytest-hygiene.md
-  - docs/pytest-impacted.md
   - docs/selection-health.md
   - docs/tutorial.md
   - CONTRIBUTING.md
   - RELEASING.md
 nav:
-- Start here: index.md
-- Skip unrelated CI jobs safely: docs/tutorials/skip-unrelated-ci.md
-- Quickstart: docs/tutorial.md
-- Guides:
-  - Actions: docs/actions.md
-  - Agents: docs/agents.md
-  - CI toolkit: docs/ci-toolkit.md
-  - CI: docs/ci.md
-  - Comparison pytest impacted: docs/comparison-pytest-impacted.md
-  - Configuration: docs/configuration.md
-  - Evidence: docs/evidence.md
-  - Local development: docs/local-development.md
-  - Pytest hygiene: docs/pytest-hygiene.md
-  - Pytest impacted: docs/pytest-impacted.md
-  - Selection health: docs/selection-health.md
-- Evidence:
-  - 2026 10 22 routing: docs/benchmarks/2026-10-22-routing.md
-  - 2026 10 22: docs/benchmarks/2026-10-22.md
-  - 2026 10 23 windows saleor: docs/benchmarks/2026-10-23-windows-saleor.md
-  - windows runtime: docs/benchmarks/windows-runtime.md
-- Related tools: ecosystem.md
-- Contributing: CONTRIBUTING.md
-- Releasing: RELEASING.md
-- Documentation publishing: publishing.md
+- Home: index.md
+- Getting started:
+  - Quickstart: docs/tutorial.md
+  - Run affected tests locally: docs/local-development.md
+  - Skip unrelated CI jobs safely: docs/tutorials/skip-unrelated-ci.md
+  - Let your agent set it up: docs/agents.md
+- Configure and run:
+  - Configuration reference: docs/configuration.md
+  - Set up CI selection: docs/ci.md
+  - GitHub Actions reference: docs/actions.md
+- Keep selection trustworthy:
+  - Guarantees and limits: docs/evidence.md
+  - Diagnose broad selections: docs/selection-health.md
+  - Keep fixtures and plugins isolated: docs/pytest-hygiene.md
+- Benchmarks and evidence:
+  - Docs-only CI routing savings: docs/benchmarks/2026-10-22-routing.md
+  - Due and obligation selection results: docs/benchmarks/2026-10-22.md
+  - Windows and Saleor critical-path fixes: docs/benchmarks/2026-10-23-windows-saleor.md
+  - Windows Git runtime measurements: docs/benchmarks/windows-runtime.md
+- Compare and combine tools:
+  - Related tools: ecosystem.md
+  - Compare with pytest-impacted: docs/comparison-pytest-impacted.md
+- Contributing:
+  - Development setup: CONTRIBUTING.md
+  - This project's CI toolkit: docs/ci-toolkit.md
+  - Releasing: RELEASING.md
+  - Documentation publishing: publishing.md
