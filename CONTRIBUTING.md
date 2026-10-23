@@ -54,12 +54,14 @@ limitations. The pull request template provides a short checklist. See
 ## CI lane selection
 
 This repository uses its own `plan-lanes` action. Documentation-only PRs keep
-quality checks (including Markdown links) and distribution build/install checks,
+quality checks (including Markdown links) and distribution build/metadata checks,
 while skipping the six-platform pytest matrix and minimum-pytest lane. Source,
 tests, scripts, dependency/pytest policy and workflow changes run the complete
 matrix. Main, manual/called runs and the `test:full` label run it in full; a
-failed planner also runs all tests. Repository routing controls exercise the
-committed config against real Git trees, including full and missing-history
+failed planner also runs all tests. Installed-distribution smoke checks use the
+same runtime-input decision; README-only changes skip those checks while still
+verifying the README embedded in both release archives. Repository routing
+controls exercise the committed config against real Git trees, including full and missing-history
 controls. Add new non-import execution inputs to `.github/test-lanes.json`.
 
 ## Conventional Commits
