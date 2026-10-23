@@ -28,7 +28,7 @@ jobs:
         with:
           config: .github/test-lanes.json
           base: ${{ github.event.pull_request.base.sha || github.event.before }}
-          full: ${{ github.run_attempt > 1 || github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'test:full') }}
+          full: ${{ github.run_attempt > 1 || contains(fromJSON('["workflow_dispatch","workflow_call","schedule","release"]'), github.event_name) || contains(github.event.pull_request.labels.*.name, 'test:full') }}
       - name: Share the repository graph and execution inputs with file selection
         env:
           PYTHONPATH: src
@@ -41,7 +41,7 @@ jobs:
           config: ${{ runner.temp }}/test-impact.json
           base: ${{ github.event.pull_request.base.sha || github.event.before }}
           full-roots: tests
-          full: ${{ github.run_attempt > 1 || github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'test:full') }}
+          full: ${{ github.run_attempt > 1 || contains(fromJSON('["workflow_dispatch","workflow_call","schedule","release"]'), github.event_name) || contains(github.event.pull_request.labels.*.name, 'test:full') }}
       - id: paths
         name: Forward exact selected paths without shell splitting
         env:

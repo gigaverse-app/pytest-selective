@@ -76,7 +76,7 @@ routing/contract tests, wheel/sdist smoke tests, tutorials and separate action
 workflows in this inventory; a quality or build job is not an exemption. Metadata
 and documentation validation may still run without executing runtime tests.
 
-Retain main/scheduled full checkpoints and an explicit full override. Required
+Use dependency selection for ordinary PRs and pushes, including main. Retain scheduled full checkpoints and an explicit full override. Required
 check names must still resolve correctly on the empty route. A planner failure
 must not silently make a skipped required test green.
 

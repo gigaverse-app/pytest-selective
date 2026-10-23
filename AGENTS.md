@@ -15,7 +15,7 @@ on pytest-selective itself.
   operational uncertainty and diagnostics for invalid declarations. An empty
   selection is not an empty pytest argument list.
 - Select consumer routing regressions by their declared execution/configuration inputs. Update
-  `.github/test-lanes.json` when adding execution inputs; preserve full main/manual
+  `.github/test-lanes.json` when adding execution inputs; preserve explicit full/manual
   checkpoints and the `test:full` override.
 - The README's performance numbers are scenario-specific observations. Keep
   claims linked to [raw evidence](docs/benchmarks/2026-10-22-routing.md); distinguish
@@ -65,4 +65,5 @@ installed-wheel smoke and public-action smoke. Metadata/link/build checks may
 still validate documentation without running runtime tests. Declare execution
 workflows, selector configuration, helpers, locks and non-import inputs; missing
 history or failed planning must execute the full affected lanes and fail the
-required planning gate. Main/manual/full checkpoints remain complete runs.
+required planning gate. Ordinary PRs and pushes use selection; manual/release/scheduled/full overrides
+remain complete checkpoints.

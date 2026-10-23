@@ -82,8 +82,9 @@ python -m pytest_selective.ci --repo . --config .github/test-lanes.json \
 ```
 
 For Actions, use `plan-lanes` with full history and expose its `lanes` job output.
-An admitted job runs when its lane is true **or planning failed**. Main,
-schedules and a full-test override must request `full: true`. Start from the
+An admitted job runs when its lane is true **or planning failed**. Explicit manual/release runs,
+schedules and a full-test override request `full: true`; ordinary main pushes
+use the changed base/head trees so docs-only merges also execute zero tests. Start from the
 [complete lane guide](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/ci.md#select-whole-ci-lanes),
 not an invented action input. The repository's
 [routing tests](https://github.com/gigaverse-app/pytest-selective/blob/main/tests/test_repository_ci.py)
