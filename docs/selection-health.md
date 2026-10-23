@@ -30,7 +30,8 @@ uv run pytest-selective audit --config .github/test-impact.json --records impact
 The recorder observes real file reads in the tests you execute. The audit can
 expose a JSON fixture, template or schema that the graph did not declare. Add an
 edge at the reader using a dependency comment or YAML sidecar, then recheck the
-route. [Declaration syntax](configuration.md#declare-inputs-that-imports-cannot-describe).
+route. [Work through the sidecar tutorial](tutorials/sidecar-dependencies.md), or consult
+[declaration syntax](configuration.md#declare-inputs-that-imports-cannot-describe).
 The audit covers observed paths; keep representative full runs for paths it has
 not seen, and explicitly model dynamic imports and external inputs.
 

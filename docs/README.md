@@ -4,6 +4,7 @@
 | --- | --- |
 | Have a coding agent optimize your test/CI workflow | [Agent prompt, skill and AGENTS.md instructions](agents.md) |
 | See a real regression caught by a smaller selection | [Runnable tutorial](tutorial.md) |
+| Declare fixture, schema, scanner, or subprocess inputs | [Sidecar tutorial](tutorials/sidecar-dependencies.md) |
 | Configure an existing Python project | [Configuration and dependency declarations](configuration.md) |
 | Use `pytest --selective` or run local edits before collection | [Native plugin and local runner](local-development.md) |
 | Run the selected files safely in CI | [GitHub Actions and runner integration](ci.md) |
