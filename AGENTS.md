@@ -37,6 +37,12 @@ on pytest-selective itself.
   in the body. Follow [CONTRIBUTING.md](CONTRIBUTING.md) and
   [RELEASING.md](RELEASING.md).
 
+## Releases
+
+Release Please derives versions and changelogs from Conventional Commits. Let
+it prepare the release PR; do not hand-edit versions for ordinary changes.
+Merging a release PR authorizes PyPI publication after CI. Follow RELEASING.md.
+
 ## Shared agent instructions
 
 Edit this root `AGENTS.md` as the single source for Codex and Claude.

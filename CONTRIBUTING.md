@@ -89,7 +89,9 @@ Use **Squash and merge**, with the PR title as the commit title. Check the final
 message before merging, including single-commit PRs, and preserve any
 `BREAKING CHANGE:` explanation in the body. The repository's squash defaults
 support this, but a maintainer can still edit the final message.
-See [RELEASING.md](RELEASING.md) for versioning and publishing.
+Release Please turns these commits into a release PR containing the version,
+changelog, and lockfile update. Merging that PR authorizes PyPI publication after
+CI. See [RELEASING.md](RELEASING.md) for the version rules and publishing.
 
 ## Shared instructions for Codex and Claude
 
