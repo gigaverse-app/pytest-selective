@@ -19,7 +19,7 @@ import sys
 import tokenize
 import tomllib
 import unicodedata
-from collections import deque
+from collections import Counter, deque
 from pathlib import Path, PurePosixPath
 from typing import TypeVar
 
@@ -31,6 +31,7 @@ from pytest_selective.impact_declarations import (
     match_inputs,
 )
 from pytest_selective.impact_models import (
+    DeferredAssignments,
     DeferredRoute,
     DependencyComment,
     EdgeKind,
@@ -43,8 +44,10 @@ from pytest_selective.impact_models import (
     contents_node,
     file_of,
 )
+from pytest_selective.parse_batch import parse_records
+from pytest_selective.pytest_plugins import declared_plugins
 
-VERSION = "19"
+VERSION = "21"
 OPAQUE_CALLS = {
     "__import__",
     "import_module",
@@ -370,6 +373,7 @@ def parse_source(source: bytes) -> ParsedSource:
             else:
                 opaque.add(f"{name} at line {node.lineno}")
     return ParsedSource(
+        registered_plugins=declared_plugins(tree) if b"pytest_plugins" in source else [],
         django_urlconf=str(registration.value) if isinstance(registration, ast.Constant) else None,
         imports=imports,
         strings=sorted(strings),
@@ -432,9 +436,7 @@ class GraphCache:
         prefix = _cache_prefix()
         parsed: dict[str, ParsedSource] = {}
         missing: set[str] = set()
-        for path, oid in files.items():
-            if not path.endswith(".py"):
-                continue
+        for oid in {oid for path, oid in files.items() if path.endswith(".py")}:
             raw = self.get(f"{prefix}blob:{oid}")
             if raw is not None:
                 try:
@@ -443,9 +445,10 @@ class GraphCache:
                 except ValueError:
                     pass
             missing.add(oid)
-        for oid, source in blobs(repo, missing).items():
-            parsed[oid] = parse_source(source)
-            self.put(f"{prefix}blob:{oid}", parsed[oid].model_dump_json())
+        sources = blobs(repo, missing)
+        for oid, record in zip(sources, parse_records(list(sources.values())), strict=True):
+            parsed[oid] = ParsedSource.model_validate_json(record)
+            self.put(f"{prefix}blob:{oid}", record)
             self.parsed_blobs += 1
         return parsed
 
@@ -470,7 +473,7 @@ class GraphCache:
             except ValueError:
                 pass
         parsed = self.parse_python(repo, files)
-        deferred = deferred_routes(repo, tree, files, config)
+        deferred = deferred_routes(repo, tree, files, config, self)
         snapshot = resolve_graph(tree, files, parsed, config, git_tree.links, deferred)
         add_sidecar_edges(repo, tree, files, snapshot)
         # Declaration errors are actionable authoring failures, even when the
@@ -482,57 +485,50 @@ class GraphCache:
         return snapshot
 
 
-def _single_assignment(tree: ast.Module, assignment: str) -> ast.expr | None:
-    """The value of the module's one top-level assignment to `assignment`, if it is assigned exactly once."""
-    statements = [
-        node
-        for node in tree.body
-        if isinstance(node, (ast.Assign, ast.AnnAssign))
-        and any(
-            isinstance(target, ast.Name) and target.id == assignment
-            for target in (node.targets if isinstance(node, ast.Assign) else [node.target])
-        )
-    ]
-    writes = sum(
-        isinstance(node, ast.Name) and node.id == assignment and isinstance(node.ctx, ast.Store)
-        for node in ast.walk(tree)
-    )
-    return statements[0].value if len(statements) == 1 and writes == 1 else None
+def assignment_groups(source: bytes, assignments: frozenset[str]) -> DeferredAssignments:
+    """Analyze all deferred assignments together in one parse and traversal.
 
-
-def assignment_strings(source: bytes, assignment: str, deferred: frozenset[str] = frozenset()) -> set[str] | None:
+    A value must be assigned exactly once at module scope. Names also used
+    outside the deferred values retain their ordinary dependency edges.
     """
-    Module names that occur only inside the file's single top-level assignment to `assignment`.
-
-    None when the file doesn't parse, when the name is assigned anywhere other than exactly once at
-    the top level (a computed or reassigned value can't be read without running the file), or when
-    the assignment names no modules. A name that also occurs elsewhere in the file stays an
-    ordinary edge, so the result can be empty. Elsewhere excludes the file's other `deferred`
-    assignments: a task both routed and scheduled is deferred by both rules, not kept by each
-    because the other holds it.
-    """
+    result = DeferredAssignments(values={name: None for name in assignments})
     try:
         tree = parse_ast(source)
     except (SyntaxError, ValueError):
-        return None
-    value = _single_assignment(tree, assignment)
-    if value is None:
-        return None
-    inside = {id(node) for node in ast.walk(value)}
-    siblings = (_single_assignment(tree, other) for other in deferred - {assignment})
-    held = {id(node) for sibling in siblings if sibling is not None for node in ast.walk(sibling)}
-    found: set[str] = set()
-    elsewhere: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Constant) and isinstance(node.value, str) and is_module_string(node.value):
-            if id(node) in inside:
-                found.add(node.value)
-            elif id(node) not in held:
-                elsewhere.add(node.value)
-    return found - elsewhere if found else None
+        return result
+    nodes = list(ast.walk(tree))
+    writes = Counter(node.id for node in nodes if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store))
+    values: dict[str, ast.expr] = {}
+    for statement in tree.body:
+        if not isinstance(statement, (ast.Assign, ast.AnnAssign)) or statement.value is None:
+            continue
+        targets = statement.targets if isinstance(statement, ast.Assign) else [statement.target]
+        for target in targets:
+            if isinstance(target, ast.Name) and target.id in assignments and writes[target.id] == 1:
+                values[target.id] = statement.value
+    constants = {
+        id(node): node.value
+        for node in nodes
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and is_module_string(node.value)
+    }
+    inside = {name: {id(node) for node in ast.walk(value)} & constants.keys() for name, value in values.items()}
+    held = set().union(*inside.values())
+    elsewhere = {value for identity, value in constants.items() if identity not in held}
+    for name, identities in inside.items():
+        found = {constants[identity] for identity in identities}
+        result.values[name] = sorted(found - elsewhere) if found else None
+    return result
 
 
-def deferred_routes(repo: Path, tree: str, files: dict[str, str], config: ImpactConfig) -> list[DeferredRoute]:
+def assignment_strings(source: bytes, assignment: str, deferred: frozenset[str] = frozenset()) -> set[str] | None:
+    """Module names exclusive to one assignment and its deferred siblings."""
+    values = assignment_groups(source, deferred | {assignment}).values[assignment]
+    return set(values) if values is not None else None
+
+
+def deferred_routes(
+    repo: Path, tree: str, files: dict[str, str], config: ImpactConfig, cache: GraphCache
+) -> list[DeferredRoute]:
     """Resolve each `DeferredStringsRule` against one tree, failing on a rule it can't honor."""
     if not config.deferred_strings:
         return []
@@ -546,19 +542,41 @@ def deferred_routes(repo: Path, tree: str, files: dict[str, str], config: Impact
     deferred: dict[str, frozenset[str]] = {}
     for rule in config.deferred_strings:
         deferred[rule.file] = deferred.get(rule.file, frozenset()) | set(rule.assignments)
+    facts: dict[str, DeferredAssignments] = {}
+    pending: dict[str, tuple[str, str]] = {}
+    for path, assignments in deferred.items():
+        oid = files.get(path)
+        if not oid or not path.endswith(".py"):
+            continue
+        signature = hashlib.sha256(json.dumps(sorted(assignments)).encode()).hexdigest()
+        # Use the bounded blob-cache namespace. The set of deferred siblings
+        # changes the answer even when the source bytes stay identical.
+        key = f"{_cache_prefix()}blob:{oid}:deferred:{signature}"
+        raw = cache.get(key)
+        if raw is not None:
+            try:
+                cached = DeferredAssignments.model_validate_json(raw)
+                if cached.values.keys() == assignments:
+                    facts[path] = cached
+                    continue
+            except ValueError:
+                pass
+        pending[path] = (oid, key)
+    contents = blobs(repo, {oid for oid, _ in pending.values()}) if pending else {}
+    for path, (oid, key) in pending.items():
+        facts[path] = assignment_groups(contents[oid], deferred[path])
+        cache.put(key, facts[path].model_dump_json())
     routes = []
     for rule in config.deferred_strings:
         location = f"{tree}:{rule.file}"
-        oid = files.get(rule.file)
-        source = blobs(repo, {oid})[oid] if oid and rule.file.endswith(".py") else None
         strings: set[str] = set()
         for assignment in rule.assignments:
-            found = assignment_strings(source, assignment, deferred[rule.file]) if source is not None else None
+            found = facts[rule.file].values[assignment] if rule.file in facts else None
             if found is None:
                 raise DependencyDeclarationError(
                     f"{location}: deferred_strings needs one top-level {assignment} assignment naming modules"
                 )
-            strings |= found
+            strings.update(found)
         consumers: set[str] = set()
         for pattern in rule.consumers:
             consumers |= match_inputs(pattern, python_files, f"{location}:deferred_strings")
@@ -727,8 +745,29 @@ def resolve_graph(
         for consumer in route.consumers:
             edges[consumer].update(targets - {consumer})
 
-    globals_set = plugins | global_module_files(index, config)
     conftests = {path for path in python_files if PurePosixPath(path).name == "conftest.py"}
+    globals_set = plugins | global_module_files(index, config)
+    # Registration affects the whole session, including when a test module
+    # loads the plugin. Follow nested declarations and retain the owner so
+    # removing/changing its registration also invalidates every test.
+    pending = list(conftests | set(tests) | globals_set)
+    visited: set[str] = set()
+    while pending:
+        owner = pending.pop()
+        if owner in visited:
+            continue
+        visited.add(owner)
+        declared = parsed[files[owner]].registered_plugins
+        if declared is None:
+            raise ValueError(f"{owner}: cannot statically resolve pytest_plugins; run the full suite")
+        if declared:
+            globals_set.add(owner)
+            for name in declared:
+                targets = index.resolve(name)
+                edges[owner].update(targets - {owner})
+                if name not in index.modules:
+                    unresolved[owner] = sorted(set(unresolved.get(owner, [])) | {name})
+                pending.extend(targets)
     for test in tests:
         edges[test].update(globals_set - {test})
         for conftest in conftests:
@@ -736,6 +775,7 @@ def resolve_graph(
             if within(test, parent):
                 edges[test].add(conftest)
     return Snapshot(
+        plugin_tests=sorted(globals_set & set(tests)),
         tree=tree,
         files=files,
         edges={path: sorted(deps) for path, deps in edges.items() if deps},

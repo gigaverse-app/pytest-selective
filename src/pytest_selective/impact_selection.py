@@ -220,6 +220,12 @@ def affected(
         selected.update(impacted & set(after.tests))
         selected.update(test for test in after.tests if matches(test, config.always_run))
         reasons.append(f"dependency closure: {len(impacted & set(after.tests))} test files")
+    if selected and after.plugin_tests:
+        # Partial collection must still register the fixtures/hooks that the
+        # full run gets from test modules. Merely selecting their consumers
+        # would execute tests under a different plugin configuration.
+        selected.update(after.plugin_tests)
+        reasons.append("retain test modules that register session plugins")
     return ImpactReport(
         # A global invalidation also admits lanes whose work has no Python test
         # files (external conformance, generated checks, subprocess validators).

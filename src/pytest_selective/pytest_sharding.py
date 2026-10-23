@@ -7,6 +7,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, RootModel
 
+from pytest_selective.pytest_plugins import registers_plugins
 from pytest_selective.test_inventory import (
     DEFAULT_TEST_FILE_PATTERNS as DEFAULT_TEST_FILE_PATTERNS,
 )
@@ -237,6 +238,15 @@ def plan_shards(
     )
     live_units = {path: unit for path, unit in units.items() if Path(path).exists()}
     shards = greedy_bin_pack(live_units, shard_count)
+    if shard_count > 1 and any(registers_plugins(Path(path).read_bytes()) for path in sorted(selected_files)):
+        # A test module can register fixtures/hooks for every other collected
+        # module. Independent sessions would lose that registration. Keep one
+        # complete session, with empty manifests for unused runner slots.
+        # Root-conftest registrations remain parallel: pytest loads them in
+        # every process automatically. No test is duplicated to load a plugin.
+        combined = _stats_for_tests(complete_durations)
+        shards = [ShardPlan(paths=sorted(selected_files), duration=combined.duration, count=combined.count)]
+        shards.extend(ShardPlan(paths=[]) for _ in range(shard_count - 1))
     if exact_files:
         assigned = [path for shard in shards for path in shard.paths]
         # Enforce the exact-manifest invariant at the production boundary: no

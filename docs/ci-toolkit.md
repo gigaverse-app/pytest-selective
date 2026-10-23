@@ -49,3 +49,19 @@ the plan. These hints affect scheduling only and cannot grant a passing result.
 Follow the [timing feedback tutorial](https://github.com/gigaverse-app/ci-esta/blob/main/docs/learned-test-timings.md)
 for execution, empty shards and per-service isolation. Compare the existing
 parallel strategy before adding hosted runners.
+
+## Report impact and avoid label-only reruns
+
+The observer uses CI-esta's impact-first report: execution/selection evidence is
+visible before timing diagnostics, and the Gantt stays collapsed. Historical
+benchmark pairs can be declared with exact run/attempt/head references through
+`impact-comparisons-json`; CI-esta obtains their durations from GitHub. Follow the
+[measured-impact recipe](https://github.com/gigaverse-app/ci-esta/blob/main/docs/measured-impact.md).
+Never turn the fraction of files or lanes skipped into a measured time saving.
+
+Ordinary label edits no longer launch the CI validation workflows. Add `test:full`
+before the next code update to force full validation, or use an explicit rerun
+or manual dispatch for immediate full execution. Source updates, main pushes,
+manual checkpoints and all required gates retain their existing coverage.
+The Python graph remains owned by pytest-selective; Bun reporting requires no
+Python selector and does not belong in this repository's runtime.

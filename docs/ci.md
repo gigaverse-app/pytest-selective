@@ -7,8 +7,8 @@ the base forward after a failed run.
 ## GitHub Actions
 
 This job uses the repository's composite action and runs the plan on the checked-out
-head. Replace `REVIEWED_COMMIT_SHA` with a reviewed commit of pytest-selective and
-adapt dependency installation to your project. The example assumes a uv project
+head. Use the compatible `v0.1` release tag and adapt dependency installation to
+your project. The example assumes a uv project
 and test paths without spaces (the action's `test_roots` output is space-separated).
 
 ```yaml
@@ -61,6 +61,26 @@ Read the [action inputs](../test-impact/action.yml) for cache
 warming, shard planning, explanations, and optional first-party dependency pins.
 Advanced base reuse requires proof that the reused revision passed the applicable
 checks. Start with the PR base and full history.
+
+## Parser resources and plugin registration
+
+Large uncached batches (at least 256 unique Python blobs and 1 MB of source) use
+up to four parser processes, bounded by available CPUs. They run the same parser
+as serial analysis and never import the analyzed source. Small edits and cache
+hits avoid worker startup. Set `PYTEST_SELECTIVE_PARSE_WORKERS=1` to use one
+process, or choose an explicit worker count for your runner. If workers cannot
+start or return a complete result, the planner retries serially.
+
+Static `pytest_plugins` declarations are followed recursively, including single
+module names, comma-separated strings and literal list extensions. Registered
+plugins affect the whole pytest session. Computed declarations cause a full-run
+fallback because their dependencies cannot be proven statically.
+
+Put shared plugin registration in the root `conftest.py` when using independent
+pytest shards. If a test module registers plugins, partial selection retains
+that module and the shared shard planner keeps the selected tests together in
+one process. CI-esta uses this planner too. This preserves fixture and hook
+registration without executing the registering test multiple times.
 
 ## Consume JSON in another runner
 

@@ -39,7 +39,10 @@ def main() -> None:
                     "from importlib.resources import files; "
                     "assert files('pytest_selective').joinpath('py.typed').is_file(); "
                     "from importlib.metadata import entry_points; "
-                    "assert any(e.value == 'pytest_selective.plugin' for e in entry_points(group='pytest11'))",
+                    "assert any(e.value == 'pytest_selective.plugin' for e in entry_points(group='pytest11')); "
+                    "from pytest_selective.parse_batch import parse_records; "
+                    "sources = [b'import application', b'pytest_plugins = [\"support\"]']; "
+                    "assert parse_records(sources, 2) == parse_records(sources, 1)",
                 ],
                 cwd=folder,
                 check=True,

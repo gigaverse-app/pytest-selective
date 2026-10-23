@@ -247,12 +247,19 @@ class DependencyComment(ImpactModel):
 
 
 class ParsedSource(ImpactModel):
+    registered_plugins: list[str] | None = Field(default_factory=list)
     django_urlconf: str | None = None
     imports: list[ImportSpec]
     strings: list[str]
     opaque: list[str]
     pytest_plugin: bool
     dependencies: list[DependencyComment] = Field(default_factory=list)
+
+
+class DeferredAssignments(ImpactModel):
+    """Blob-local facts; consumers and repository paths are never cached here."""
+
+    values: dict[str, list[str] | None]
 
 
 class GitTree(ImpactModel):
@@ -262,6 +269,7 @@ class GitTree(ImpactModel):
 
 
 class Snapshot(ImpactModel):
+    plugin_tests: list[str] = Field(default_factory=list)
     tree: str
     files: dict[str, str]
     edges: dict[str, list[str]]
