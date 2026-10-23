@@ -235,7 +235,7 @@ and evidence checks.
 inspectable JSON plans, runtime dependency audits, and planning before application
 startup. Both use static dependency analysis; choose
 based on your workflow, and validate selection against your own suite.
-See the [lessons from pytest-impacted](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/pytest-impacted.md)
+See the [comparison with pytest-impacted](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/comparison-pytest-impacted.md)
 for portability and Git-resolution improvements adopted from that comparison.
 
 ## Contribute

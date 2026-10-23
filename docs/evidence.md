@@ -42,7 +42,9 @@ the CI badge reports workflow status, not a universal correctness guarantee.
 
 ## Safety boundaries
 
-- Plans describe tracked files in committed base and head trees, not local edits.
+- Committed plans compare explicit base and head trees. Local workflows use
+  `--working-tree` or `pytest --selective` to include a private snapshot of local
+  edits; see [local development](local-development.md) for the input boundary.
 - Static imports and configured dependencies model reachability. Dynamic plugin
   discovery, external state, environment variables, and undeclared file reads
   may require explicit edges or full-suite policy.
