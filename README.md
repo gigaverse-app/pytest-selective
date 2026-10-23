@@ -3,6 +3,7 @@
 **Run affected Python tests. See why they matter.**
 
 [![CI](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/pytest-selective)](https://pypi.org/project/pytest-selective/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://github.com/gigaverse-app/pytest-selective/blob/main/pyproject.toml)
 [![Typed](https://img.shields.io/badge/typing-py.typed-3776AB)](https://github.com/gigaverse-app/pytest-selective/blob/main/src/pytest_selective/py.typed)
 [![Ruff](https://img.shields.io/badge/code%20style-Ruff-D7FF64?logo=ruff&logoColor=black)](https://github.com/gigaverse-app/pytest-selective/blob/main/.pre-commit-config.yaml)
@@ -122,13 +123,20 @@ hold. It uses a temporary repository and leaves your checkout untouched.
 
 ## Install in your project
 
-Until the first PyPI release, install from GitHub using Python 3.11+:
+Install from PyPI using Python 3.11+:
+
+```bash
+pip install "pytest-selective>=0.1.0,<0.2.0"
+```
+
+For source development, GitHub installation is also available:
 
 ```bash
 pip install "pytest-selective @ git+https://github.com/gigaverse-app/pytest-selective.git"
 ```
 
-Pin a reviewed commit in CI. Then follow the
+Use compatible package ranges and `@v0.1` Actions tags in CI; lockfiles retain
+exact resolved artifacts. Then follow the
 [configuration walkthrough](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/configuration.md)
 to declare module roots, test roots, collection-policy fingerprints, and non-Python inputs.
 
@@ -138,7 +146,8 @@ pytest-selective affected --config .github/test-impact.json \
   --explanation-output explanation.json
 ```
 
-Planning reads **committed Git trees**. Uncommitted edits are outside the plan.
+`affected` reads **committed Git trees** by default. Use `affected --working-tree`
+or `pytest-selective run` to include uncommitted edits.
 The report distinguishes `scoped`, `full`, and `none`; an empty selection must
 skip pytest, because invoking pytest without paths runs the whole suite.
 
