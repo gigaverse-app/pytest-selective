@@ -2,6 +2,11 @@
 
 **Run affected Python tests. See why they matter.**
 
+Our [Windows critical-path experiment](docs/benchmarks/2026-10-23-windows-saleor.md)
+cut the full validation gate from **249s to 185s** against a fresh unchanged
+control, preserving every existing case, the full platform matrix and coverage.
+The report separates test execution from runner variation and includes raw evidence.
+
 [![CI](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://github.com/gigaverse-app/pytest-selective/blob/main/pyproject.toml)
 [![Alpha](https://img.shields.io/badge/status-alpha-E9A23B)](https://github.com/gigaverse-app/pytest-selective/blob/main/CHANGELOG.md)
