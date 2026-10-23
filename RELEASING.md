@@ -29,12 +29,12 @@ check out or build source with that permission.
 
 ## Prepare and publish
 
-1. Update `pyproject.toml` and `CHANGELOG.md`, run `uv lock`, and open a PR.
+1. Let Release Please open or update the release PR, which updates the version,
+   changelog and the root package entry in `uv.lock`.
 2. Require green CI: hooks, Linux/Windows/macOS tests, minimum pytest, metadata,
    and isolated wheel/sdist installation. Review the uploaded evidence.
-3. Merge the reviewed change. Create tag `v<version>` on that commit, such as
-   `v0.1.0`, and publish its GitHub Release. Normal versions are regular releases;
-   mark alpha, beta and release-candidate versions as prereleases.
+3. Merge the release PR when ready to publish. After successful main CI,
+   Release Please creates tag `v<version>` and publishes its GitHub release.
 4. `release.yml` verifies that the tag exactly matches the package version,
    reruns the reusable CI workflow on that revision, and publishes its tested
    wheel and sdist with attestations through the `pypi` environment.
@@ -61,3 +61,54 @@ prereleases are the only available versions). Add a live
 PyPI version badge linked to the project page once the package is available.
 Keep the Git source-install alternative. Do not claim PyPI availability or show
 a success badge before verifying the published artifact.
+
+## Conventional Commits to PyPI
+
+[Release Please](https://github.com/googleapis/release-please-action) owns version
+calculation and the release PR. `.github/workflows/release-please.yml` runs after
+successful push CI on the current `main` head. Ordinary feature/fix merges update
+the pending release PR; merging that PR is the publishing decision.
+
+| Commit header | Version change |
+| --- | --- |
+| `fix:`, `perf:`, `revert:` | Patch, such as 0.1.2 to 0.1.3 |
+| `feat:` | Minor, such as 0.1.2 to 0.2.0 |
+| `feat!:`, `fix!:`, or a `BREAKING CHANGE:` footer | Minor below 1.0; major at 1.0 and later |
+| `docs:`, `style:`, `refactor:`, `test:`, `build:`, `ci:`, `chore:` without breaking changes | No release on their own |
+
+Squash with the checked PR title and retain breaking-change details in the body.
+No automatic publishing happens just because an ordinary feature PR merges.
+
+```text
+Conventional Commit -> successful main CI -> Release Please release PR
+Maintainer merges release PR -> successful main CI -> tag + GitHub release
+GitHub release -> Publish -> exact-tag full CI -> tested artifacts -> PyPI OIDC
+```
+
+The Python release strategy updates `pyproject.toml` and `CHANGELOG.md`; its
+standard TOML extra-file updater changes only this project's version in
+`uv.lock`. Dependency versions are not upgraded. The manifest starts at the
+existing published version, and `bootstrap-sha` bounds the first release's
+history to that release commit.
+
+## Release automation setup and recovery
+
+The `release-automation` environment permits only the `main` branch. Share the
+existing organization `GV_CI_CROSS_REPO_TOKEN` secret with this repository;
+the credential needs Contents and Pull requests write access. It creates release
+PRs and GitHub releases so their events trigger the normal CI and Publish
+workflows. Do not replace it with `GITHUB_TOKEN`, which suppresses those events.
+The existing `pypi` environment remains restricted to `v*` tags.
+
+PyPI authentication remains [Trusted Publishing](https://docs.pypi.org/trusted-publishers/using-a-publisher/):
+no PyPI API token is stored. The publisher identity remains this repository's
+`release.yml` workflow and `pypi` environment. Only its isolated upload job
+receives `id-token: write`.
+
+If release preparation fails, fix the cause and rerun the successful main CI run
+to trigger Release Please again. If publication fails after a tag was created,
+rerun the failed Publish run, or dispatch Publish on that exact `v<version>`
+tag. It rechecks the tag/version match and full CI before uploading. Never move
+an existing full release tag or reuse a published version for changed contents.
+Prereleases remain a deliberate manual version/tag/release path; this automation
+proposes normal SemVer releases.
