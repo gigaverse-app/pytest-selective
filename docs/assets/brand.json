@@ -1,8 +1,13 @@
 {
   "name": "pytest-selective",
   "tagline": "Run affected Python tests. See why they matter.",
-  "color": "#4ADE80",
+  "color": "#38BDF8",
   "repository": "pytest-selective",
   "logo_aliases": [],
-  "sticky": false
+  "sticky": false,
+  "accent": "#86EFAC",
+  "banner_lines": [
+    "Run affected tests.",
+    "See exactly why they matter."
+  ]
 }

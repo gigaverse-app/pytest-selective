@@ -1,1 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="pytest-selective logo"><title>pytest-selective</title><rect x="1" y="1" width="62" height="62" rx="15" fill="#151D2C"/><g fill="none" stroke="#4ADE80" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 13h38L37 31v17l-10 6V31z"/><path d="m42 43 5 5 10-12"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="pytest-selective logo">
+<title>pytest-selective: the test magnet</title>
+<defs><linearGradient id="brand-tile" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#38BDF8"/><stop offset="0.5" stop-color="#2563EB"/><stop offset="1" stop-color="#1E3A8A"/></linearGradient></defs>
+<rect width="64" height="64" rx="15" fill="url(#brand-tile)"/>
+<path d="M36 18H26c-9 0-15 6-15 14s6 14 15 14h10" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="butt"/>
+<path d="M30 18h9M30 46h9" stroke="#86EFAC" stroke-width="8"/>
+<rect x="44" y="22" width="8" height="8" rx="2" fill="#86EFAC" transform="rotate(-12 48 26)"/>
+<rect x="49" y="36" width="7" height="7" rx="2" fill="#FFFFFF" transform="rotate(16 52 39)"/>
+<path d="m41 26 2 1m-1 11 3-1" stroke="#BAE6FD" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

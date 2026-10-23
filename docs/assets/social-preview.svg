@@ -1,10 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-label="pytest-selective: Run affected Python tests. See why they matter.">
 <title>pytest-selective: Run affected Python tests. See why they matter.</title>
+<defs><linearGradient id="brand-glow" x1="0" y1="0" x2="1" y2="0">
+<stop stop-color="#38BDF8" stop-opacity="0.21"/><stop offset="0.55" stop-color="#38BDF8" stop-opacity="0"/>
+</linearGradient><radialGradient id="brand-aura" cx="0.1" cy="0.2" r="0.85">
+<stop stop-color="#38BDF8" stop-opacity="0.23"/><stop offset="0.75" stop-color="#38BDF8" stop-opacity="0"/>
+</radialGradient></defs>
 <rect width="1280" height="640" fill="#0D1117"/>
-<rect x="40" y="40" width="1200" height="560" rx="28" fill="#111827" stroke="#30363D" stroke-width="2"/>
-<g transform="translate(90 100) scale(2.5)"><svg x="0" y="0" width="64" height="64" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="pytest-selective logo"><title>pytest-selective</title><rect x="1" y="1" width="62" height="62" rx="15" fill="#151D2C"/><g fill="none" stroke="#4ADE80" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 13h38L37 31v17l-10 6V31z"/><path d="m42 43 5 5 10-12"/></g></svg>
+<rect width="1280" height="640" fill="url(#brand-aura)"/>
+<g transform="translate(80 96) scale(2.5)"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="pytest-selective logo">
+<title>pytest-selective: the test magnet</title>
+<defs><linearGradient id="brand-tile" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#38BDF8"/><stop offset="0.5" stop-color="#2563EB"/><stop offset="1" stop-color="#1E3A8A"/></linearGradient></defs>
+<rect width="64" height="64" rx="15" fill="url(#brand-tile)"/>
+<path d="M36 18H26c-9 0-15 6-15 14s6 14 15 14h10" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="butt"/>
+<path d="M30 18h9M30 46h9" stroke="#86EFAC" stroke-width="8"/>
+<rect x="44" y="22" width="8" height="8" rx="2" fill="#86EFAC" transform="rotate(-12 48 26)"/>
+<rect x="49" y="36" width="7" height="7" rx="2" fill="#FFFFFF" transform="rotate(16 52 39)"/>
+<path d="m41 26 2 1m-1 11 3-1" stroke="#BAE6FD" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
 </g>
-<text x="90" y="370" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="76" font-weight="700" fill="#4ADE80">pytest-selective</text>
-<text x="90" y="435" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="30" fill="#E5E7EB">Run affected Python tests. See why they matter.</text>
-<text x="90" y="548" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="23" fill="#9CA3AF">github.com/gigaverse-app/pytest-selective</text>
+<text x="290" y="200" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="68" font-weight="800" letter-spacing="-2" fill="#F0F6FC">pytest<tspan fill="#38BDF8">-selective</tspan></text>
+<text x="290" y="256" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="25" fill="#A9B5C4">Python test impact analysis</text>
+<text x="80" y="420" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="34" font-weight="600" fill="#F0F6FC">Run affected tests.</text>
+<text x="80" y="470" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="34" font-weight="600" fill="#86EFAC">See exactly why they matter.</text>
+<g transform="translate(730 335) scale(3.25)"><g fill="none" stroke="#38BDF8" stroke-width="1.6" opacity="0.8">
+<path d="M20 29h13c12 0 7-14 25-14M33 29h39M33 29c12 0 7 16 25 16"/>
+</g><rect x="5" y="19" width="19" height="21" rx="4" fill="#2563EB"/>
+<path d="m10 29 3 3 6-7" fill="none" stroke="#FFFFFF" stroke-width="2"/><rect x="63" y="10" width="10" height="10" rx="2" fill="#86EFAC"/><rect x="77" y="10" width="10" height="10" rx="2" fill="#243344"/><rect x="91" y="10" width="10" height="10" rx="2" fill="#243344"/><rect x="105" y="10" width="10" height="10" rx="2" fill="#243344"/><rect x="119" y="10" width="10" height="10" rx="2" fill="#243344"/><rect x="63" y="25" width="10" height="10" rx="2" fill="#243344"/><rect x="77" y="25" width="10" height="10" rx="2" fill="#86EFAC"/><rect x="91" y="25" width="10" height="10" rx="2" fill="#243344"/><rect x="105" y="25" width="10" height="10" rx="2" fill="#243344"/><rect x="119" y="25" width="10" height="10" rx="2" fill="#243344"/><rect x="63" y="40" width="10" height="10" rx="2" fill="#86EFAC"/><rect x="77" y="40" width="10" height="10" rx="2" fill="#243344"/><rect x="91" y="40" width="10" height="10" rx="2" fill="#243344"/><rect x="105" y="40" width="10" height="10" rx="2" fill="#243344"/><rect x="119" y="40" width="10" height="10" rx="2" fill="#243344"/></g>
+<text x="80" y="600" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="22" fill="#8B949E">github.com/gigaverse-app/pytest-selective</text>
 </svg>
