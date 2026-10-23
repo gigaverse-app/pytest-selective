@@ -42,6 +42,12 @@ check out or build source with that permission.
    environment: `pip install 'pytest-selective==<version>'`. Check
    `pytest-selective --help` and run the tutorial using that installation.
 
+After a normal release publishes successfully, the workflow advances the
+compatible Actions tag (for example, `v0.1` for `v0.1.0`). Consumers can use
+`@v0.1` to receive patch releases. Package requirements use compatible ranges
+such as `pytest-selective>=0.1.0,<0.2.0`; lockfiles retain resolved versions and
+artifact hashes. Prereleases do not advance the Actions tag.
+
 Manual dispatch is available for a version-matching **tag**, not a branch. The
 workflow intentionally does not skip existing uploads: investigate a partial
 release instead of silently treating it as successful. Published versions are
