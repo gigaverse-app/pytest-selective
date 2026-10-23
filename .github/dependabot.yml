@@ -2,6 +2,8 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
+    commit-message:
+      prefix: ci
     schedule:
       interval: weekly
     groups:
@@ -9,6 +11,8 @@ updates:
         patterns: ["*"]
   - package-ecosystem: uv
     directory: /
+    commit-message:
+      prefix: build
     schedule:
       interval: weekly
     groups:
