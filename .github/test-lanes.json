@@ -18,14 +18,14 @@
       ],
       "inputs": [
         "src/**",
-        "scripts/**",
-        "tests/**",
-        ".pre-commit-config.yaml",
-        ".python-version"
+        "tests/**"
       ]
     }
   },
   "global_inputs": [
+    "scripts/**",
+    ".pre-commit-config.yaml",
+    ".python-version",
     "**/pyproject.toml",
     "pyproject.toml",
     "**/uv.lock",

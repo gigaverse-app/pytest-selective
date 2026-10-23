@@ -1,5 +1,8 @@
 """Run a real Git -> selection -> pytest journey in a disposable repository."""
 
+# gv:test-dependency: src/pytest_selective/__main__.py
+# gv:test-dependency: src/pytest_selective/plugin.py
+
 import argparse
 import json
 import os

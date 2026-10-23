@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from pytest_selective.ci import Lane, LaneConfig, main, plan
 from pytest_selective.impact_graph import DependencyDeclarationError
-from pytest_selective.impact_models import ImpactConfig
+from pytest_selective.impact_models import DependencyRule, ImpactConfig
 from tests.testing.git_repo import commit, init, write
 
 
@@ -50,6 +50,91 @@ def test_missing_base_and_explicit_checkpoints_run_every_lane(repository):
     assert fallback.lanes == {"unit": True, "live": True}
     assert "fallback" in fallback.reason
     assert plan(repo, config, base, base, full=True).lanes == fallback.lanes
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".github/README.md",
+        ".github/PULL_REQUEST_TEMPLATE/change.md",
+        ".github/workflows/notes.MD",
+        ".github/actions/setup/README.markdown",
+    ],
+)
+@pytest.mark.parametrize("operation", ["add", "edit", "delete"])
+def test_default_github_markdown_changes_skip_lanes(repository, path, operation):
+    repo, config, base = repository
+    if operation != "add":
+        write(repo, path, "Before\n")
+        base = commit(repo)
+    if operation == "delete":
+        (repo / path).unlink()
+    else:
+        write(repo, path, "After\n")
+    head = commit(repo)
+    # Serializing default settings must preserve the default policy.
+    config = LaneConfig.model_validate_json(config.model_dump_json())
+    result = plan(repo, config, base, head)
+    assert result.lanes == {"unit": False, "live": False}, result.lane_reasons
+    assert plan(repo, config, base, head, full=True).lanes == {"unit": True, "live": True}
+    assert plan(repo, config, "missing-ref", head).lanes == {"unit": True, "live": True}
+
+
+@pytest.mark.parametrize(
+    "declaration", ["comment", "sidecar", "central", "lane", "global", "graph_global", "github_glob"]
+)
+def test_explicit_github_markdown_dependencies_still_select_their_readers(repository, declaration):
+    repo, config, _ = repository
+    path = ".github/README.md"
+    write(repo, path, "Before\n")
+    if declaration == "comment":
+        write(repo, "src/sample/value.py", f"# gv:test-dependency: {path}\nVALUE = 1")
+    elif declaration == "sidecar":
+        write(
+            repo,
+            "tests/unit/test_value.py.gv-dependency.yaml",
+            f"dependencies:\n  - inputs: ['//{path}']\n    kind: content\n",
+        )
+    elif declaration == "lane":
+        config.lanes["unit"].inputs = [path]
+    elif declaration == "central":
+        config.graph.dependencies = [DependencyRule(readers=["tests/unit/test_value.py"], inputs=[path])]
+    elif declaration == "graph_global":
+        config.graph.global_inputs = [path]
+    else:
+        config.global_inputs = [path if declaration == "global" else ".github/**"]
+    base = commit(repo)
+    write(repo, path, "After\n")
+    config = LaneConfig.model_validate_json(config.model_dump_json())
+    result = plan(repo, config, base, commit(repo))
+    assert result.lanes == {"unit": True, "live": declaration in {"global", "graph_global", "github_glob"}}
+
+
+@pytest.mark.parametrize(
+    "path",
+    [".github/workflows/ci.yml", ".github/actions/setup/action.yaml", ".github/run-tests", ".github/helpers/check.py"],
+)
+@pytest.mark.parametrize("operation", ["edit", "delete", "rename_to_markdown"])
+def test_default_github_execution_changes_still_run_every_lane(repository, path, operation):
+    repo, config, _ = repository
+    write(repo, path, "# Before\n")
+    base = commit(repo)
+    if operation == "delete":
+        (repo / path).unlink()
+    elif operation == "rename_to_markdown":
+        (repo / path).rename(repo / f"{path}.md")
+    else:
+        write(repo, path, "# After\n")
+    result = plan(repo, config, base, commit(repo))
+    assert result.lanes == {"unit": True, "live": True}
+
+
+def test_explicit_global_inputs_still_replace_builtin_github_policy(repository):
+    repo, config, base = repository
+    config.global_inputs = []
+    config = LaneConfig.model_validate_json(config.model_dump_json())
+    write(repo, ".github/workflows/unrelated.yml", WORKFLOW)
+    assert plan(repo, config, base, commit(repo)).lanes == {"unit": False, "live": False}
 
 
 def test_deletions_keep_old_dependents(repository):

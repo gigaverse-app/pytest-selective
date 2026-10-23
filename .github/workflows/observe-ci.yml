@@ -22,3 +22,4 @@ jobs:
       post-sticky: true
       required-gates-json: '[{"kind":"actions_job","job_name":"Validation gate"}]'
       analyze-critical-path: true
+      test-selection-artifact: test-impact-explanation

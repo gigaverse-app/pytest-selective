@@ -159,8 +159,36 @@ A skipped lane whose workflow file changed elsewhere reports
 `unchanged job: <path>#<job>`. A job id that the workflow does not define is a
 declaration error (exit 2) on every plan, and a workflow that does not parse
 runs every lane. The workflow path must not match
-`global_inputs`, which runs every lane first; the default `.github/**` does, so
-a config with a job input must set `global_inputs` explicitly.
+`global_inputs`, which runs every lane first. The built-in policy includes
+non-Markdown files under `.github/`, so a config with a job input must set
+`global_inputs` explicitly.
+
+### Documentation and default lane inputs
+
+Unreferenced documentation changes select no tests. The whole-lane planner's
+built-in global-input policy covers dependency/environment files and non-Markdown
+files under `.github/`, including workflows, actions, helpers and extensionless
+scripts. Files ending in `.md` or `.markdown` (case-insensitive) under `.github/`
+do not trigger lanes merely because of their location. This applies to additions,
+edits and deletions; removing or renaming an execution file still triggers lanes.
+
+This default does not suppress dependencies. A `gv:test-dependency` comment,
+dependency sidecar, central dependency rule, or lane `inputs` entry still selects
+the consuming tests or lanes. Explicit `global_inputs` globs also retain their
+full meaning: declaring `[".github/**"]` includes Markdown and runs every lane.
+
+Omit `global_inputs` or use `null` for the built-in policy. An explicit list
+replaces that policy; `[]` disables lane-level global inputs while graph-level
+dependencies and environment inputs still apply. Serialized `LaneConfig` defaults
+now preserve `global_inputs: null` instead of expanding the old `.github/**` glob.
+Existing configs that explicitly contain that glob keep their declared behavior;
+remove the override to adopt the new default. Full checkpoints and operational
+failure fallbacks still run every lane. Invalid declarations still fail visibly.
+
+The planner only selects tests and lanes. Workflow commands outside its admission
+conditions, such as package-install smoke checks, still run independently. Wire
+those runtime checks to the relevant lane decision; keep README metadata checks
+when the README is embedded in the built package.
 
 The action returns a `lanes` JSON object. Expose it as a planning-job output,
 then gate each expensive job with `always() && !cancelled()` and either a true

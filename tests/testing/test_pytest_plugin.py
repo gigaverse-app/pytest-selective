@@ -1,5 +1,8 @@
 """Exercise the installed pytest entry point in real, dirty Git repositories."""
 
+# gv:test-dependency: src/pytest_selective/plugin.py
+# gv:test-dependency: src/pytest_selective/__main__.py
+
 import os
 import subprocess
 import sys

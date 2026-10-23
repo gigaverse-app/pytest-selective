@@ -51,7 +51,18 @@ class Lane(ImpactModel):
 class LaneConfig(ImpactModel):
     graph: ImpactConfig
     lanes: dict[str, Lane]
-    global_inputs: list[str] = Field(default_factory=lambda: [*DEFAULT_GLOBAL_INPUTS, ".github/**"])
+    # None keeps the built-in policy distinct from an adopter's explicit globs,
+    # including after JSON serialization. Explicit declarations always win.
+    global_inputs: list[str] | None = None
+
+    def is_global_input(self, path: str) -> bool:
+        if self.global_inputs is not None:
+            return matches(path, self.global_inputs)
+        if path.startswith(".github/"):
+            # Markdown is documentation unless a reader or adopter declares it.
+            # Retain unknown/extensionless CI inputs rather than an extension allowlist.
+            return Path(path).suffix.lower() not in {".md", ".markdown"}
+        return matches(path, list(DEFAULT_GLOBAL_INPUTS))
 
     @field_validator("lanes")
     @classmethod
@@ -69,7 +80,7 @@ class LaneConfig(ImpactModel):
         for lane in self.lanes.values():
             for value in lane.inputs:
                 scoped = job_input(value)
-                if scoped and matches(scoped[0], self.global_inputs):
+                if scoped and self.is_global_input(scoped[0]):
                     raise ValueError(
                         f"{value!r} cannot narrow: {scoped[0]} matches a global input, which runs every lane; "
                         "set global_inputs without it"
@@ -163,7 +174,7 @@ def plan(repo: Path, config: LaneConfig, base: str, head: str, *, full: bool = F
                 selected=report.selected,
                 changed=report.changed,
             )
-        global_paths = [path for path in report.changed if matches(path, config.global_inputs)]
+        global_paths = [path for path in report.changed if config.is_global_input(path)]
         changed = set(report.changed)
         workflows = WorkflowJobs(repo, base, head)
         lanes = {}

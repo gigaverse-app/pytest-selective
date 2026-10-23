@@ -1,5 +1,8 @@
 """Exercise the editing guard through real Git histories and its public CLI."""
 
+# gv:test-dependency: src/pytest_selective/pytest_expansion.py
+# gv:test-dependency: actions/pytest-expansion/action.yml
+
 import os
 import subprocess
 import sys

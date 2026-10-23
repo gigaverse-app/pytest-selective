@@ -1,5 +1,8 @@
 """Local selection runs real dirty repositories without staging the user's work."""
 
+# gv:test-dependency: src/pytest_selective/__main__.py
+# gv:test-dependency: src/pytest_selective/plugin.py
+
 import errno
 import json
 import os
