@@ -23,6 +23,7 @@ plugins, application imports and wider fixture scopes require a nearby reason:
 # gv:test-requires-expansion-reason
 import pytest
 
+
 # pytest-global: Every domain shares this clock; a local clock would disagree.
 @pytest.fixture(scope="session")
 def clock():
@@ -48,6 +49,7 @@ fixtures and helpers in ordinary modules and enforce that boundary in a repo tes
 ```python
 from pathlib import Path
 from pytest_selective.hygiene import assert_test_file_isolation
+
 
 def test_test_files_are_independent():
     assert_test_file_isolation(Path.cwd(), [Path("tests")])

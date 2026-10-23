@@ -60,6 +60,16 @@ def check(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def test_standalone_guard_preserves_findings_under_warnings_as_errors(repo: Path, monkeypatch) -> None:
+    monkeypatch.setenv("PYTHONWARNINGS", "error")
+    write(repo, "conftest.py", BASE + '\nPATTERN = "\\d"\n@pytest.fixture\ndef customer(): return 2\n')
+    result = check(repo)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "conftest.py:" in result.stdout
+    assert "customer" in result.stdout
+    assert "SyntaxError" not in result.stderr
+
+
 @pytest.mark.parametrize(
     "addition",
     [

@@ -30,6 +30,9 @@ infrastructure. **Alpha:** the API may change before 1.0.
 [Evidence and limits](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/evidence.md) ·
 [Keep selection narrow](docs/pytest-hygiene.md)
 
+[Run local edits before committing](docs/local-development.md) ·
+[Comparison with pytest-impacted](docs/comparison-pytest-impacted.md)
+
 CI-esta now uses this selector in its own CI: a matched README-only pair
 used **49 instead of 105 runner-seconds (53.3% less)** while keeping quality,
 routing and package checks. Its reports now compute dependency critical paths

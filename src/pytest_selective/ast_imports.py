@@ -1,9 +1,23 @@
-"""Extract Python import statements without walking expression subtrees."""
+"""Parse Python for static analysis and extract imports without walking expressions."""
 
 import ast
+import warnings
 from collections import deque
 from collections.abc import Iterator
 from pathlib import Path
+
+
+def parse_ast(source: str | bytes, filename: str = "<unknown>") -> ast.Module:
+    """Parse source independently of the caller's warning policy.
+
+    Compilation warnings belong to test execution, not static analysis: promoting
+    an invalid escape warning to an error would otherwise erase valid imports.
+    Bytes retain Python's encoding-cookie detection, and actual syntax errors
+    propagate unchanged. The caller's warning filters are restored on either path.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return ast.parse(source, filename=filename)
 
 
 def iter_imports(tree: ast.Module) -> Iterator[ast.Import | ast.ImportFrom]:

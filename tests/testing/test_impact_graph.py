@@ -5,6 +5,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import warnings
 from collections.abc import Callable
 from pathlib import Path
 
@@ -67,6 +68,28 @@ def test_transitive_imports_select_only_dependents(repo: Path, config: ImpactCon
         "src/pkg/helper.py",
         "src/pkg/leaf.py",
     ]
+
+
+@pytest.mark.parametrize("warning_policy", ["error", "always"])
+def test_analysis_warning_policy_does_not_change_selection(
+    repo: Path, config: ImpactConfig, cache: GraphCache, warning_policy: str
+) -> None:
+    # Valid Python with an invalid escape still imports its dependency. Analysis
+    # must leave warnings to execution, including when the caller uses -Werror.
+    write(repo, "src/pkg/helper.py", 'from .leaf import VALUE\nPATTERN = "\\d"\n')
+    base = commit(repo)
+    write(repo, "src/pkg/leaf.py", "VALUE = 2")
+    head = commit(repo)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter(warning_policy)
+        assert affected(repo, base, head, config, cache).selected == ["tests/left/test_one.py"]
+        snapshot = cache.snapshot(repo, head, config)
+        assert explanation(snapshot, "tests/left/test_one.py", "src/pkg/leaf.py") == [
+            "tests/left/test_one.py",
+            "src/pkg/helper.py",
+            "src/pkg/leaf.py",
+        ]
+    assert caught == []
 
 
 @pytest.mark.parametrize("through_conftest", [False, True])
@@ -1094,6 +1117,8 @@ def test_output_only_open_does_not_claim_source_input(mode: str) -> None:
 def test_policy_files_follow_declared_dependencies(
     repo: Path, config: ImpactConfig, cache: GraphCache, path: str
 ) -> None:
+    # This consumer explicitly owns a narrower environment-input contract.
+    config.global_inputs = []
     config.dependencies = [DependencyRule(readers=["tests/left/test_one.py"], inputs=["**"], reason="data reader")]
     write(repo, path, config.model_dump_json() if path == "config/selection.json" else "")
     base = commit(repo)
@@ -1862,16 +1887,22 @@ def deferred_graph(repo: Path, config: ImpactConfig) -> ImpactConfig:
     )
 
 
+@pytest.mark.parametrize("warning_policy", ["error", "always"])
 def test_deferred_names_reach_their_consumers_not_every_user_of_the_file_naming_them(
-    repo: Path, deferred_graph: ImpactConfig, cache: GraphCache
+    repo: Path, deferred_graph: ImpactConfig, cache: GraphCache, warning_policy: str
 ) -> None:
+    settings = (repo / "src/pkg/settings.py").read_text(encoding="utf-8")
+    write(repo, "src/pkg/settings.py", settings + 'PATTERN = "\\d"\n')
     base = commit(repo)
     write(repo, "src/pkg/billing.py", "def charge(): raise RuntimeError('broken')\n")
     head = commit(repo)
 
-    assert affected(repo, base, head, deferred_graph, cache).selected == ["tests/worker/test_worker.py"]
-    # The file holding the names still reaches every test.
-    assert affected(repo, head, head, deferred_graph, cache, extra_files=["src/pkg/settings.py"]).mode == "full"
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter(warning_policy)
+        assert affected(repo, base, head, deferred_graph, cache).selected == ["tests/worker/test_worker.py"]
+        # The file holding the names still reaches every test.
+        assert affected(repo, head, head, deferred_graph, cache, extra_files=["src/pkg/settings.py"]).mode == "full"
+    assert caught == []
 
 
 def test_without_a_rule_names_in_a_global_module_stay_global(

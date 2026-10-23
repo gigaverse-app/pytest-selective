@@ -2,12 +2,40 @@
 
 import ast
 import sys
+import warnings
 from textwrap import dedent
 from unittest.mock import patch
 
 import pytest
 
-from pytest_selective.ast_imports import iter_imports
+from pytest_selective.ast_imports import iter_imports, parse_ast
+
+
+@pytest.mark.parametrize("source", ['value = "\\d"', 'value = "\\d"\nif :'])
+def test_analysis_restores_warning_policy_even_after_syntax_failure(source: str) -> None:
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("error")
+        filters = warnings.filters.copy()
+        if source.endswith("if :"):
+            with pytest.raises(SyntaxError) as error:
+                parse_ast(source, filename="example.py")
+            assert error.value.filename == "example.py"
+            assert error.value.lineno == 2
+        else:
+            assert isinstance(parse_ast(source), ast.Module)
+        assert warnings.filters == filters
+        with pytest.raises(UserWarning, match="caller policy"):
+            warnings.warn("caller policy", stacklevel=1)
+    assert caught == []
+
+
+def test_analysis_preserves_python_encoding_cookie() -> None:
+    tree = parse_ast(b'# coding: latin-1\nlabel = "caf\xe9"\nimport dependency\n')
+    assignment = tree.body[0]
+    assert isinstance(assignment, ast.Assign)
+    assert isinstance(assignment.value, ast.Constant)
+    assert assignment.value.value == "café"
+    assert [node.names[0].name for node in iter_imports(tree)] == ["dependency"]
 
 
 @pytest.mark.parametrize(

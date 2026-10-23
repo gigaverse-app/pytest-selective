@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from pytest_selective.ast_imports import import_candidates, iter_imports
+from pytest_selective.ast_imports import import_candidates, iter_imports, parse_ast
 from pytest_selective.impact_declarations import SIDECAR_SUFFIX, match_inputs
 from pytest_selective.impact_graph import (
     ModuleIndex,
@@ -141,7 +141,7 @@ def _statement(node: ast.stmt) -> _Statement:
 
 def _statements(source: bytes, label: str) -> list[_Statement]:
     try:
-        tree = ast.parse(source)
+        tree = parse_ast(source)
     except (SyntaxError, ValueError) as error:
         raise NotNarrowed(f"{label} does not parse: {error}") from error
     statements = [_statement(node) for node in tree.body]
@@ -297,7 +297,7 @@ def reads_unnamed(
     if not _may_bind(source, [*modules, *accessors]):
         return False
     try:
-        tree = ast.parse(source)
+        tree = parse_ast(source)
     except (SyntaxError, ValueError):
         return True
     bound, unnamed = _bindings(tree, packages, accessors, modules)
@@ -322,7 +322,7 @@ def _code(source: bytes) -> bytes:
     A file that does not tokenize or parse comes back whole, so its textual matches still count.
     """
     try:
-        tree = ast.parse(source)
+        tree = parse_ast(source)
         tokens = list(tokenize.tokenize(io.BytesIO(source).readline))
     except (SyntaxError, ValueError, tokenize.TokenError):
         return source
@@ -370,7 +370,7 @@ def externally_read_names(module_source: bytes, roots: Iterable[Path], name_patt
     comment still counts.
     """
     accepted = re.compile(name_pattern)
-    tree = ast.parse(module_source)
+    tree = parse_ast(module_source)
     names = {name for node in tree.body for name in _statement(node).binds if accepted.fullmatch(name)}
     if not names:
         return set()

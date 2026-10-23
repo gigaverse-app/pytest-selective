@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from pytest_selective.input_policy import DEFAULT_GLOBAL_INPUTS
 from pytest_selective.test_inventory import TEST_FILE_PATTERNS
 
 #: Marks a graph node that stands for a file's bytes: its readers inspect it without executing it.
@@ -176,6 +177,8 @@ class AuditExemption(ImpactModel):
 
 
 class ImpactConfig(ImpactModel):
+    #: Environment changes can affect every test without any Python import edge.
+    global_inputs: list[str] = Field(default_factory=lambda: list(DEFAULT_GLOBAL_INPUTS))
     #: Read by the audit only, so excluded from the graph's cache signature.
     audit_exemptions: list[AuditExemption] = Field(default_factory=list)
     #: The startup floor may not grow past this many files: `floor-budget` fails CI when a PR
@@ -221,7 +224,7 @@ class ImpactConfig(ImpactModel):
             raise ValueError("name_scoped_modules declares a file more than once")
         return modules
 
-    @field_validator("module_roots", "test_roots", "always_run", "ignored_changes")
+    @field_validator("module_roots", "test_roots", "always_run", "ignored_changes", "global_inputs")
     @classmethod
     def relative_paths(cls, values: list[str]) -> list[str]:
         if any(

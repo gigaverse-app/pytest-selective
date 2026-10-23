@@ -36,9 +36,11 @@ cannot capture. Keep global inputs explicit in consumer lane configs. A blanket
 `.github/**` can force every lane for PR templates and reporting edits; deleting
 all CI inputs instead would miss real execution changes.
 
-Planning reads committed base/head trees. For uncommitted local edits, use the
-existing full test command unless the user has authorized a suitable commit or
-isolated snapshot workflow. Missing history/operational failures must run the
+Planning normally reads committed base/head trees. For ordinary local pytest
+suites, use `pytest-selective run --config CONFIG -- PYTEST_OPTIONS` or inspect
+`affected --working-tree`; these use a private index without committing or
+changing the user's staging area. Use full runs for custom collection and
+whole-suite coverage requirements. Missing history/operational failures must run the
 complete configured roots. Repair invalid declarations; never consume a stale
 report after a failed command. A successful `none` plan skips pytest: invoking
 pytest with no paths runs the whole suite.
