@@ -1,13 +1,6 @@
 ![pytest-selective: Run affected Python tests. See why they matter.](https://raw.githubusercontent.com/gigaverse-app/pytest-selective/main/docs/assets/banner.png?v=17de2a0b7412)
 
 # pytest-selective
-
-[![Documentation](https://readthedocs.org/projects/pytest-selective/badge/?version=latest)](https://pytest-selective.readthedocs.io/en/latest/)
-
-[Read the documentation](https://pytest-selective.readthedocs.io/en/latest/) · [Related tools](https://pytest-selective.readthedocs.io/en/latest/ecosystem/)
-
-**Run affected Python tests. See why they matter.**
-
 [![CI](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/pytest-selective)](https://pypi.org/project/pytest-selective/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://github.com/gigaverse-app/pytest-selective/blob/main/pyproject.toml)
@@ -15,6 +8,11 @@
 [![Ruff](https://img.shields.io/badge/code%20style-Ruff-D7FF64?logo=ruff&logoColor=black)](https://github.com/gigaverse-app/pytest-selective/blob/main/.pre-commit-config.yaml)
 [![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/gigaverse-app/pytest-selective/blob/main/LICENSE)
 [![Agent skill](https://img.shields.io/badge/Agent_Skill-ready-2563EB)](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/agents.md)
+[![Documentation](https://readthedocs.org/projects/pytest-selective/badge/?version=latest)](https://pytest-selective.readthedocs.io/en/latest/)
+
+**Run affected Python tests. See why they matter.**
+
+[Read the documentation](https://pytest-selective.readthedocs.io/en/latest/) · [Related tools](https://pytest-selective.readthedocs.io/en/latest/ecosystem/)
 
 pytest-selective is a **Python test impact analysis** tool for incremental testing
 with pytest. It follows dependencies through both sides of a Git change, selects
