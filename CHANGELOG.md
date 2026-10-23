@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.0a1 (2026-10-23)
+## 0.1.0 (2026-10-23)
 
-First PyPI alpha release.
+First PyPI release.
 
 - Run affected local edits before committing with `run` and `affected --working-tree`, preserving the user's Git index and HEAD.
 - Share conservative environment-file invalidation between file selection and CI lanes, covering other Python installers as well as uv.

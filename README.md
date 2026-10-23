@@ -4,7 +4,6 @@
 
 [![CI](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://github.com/gigaverse-app/pytest-selective/blob/main/pyproject.toml)
-[![Alpha](https://img.shields.io/badge/status-alpha-E9A23B)](https://github.com/gigaverse-app/pytest-selective/blob/main/CHANGELOG.md)
 [![Typed](https://img.shields.io/badge/typing-py.typed-3776AB)](https://github.com/gigaverse-app/pytest-selective/blob/main/src/pytest_selective/py.typed)
 [![Ruff](https://img.shields.io/badge/code%20style-Ruff-D7FF64?logo=ruff&logoColor=black)](https://github.com/gigaverse-app/pytest-selective/blob/main/.pre-commit-config.yaml)
 [![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/gigaverse-app/pytest-selective/blob/main/LICENSE)
@@ -21,7 +20,7 @@ the affected test files, and explains the result. Plan before collecting tests,
 importing your application, or starting databases and workers.
 
 Built from the selector used in Gigaverse's backend, AI, and shared Python
-infrastructure. **Alpha:** the API may change before 1.0.
+infrastructure. The API may change before 1.0.
 [Provenance and extraction scope](https://github.com/gigaverse-app/pytest-selective/blob/main/PROVENANCE.md).
 
 [Quick tutorial](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/tutorial.md) ·
