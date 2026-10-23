@@ -53,7 +53,7 @@ your coverage contract.
 **Public-path availability:** the root action and `actions/NAME` paths are new on `main`;
 existing `v0.1` releases predate them. Evaluate with `@main`, or pin a reviewed
 commit containing the public `action.yml`. Adopt a compatible release tag after
-it includes these paths. Existing `.github/actions/...` paths remain supported.
+it includes these paths. Older immutable releases retain their original layouts.
 [Public action API](docs/actions.md).
 
 ## Have your agent set it up

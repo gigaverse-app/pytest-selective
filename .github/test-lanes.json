@@ -33,11 +33,9 @@
     ".github/test-lanes.json",
     ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
-    ".github/actions/**",
+    "actions/**",
     "action.yml",
-    "*/action.yml",
     "examples/**",
-    ".github/workflows/public-actions.yml",
-    "actions/**"
+    ".github/workflows/public-actions.yml"
   ]
 }

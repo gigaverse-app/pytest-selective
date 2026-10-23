@@ -1,4 +1,4 @@
-"""Public action paths preserve inputs, outputs and the caller-pinned implementation."""
+"""One implementation per action; the root default forwards its complete contract."""
 
 from pathlib import Path
 
@@ -6,26 +6,26 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCES = sorted((ROOT / ".github/actions").glob("*/action.yml"))
+SOURCES = sorted((ROOT / "actions").glob("*/action.yml"))
 
 
 @pytest.mark.parametrize("source", SOURCES, ids=lambda p: p.parent.name)
-@pytest.mark.parametrize("directory", ["actions", ""])
-def test_public_action_forwards_the_complete_contract_at_the_same_revision(source, directory):
-    original = yaml.safe_load(source.read_text())
-    public = yaml.safe_load((ROOT / directory / source.parent.name / "action.yml").read_text())
+def test_named_action_is_the_implementation_without_duplicate_aliases(source):
+    action = yaml.safe_load(source.read_text())
+    assert not (ROOT / source.parent.name / "action.yml").exists()
+    assert not (ROOT / ".github/actions").exists()
+    assert not any(step.get("uses", "").startswith("$/") for step in action["runs"]["steps"])
+
+
+def test_root_action_forwards_the_complete_contract_at_the_same_revision():
+    original = yaml.safe_load((ROOT / "actions" / "test-impact" / "action.yml").read_text())
+    public = yaml.safe_load((ROOT / "action.yml").read_text())
     assert public.get("inputs", {}) == original.get("inputs", {})
     assert public["runs"]["using"] == "composite"
     (step,) = public["runs"]["steps"]
-    assert step["uses"] == "$/" + source.parent.relative_to(ROOT).as_posix()
+    assert step["uses"] == "$/actions/test-impact"
     assert step.get("with", {}) == {key: "${{ inputs." + key + " }}" for key in original.get("inputs", {})}
     assert public.get("outputs", {}) == {
         key: {"description": value["description"], "value": "${{ steps.action.outputs." + key + " }}"}
         for key, value in original.get("outputs", {}).items()
     }
-
-
-def test_root_action_is_the_primary_public_entry_point():
-    assert yaml.safe_load((ROOT / "action.yml").read_text()) == yaml.safe_load(
-        (ROOT / "actions" / "test-impact" / "action.yml").read_text()
-    )

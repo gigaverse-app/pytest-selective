@@ -1,4 +1,4 @@
-# gv:test-dependency: .github/actions/test-impact/action.yml
+# gv:test-dependency: actions/test-impact/action.yml
 import json
 import os
 import shlex
@@ -839,7 +839,7 @@ def test_batch_reader_rejects_non_blob_git_objects(repo: Path) -> None:
 def test_ci_action_distinguishes_invalid_declarations_from_operational_fallback(
     tmp_path: Path, invalid_declaration: bool
 ) -> None:
-    action = yaml.safe_load(Path(".github/actions/test-impact/action.yml").read_text())
+    action = yaml.safe_load(Path("actions/test-impact/action.yml").read_text())
     step = next(step for step in action["runs"]["steps"] if step.get("id") == "select")
     output = tmp_path / "github-output"
     script = tmp_path / "action.sh"
@@ -866,7 +866,7 @@ def test_ci_action_distinguishes_invalid_declarations_from_operational_fallback(
         IMPACT_DURATIONS=".test_durations",
         IMPACT_SHARD_SECONDS="120",
         GITHUB_OUTPUT=output.as_posix(),
-        SHARED_ACTION_PATH=Path(".github/actions/test-impact").resolve().as_posix(),
+        SHARED_ACTION_PATH=Path("actions/test-impact").resolve().as_posix(),
     )
     bash = shutil.which("bash")
     assert bash is not None
@@ -890,7 +890,7 @@ def test_ci_action_distinguishes_invalid_declarations_from_operational_fallback(
 )
 def test_ci_action_offers_a_fetchable_alternate_base(tmp_path: Path, alternate: str, full: str, passed: bool) -> None:
     """The action hands the CLI a second base only when it can be read and a scoped run is allowed."""
-    action = yaml.safe_load(Path(".github/actions/test-impact/action.yml").read_text())
+    action = yaml.safe_load(Path("actions/test-impact/action.yml").read_text())
     step = next(step for step in action["runs"]["steps"] if step.get("id") == "select")
     invocation = tmp_path / "invocation"
     script = tmp_path / "action.sh"
@@ -918,7 +918,7 @@ def test_ci_action_offers_a_fetchable_alternate_base(tmp_path: Path, alternate: 
         IMPACT_SHARD_SECONDS="120",
         GITHUB_OUTPUT=output.as_posix(),
         INVOCATION=invocation.as_posix(),
-        SHARED_ACTION_PATH=Path(".github/actions/test-impact").resolve().as_posix(),
+        SHARED_ACTION_PATH=Path("actions/test-impact").resolve().as_posix(),
     )
     bash = shutil.which("bash")
     assert bash is not None
@@ -1599,7 +1599,7 @@ def test_isolated_warm_action_loads_sidecars(repo: Path, config: ImpactConfig, t
     write(repo, "input.json", "1")
     write(repo, "config.json", config.model_dump_json())
     commit(repo)
-    action = yaml.safe_load(Path(".github/actions/test-impact/action.yml").read_text())
+    action = yaml.safe_load(Path("actions/test-impact/action.yml").read_text())
     step = next(step for step in action["runs"]["steps"] if step.get("id") == "select")
     summary = tmp_path / "summary"
     output = tmp_path / "output"
@@ -1610,7 +1610,7 @@ def test_isolated_warm_action_loads_sidecars(repo: Path, config: ImpactConfig, t
         IMPACT_HEAD="HEAD",
         GITHUB_STEP_SUMMARY=summary.as_posix(),
         GITHUB_OUTPUT=output.as_posix(),
-        SHARED_ACTION_PATH=Path(".github/actions/test-impact").resolve().as_posix(),
+        SHARED_ACTION_PATH=Path("actions/test-impact").resolve().as_posix(),
     )
     for name in ("VIRTUAL_ENV", "PYTHONPATH", "PYTHONHOME"):
         env.pop(name, None)
@@ -1643,7 +1643,7 @@ def test_isolated_warm_action_loads_sidecars(repo: Path, config: ImpactConfig, t
 
 @pytest.mark.parametrize("succeeds", [True, False])
 def test_cache_warming_never_selects_tests_or_fetches_a_base(tmp_path: Path, succeeds: bool) -> None:
-    action = yaml.safe_load(Path(".github/actions/test-impact/action.yml").read_text())
+    action = yaml.safe_load(Path("actions/test-impact/action.yml").read_text())
     step = next(step for step in action["runs"]["steps"] if step.get("id") == "select")
     output = tmp_path / "github-output"
     summary = tmp_path / "summary"
@@ -1668,7 +1668,7 @@ def test_cache_warming_never_selects_tests_or_fetches_a_base(tmp_path: Path, suc
         GITHUB_OUTPUT=output.as_posix(),
         GITHUB_STEP_SUMMARY=summary.as_posix(),
         INVOCATION=invocation.as_posix(),
-        SHARED_ACTION_PATH=Path(".github/actions/test-impact").resolve().as_posix(),
+        SHARED_ACTION_PATH=Path("actions/test-impact").resolve().as_posix(),
     )
     bash = shutil.which("bash")
     assert bash is not None

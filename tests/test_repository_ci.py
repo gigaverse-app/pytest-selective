@@ -14,7 +14,6 @@ ROOT = Path(__file__).resolve().parents[1]
     "path, expected",
     [
         ("action.yml", True),
-        ("plan-lanes/action.yml", True),
         ("actions/plan-lanes/action.yml", True),
         ("actions/plan-lanes/helper.py", True),
         ("README.md", False),
@@ -23,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
         (".github/dependabot.yml", False),
         (".github/pull_request_template.md", False),
         (".github/workflows/observe-ci.yml", False),
-        (".github/actions/plan-lanes/action.yml", True),
+        ("actions/plan-lanes/action.yml", True),
         (".github/test-lanes.json", True),
         (".github/workflows/release.yml", True),
         ("src/sample.py", True),
