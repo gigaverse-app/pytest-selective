@@ -15,12 +15,19 @@ Run affected Python tests safely, explain every selection, and skip unrelated CI
 [Skip unrelated CI jobs safely](../docs/tutorials/skip-unrelated-ci.md). Apply the steps to your own
 repository, and inspect the original runs, retained checks, and measurement limits.
 
-## Apply it to your project
+## Run the tests an edit can affect
 
-Start with the quickstart, then use the guides to adapt the examples to your
-own dependencies and failure modes. Keep the documented safety checks enabled.
-The navigation includes configuration, practical examples, and the limits of
-what a successful result proves.
+Use affected-test selection for quick local feedback, or select complete CI
+lanes when every test and validator in a contract must run together. Inspect the
+explanation before relying on a skipped test. Keep full checkpoints and explicit
+inputs for dependencies that Python imports cannot reveal.
+
+- [Run the executable tutorial](../docs/tutorial.md): try selection in a small real Git repository.
+- [Configure dependency inputs](../docs/configuration.md): declare collection policy and dynamic dependencies.
+- [Select complete CI lanes](../docs/ci.md#select-whole-ci-lanes): avoid starting unrelated test infrastructure.
+- [Improve local development](../docs/local-development.md): integrate selection into your pytest workflow.
+- [Audit selection health](../docs/selection-health.md): investigate growing scope and fixture dependencies.
+- [Read the evidence and limits](../docs/evidence.md): decide where selection is appropriate.
 
 ## Use the tools together
 

@@ -83,8 +83,8 @@ nav:
 - Guides:
   - Actions: docs/actions.md
   - Agents: docs/agents.md
-  - Ci toolkit: docs/ci-toolkit.md
-  - Ci: docs/ci.md
+  - CI toolkit: docs/ci-toolkit.md
+  - CI: docs/ci.md
   - Comparison pytest impacted: docs/comparison-pytest-impacted.md
   - Configuration: docs/configuration.md
   - Evidence: docs/evidence.md
