@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 (2026-10-23)
 
 - Register a native pytest plugin: `pytest --selective`, ini defaults, optional existing impact JSON, an exact comparison base, and `--no-selective` for full execution.
 - Reuse the existing working-tree snapshots and dependency planner; share one plan with xdist workers and preserve unknown collectors, doctests, normal pytest filtering and failure statuses.
