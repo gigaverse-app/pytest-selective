@@ -11,3 +11,7 @@ dist/
 coverage.xml
 htmlcov/
 tutorial-report.json
+
+# Built documentation
+/site/
+/.venv-docs/
