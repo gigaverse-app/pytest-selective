@@ -1,0 +1,8 @@
+{
+  "name": "pytest-selective",
+  "tagline": "Run affected Python tests. See why they matter.",
+  "color": "#4ADE80",
+  "repository": "pytest-selective",
+  "logo_aliases": [],
+  "sticky": false
+}
