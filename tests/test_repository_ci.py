@@ -1,11 +1,18 @@
 """Exercise this repository's actual routing policy against real Git changes."""
 
+# gv:test-dependency: .github/test-lanes.json
+# gv:test-dependency: .github/workflows/ci.yml
+
+from contextlib import closing
 from pathlib import Path
 
 import pytest
 import yaml
 
 from pytest_selective.ci import LaneConfig, plan
+from pytest_selective.impact_graph import GraphCache
+from pytest_selective.impact_selection import affected
+from scripts.ci_file_config import file_config
 from tests.testing.git_repo import commit, init, write
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,3 +78,45 @@ def test_distribution_smoke_follows_runtime_selection_but_metadata_always_runs()
         "uv run --locked python scripts/check_metadata.py",
     ):
         assert "if" not in steps[command], command
+
+
+def test_pytest_jobs_consume_the_public_actions_shared_file_plan():
+    jobs = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())["jobs"]
+    planner = jobs["select-tests"]
+    file_step = next(step for step in planner["steps"] if step.get("id") == "files")
+    assert file_step["uses"] == "./"
+    assert planner["outputs"]["mode"] == "${{ steps.files.outputs.mode }}"
+    assert planner["outputs"]["files"] == "${{ steps.paths.outputs.files }}"
+    for job in ("tests", "pytest-minimum"):
+        execution = next(step for step in jobs[job]["steps"] if "scripts/run_ci_tests.py" in step.get("run", ""))
+        assert execution["env"]["CI_PLANNER_RESULT"] == "${{ needs.select-tests.result }}"
+        assert execution["env"]["CI_TEST_MODE"] == "${{ needs.select-tests.outputs.mode }}"
+        assert execution["env"]["CI_TEST_FILES"] == "${{ needs.select-tests.outputs.files }}"
+
+
+@pytest.mark.parametrize(
+    "path, expected",
+    [
+        ("README.md", []),
+        ("docs/guide.md", []),
+        (".github/PULL_REQUEST_TEMPLATE/change.md", []),
+        ("src/sample.py", ["tests/test_sample.py"]),
+        (".github/workflows/ci.yml", ["tests/test_other.py", "tests/test_sample.py"]),
+        ("uv.lock", ["tests/test_other.py", "tests/test_sample.py"]),
+        ("requirements.txt", ["tests/test_other.py", "tests/test_sample.py"]),
+        ("scripts/helper.py", ["tests/test_other.py", "tests/test_sample.py"]),
+    ],
+)
+def test_repository_file_plan_skips_docs_and_follows_imports(tmp_path, path, expected):
+    init(tmp_path)
+    write(tmp_path, "pyproject.toml", (ROOT / "pyproject.toml").read_text())
+    write(tmp_path, "src/sample.py", "VALUE = 1")
+    write(tmp_path, "tests/test_sample.py", "from sample import VALUE\ndef test_value(): assert VALUE")
+    write(tmp_path, "tests/test_other.py", "def test_other(): pass")
+    base = commit(tmp_path)
+    write(tmp_path, path, "# changed input\n")
+    head = commit(tmp_path)
+    lanes = LaneConfig.model_validate_json((ROOT / ".github/test-lanes.json").read_text())
+    with closing(GraphCache(tmp_path / "cache.sqlite3")) as cache:
+        result = affected(tmp_path, base, head, file_config(lanes), cache)
+    assert result.selected == expected, result.reasons

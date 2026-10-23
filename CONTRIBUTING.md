@@ -55,14 +55,27 @@ limitations. The pull request template provides a short checklist. See
 
 This repository uses its own `plan-lanes` action. Documentation-only PRs keep
 quality checks (including Markdown links) and distribution build/metadata checks,
-while skipping the six-platform pytest matrix and minimum-pytest lane. Source,
-tests, scripts, dependency/pytest policy and workflow changes run the complete
-matrix. Main, manual/called runs and the `test:full` label run it in full; a
+while skipping the six-platform pytest matrix and minimum-pytest lane. Within an
+admitted lane, the repository's public file-selection action selects affected
+test files once; the platform matrix and minimum-pytest job execute that same
+plan. CI-esta receives both lane and file explanations, learns JUnit timings,
+and validates the aggregate gate. Source and test edits follow dependencies;
+scripts, dependency/pytest policy and execution workflow changes retain full
+validation. Main, manual/called runs and the `test:full` label run it in full; a
 failed planner also runs all tests. Installed-distribution smoke checks use the
 same runtime-input decision; README-only changes skip those checks while still
 verifying the README embedded in both release archives. Repository routing
 controls exercise the committed config against real Git trees, including full and missing-history
 controls. Add new non-import execution inputs to `.github/test-lanes.json`.
+
+File planning derives its graph from that same lane config and merges its declared
+global execution inputs with the graph's environment inputs. Declare subprocess
+and non-import dependencies at their readers. Full plans collect whole-suite
+coverage; scoped plans produce JUnit timing evidence without presenting partial
+coverage as a whole-suite result. The small execution wrapper only consumes the
+public action's JSON file list: it does not implement another selector. Missing
+or failed planning runs complete roots, and an empty successful plan never starts
+pytest. The aggregate gate still fails when planning fails.
 
 ## Conventional Commits
 

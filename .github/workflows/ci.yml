@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       lanes: ${{ steps.plan.outputs.lanes }}
+      mode: ${{ steps.files.outputs.mode }}
+      files: ${{ steps.paths.outputs.files }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -27,6 +29,31 @@ jobs:
           config: .github/test-lanes.json
           base: ${{ github.event.pull_request.base.sha || github.event.before }}
           full: ${{ github.run_attempt > 1 || github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'test:full') }}
+      - name: Share the repository graph and execution inputs with file selection
+        env:
+          PYTHONPATH: src
+        run: |
+          uv run --no-project --python 3.14 --with pydantic==2.13.4 --with pyyaml==6.0.3 \
+            python scripts/ci_file_config.py "$RUNNER_TEMP/test-impact.json"
+      - id: files
+        uses: ./
+        with:
+          config: ${{ runner.temp }}/test-impact.json
+          base: ${{ github.event.pull_request.base.sha || github.event.before }}
+          full-roots: tests
+          full: ${{ github.run_attempt > 1 || github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'test:full') }}
+      - id: paths
+        name: Forward exact selected paths without shell splitting
+        env:
+          MODE: ${{ steps.files.outputs.mode }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          files = json.loads(Path('test-impact-report.json').read_text())['selected'] if os.environ['MODE'] == 'scoped' else []
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('files=' + json.dumps(files) + '\n')
+          PY
   quality:
     runs-on: ubuntu-latest
     steps:
@@ -64,13 +91,19 @@ jobs:
         uses: gigaverse-app/ci-esta/actions/native-windows-git@v1
       - name: Record coverage runtime
         run: uv run --locked python -m coverage --version
-      - run: uv run --locked pytest -q -n 4 --durations=20 --junitxml=test-timings.xml --cov --cov-report=term-missing --cov-report=xml
+      - name: Execute the shared affected-file plan
+        run: uv run --locked python scripts/run_ci_tests.py -q -n 4 --durations=20 --junitxml=test-timings.xml
         env:
+          CI_PLANNER_RESULT: ${{ needs.select-tests.result }}
+          CI_TEST_MODE: ${{ needs.select-tests.outputs.mode }}
+          CI_TEST_FILES: ${{ needs.select-tests.outputs.files }}
+          CI_COVERAGE: 'true'
           # Keep temporary Git repositories beside the checkout on the work disk.
           TMP: ${{ runner.temp }}
           TEMP: ${{ runner.temp }}
           TMPDIR: ${{ runner.temp }}
       - uses: gigaverse-app/ci-esta/actions/learn-test-timings@v1
+        if: ${{ hashFiles('test-timings.xml') != '' }}
         with:
           junit-pattern: test-timings.xml
           artifact-name: test-timings-${{ matrix.python }}-${{ matrix.os }}
@@ -93,7 +126,12 @@ jobs:
         with:
           python-version: '3.11'
       - run: uv pip install 'pytest==8.0.0'
-      - run: uv run --no-sync pytest -q -n 4 --durations=20
+      - name: Execute the same file plan on minimum pytest
+        run: uv run --no-sync python scripts/run_ci_tests.py -q -n 4 --durations=20
+        env:
+          CI_PLANNER_RESULT: ${{ needs.select-tests.result }}
+          CI_TEST_MODE: ${{ needs.select-tests.outputs.mode }}
+          CI_TEST_FILES: ${{ needs.select-tests.outputs.files }}
   distributions:
     needs: select-tests
     # README changes still need build/metadata checks; planner failure must not skip them.

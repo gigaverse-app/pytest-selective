@@ -1,5 +1,7 @@
 """The published tutorial must find the regression and skip an empty selection."""
 
+# gv:test-dependency: scripts/tutorial.py
+
 import json
 import subprocess
 import sys

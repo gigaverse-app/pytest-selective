@@ -1,5 +1,8 @@
 """One implementation per action; the root default forwards its complete contract."""
 
+# gv:test-dependency: action.yml
+# gv:test-dependency: actions/*/action.yml
+
 from pathlib import Path
 
 import pytest
