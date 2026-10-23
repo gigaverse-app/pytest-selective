@@ -282,3 +282,5 @@ show provenance, runner cost and the actual dependency paths. This repository
 also uses CI-esta's shared native Windows Git action while retaining full
 coverage on all six Python/platform lanes.
 
+
+<!-- Temporary documentation-only CI verification; this branch is not for merge. -->
