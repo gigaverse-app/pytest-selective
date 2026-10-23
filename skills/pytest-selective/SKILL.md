@@ -69,8 +69,12 @@ Add consumer regression tests using real Git changes and the actual config:
 docs/unrelated metadata skip expensive lanes; source/transitive dependencies,
 fixtures, deleted tests, locks and execution workflows keep their required lanes;
 missing history and an explicit full override execute the full set. Assert the
-selected paths/lanes, not just exit status. Keep these routing tests in an
-always-running quality job alongside docs and package metadata checks.
+selected paths/lanes, not just exit status. Route these tests through declared dependencies on selector configuration,
+execution workflows, helpers and the inputs they inspect. Documentation-only PRs
+must execute zero tests unless documentation is explicitly consumed. Include
+routing/contract tests, wheel/sdist smoke tests, tutorials and separate action
+workflows in this inventory; a quality or build job is not an exemption. Metadata
+and documentation validation may still run without executing runtime tests.
 
 Retain main/scheduled full checkpoints and an explicit full override. Required
 check names must still resolve correctly on the empty route. A planner failure

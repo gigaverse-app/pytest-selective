@@ -141,3 +141,13 @@ the Linux filesystem. See the
 [Windows setup guide](https://dallay.github.io/agentsync/guides/windows-symlink-setup/).
 If AgentSync backs up an existing `CLAUDE.md`, review and preserve any unique
 guidance in `AGENTS.md`; do not commit the backup as another instruction source.
+
+## Documentation-only CI
+
+Documentation-only PRs execute zero tests unless a test or lane explicitly
+declares that documentation as an input. This includes CI contract tests,
+installed-wheel smoke and public-action smoke. Metadata/link/build checks may
+still validate documentation without running runtime tests. Declare execution
+workflows, selector configuration, helpers, locks and non-import inputs; missing
+history or failed planning must execute the full affected lanes and fail the
+required planning gate. Main/manual/full checkpoints remain complete runs.

@@ -67,8 +67,6 @@ jobs:
           uv run --no-project --python 3.14
           --with "ci-esta>=1.1.0,<2.0.0"
           ci-esta check-workflow --workflow .github/workflows/ci.yml --lanes .github/test-lanes.json
-      - name: Validate routing even when the platform matrix is skipped
-        run: uv run --locked pytest -q tests/test_repository_ci.py
       - name: Validate GitHub Actions
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
   tests:
