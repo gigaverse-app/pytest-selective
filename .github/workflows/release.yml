@@ -54,7 +54,10 @@ jobs:
           if [[ ! "$RELEASE_TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
             exit 0
           fi
-          alias="v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+          alias="v${BASH_REMATCH[1]}"
+          if [[ "${BASH_REMATCH[1]}" == "0" ]]; then
+            alias+=".${BASH_REMATCH[2]}"
+          fi
           if gh api "repos/$GH_REPO/git/ref/tags/$alias" --silent; then
             gh api --method PATCH "repos/$GH_REPO/git/refs/tags/$alias" \
               -f sha="$RELEASE_SHA" -F force=true --silent

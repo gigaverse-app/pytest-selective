@@ -16,7 +16,7 @@ the affected test files, and explains the result. Use it directly as a pytest
 plugin, or plan before collection and service startup with the CLI and CI actions.
 
 Built from the selector used in Gigaverse's backend, AI, and shared Python
-infrastructure. The API may change before 1.0.
+infrastructure. Use the compatible `1.x` package range and moving `@v1` Actions tag.
 [Provenance and extraction scope](https://github.com/gigaverse-app/pytest-selective/blob/main/PROVENANCE.md).
 
 [Quick tutorial](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/tutorial.md) ·
@@ -39,8 +39,8 @@ and slack. [See the source runs and method](https://github.com/gigaverse-app/ci-
 | --- | --- | --- |
 | Test local edits with your existing pytest command | `uv add --dev pytest-selective`, then `uv run pytest --selective` | Unaffected test execution; staged, unstaged and untracked changes are included |
 | Avoid expensive collection and application imports | `pytest-selective run --config .github/test-impact.json -- -q` | Collection/imports for unaffected files as well as execution |
-| Plan affected files in GitHub Actions | `gigaverse-app/pytest-selective@main` | Plans before installing your application |
-| Keep whole-suite coverage or conformance checks | `gigaverse-app/pytest-selective/actions/plan-lanes@main` | Entire unaffected jobs, including their services and setup |
+| Plan affected files in GitHub Actions | `gigaverse-app/pytest-selective@v1` | Plans before installing your application |
+| Keep whole-suite coverage or conformance checks | `gigaverse-app/pytest-selective/actions/plan-lanes@v1` | Entire unaffected jobs, including their services and setup |
 | Check assumptions about JSON, templates and other runtime inputs | Optional file-read recorder and dependency audit | Exposes observed reads missing from the declared graph |
 | Keep selection narrow as the project grows | Explanations, startup-floor budgets, expansion and isolation guards | Makes broad new fixture/import dependencies visible |
 
@@ -50,10 +50,9 @@ collects normally; the pre-collection runner and CI planner can avoid that cost.
 Keep full checkpoints and use complete lanes when partial suites cannot satisfy
 your coverage contract.
 
-**Public-path availability:** the root action and `actions/NAME` paths are new on `main`;
-existing `v0.1` releases predate them. Evaluate with `@main`, or pin a reviewed
-commit containing the public `action.yml`. Adopt a compatible release tag after
-it includes these paths. Older immutable releases retain their original layouts.
+**Public-path availability:** version 1 provides the root action and
+`actions/NAME` paths. Use the moving `@v1` tag for compatible updates.
+Older immutable releases retain their original layouts.
 [Public action API](docs/actions.md).
 
 ## Have your agent set it up

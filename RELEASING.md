@@ -43,9 +43,10 @@ check out or build source with that permission.
    `pytest-selective --help` and run the tutorial using that installation.
 
 After a normal release publishes successfully, the workflow advances the
-compatible Actions tag (for example, `v0.1` for `v0.1.0`). Consumers can use
-`@v0.1` to receive patch releases. Package requirements use compatible ranges
-such as `pytest-selective>=0.1.0,<0.2.0`; lockfiles retain resolved versions and
+compatible Actions tag: `v1` for any `1.x.y` release, or `v0.1` for `0.1.x`.
+Consumers deliberately use the moving `@v1` tag to receive compatible minor and
+patch releases. Package requirements use compatible ranges
+such as `pytest-selective>=1,<2`; lockfiles retain resolved versions and
 artifact hashes. Prereleases do not advance the Actions tag.
 
 Manual dispatch is available for a version-matching **tag**, not a branch. The
