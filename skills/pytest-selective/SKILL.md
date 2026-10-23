@@ -25,7 +25,7 @@ than attempting Python import analysis.
 
 Read [the adoption recipe](references/adoption.md) for the config/CLI sequence.
 Use the installed revision's CLI help and public models as the API authority.
-Pin reviewed tool/action commits in the proposed CI configuration.
+Use compatible package ranges and release tags in the proposed CI configuration.
 
 ## Preserve the input contract
 
