@@ -40,6 +40,9 @@ and slack. [See the source runs and method](https://github.com/gigaverse-app/ci-
 
 ## Choose how to use it
 
+Follow the [adoption tutorial and checklist](docs/tutorials/adoption-checklist.md)
+for local execution, CI routing, dependency audits, timing feedback and measured rollout.
+
 | You want to… | Use | What it saves |
 | --- | --- | --- |
 | Test local edits with your existing pytest command | `uv add --dev pytest-selective`, then `uv run pytest --selective` | Unaffected test execution; staged, unstaged and untracked changes are included |

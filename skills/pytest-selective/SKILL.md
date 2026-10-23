@@ -14,6 +14,11 @@ than attempting Python import analysis.
 
 ## Choose the smallest useful change
 
+Use the [adoption tutorial and checklist](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/tutorials/adoption-checklist.md)
+to record applicable capabilities, routing controls, full-run overrides and
+measured results. Mark stages verified, deferred or not applicable; do not add
+audits, guards or scheduling merely to fill every box.
+
 - For the local edit/test loop, start with `uv add --dev pytest-selective` and
   `uv run pytest --selective`, preserving the project's normal pytest options.
   This includes working-tree changes and preserves native collection. Use

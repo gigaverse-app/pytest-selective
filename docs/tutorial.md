@@ -1,5 +1,8 @@
 # Start using pytest-selective
 
+Use the [adoption checklist](tutorials/adoption-checklist.md) to work through
+configuration, CI integration, selection health and measurement after this quickstart.
+
 ## Try your existing project
 
 Start in a Git repository whose full pytest suite passes. You need Python 3.11+,

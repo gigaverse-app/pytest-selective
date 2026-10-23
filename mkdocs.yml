@@ -41,6 +41,8 @@ markdown_extensions:
 - attr_list
 - tables
 - pymdownx.details
+- pymdownx.tasklist:
+    custom_checkbox: true
 - pymdownx.highlight
 - pymdownx.superfences:
     custom_fences:
@@ -58,6 +60,7 @@ validation:
     anchors: warn
 extra:
   published_sources:
+  - docs/tutorials/adoption-checklist.md
   - docs/tutorials/skip-unrelated-ci.md
   - docs/tutorials/sidecar-dependencies.md
   - docs/actions.md
@@ -81,6 +84,7 @@ nav:
 - Home: index.md
 - Getting started:
   - Quickstart: docs/tutorial.md
+  - Adoption tutorial and checklist: docs/tutorials/adoption-checklist.md
   - Run affected tests locally: docs/local-development.md
   - Declare file inputs with sidecars: docs/tutorials/sidecar-dependencies.md
   - Skip unrelated CI jobs safely: docs/tutorials/skip-unrelated-ci.md
