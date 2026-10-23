@@ -33,13 +33,20 @@ check out or build source with that permission.
 2. Require green CI: hooks, Linux/Windows/macOS tests, minimum pytest, metadata,
    and isolated wheel/sdist installation. Review the uploaded evidence.
 3. Merge the reviewed change. Create tag `v<version>` on that commit, such as
-   `v0.1.0a1`, and publish its GitHub Release. Mark alpha releases as prereleases.
+   `v0.1.0`, and publish its GitHub Release. Normal versions are regular releases;
+   mark alpha, beta and release-candidate versions as prereleases.
 4. `release.yml` verifies that the tag exactly matches the package version,
    reruns the reusable CI workflow on that revision, and publishes its tested
    wheel and sdist with attestations through the `pypi` environment.
 5. Verify the package page and install the exact released version in a clean
    environment: `pip install 'pytest-selective==<version>'`. Check
    `pytest-selective --help` and run the tutorial using that installation.
+
+After a normal release publishes successfully, the workflow advances the
+compatible Actions tag (for example, `v0.1` for `v0.1.0`). Consumers can use
+`@v0.1` to receive patch releases. Package requirements use compatible ranges
+such as `pytest-selective>=0.1.0,<0.2.0`; lockfiles retain resolved versions and
+artifact hashes. Prereleases do not advance the Actions tag.
 
 Manual dispatch is available for a version-matching **tag**, not a branch. The
 workflow intentionally does not skip existing uploads: investigate a partial
@@ -49,7 +56,8 @@ immutable; fix release defects with a new version and document any yanked releas
 ## After the first release
 
 Replace the README's provisional Git install command with
-`pip install --pre pytest-selective` while only prereleases exist. Add a live
+`pip install pytest-selective` for normal releases (use `--pre` only while
+prereleases are the only available versions). Add a live
 PyPI version badge linked to the project page once the package is available.
 Keep the Git source-install alternative. Do not claim PyPI availability or show
 a success badge before verifying the published artifact.
