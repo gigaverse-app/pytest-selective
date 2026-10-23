@@ -1992,6 +1992,33 @@ def test_a_name_two_deferred_assignments_of_one_file_share_is_deferred_by_both(
     assert affected(repo, base, head, config, cache).selected == ["tests/worker/test_worker.py"]
 
 
+def test_cached_deferred_facts_follow_the_complete_assignment_policy(
+    repo: Path, deferred_graph: ImpactConfig, cache: GraphCache
+) -> None:
+    write(repo, "src/pkg/settings.py", "CELERY_IMPORTS = ('pkg.tasks',)\nSCHEDULE = ('pkg.tasks',)\n")
+    revision = commit(repo)
+    # The second use keeps tasks global until both assignments are deferred.
+    assert affected(repo, revision, revision, deferred_graph, cache, extra_files=["src/pkg/tasks.py"]).mode == "full"
+    [rule] = deferred_graph.deferred_strings
+    both = deferred_graph.model_copy(
+        update={"deferred_strings": [rule.model_copy(update={"assignments": ["CELERY_IMPORTS", "SCHEDULE"]})]}
+    )
+    assert affected(repo, revision, revision, both, cache, extra_files=["src/pkg/tasks.py"]).selected == [
+        "tests/worker/test_worker.py"
+    ]
+
+
+def test_cached_deferred_facts_do_not_hide_a_new_undeclared_consumer(
+    repo: Path, deferred_graph: ImpactConfig, cache: GraphCache
+) -> None:
+    revision = commit(repo)
+    cache.snapshot(repo, revision, deferred_graph)
+    write(repo, "tests/plain/test_plain.py", "def test_plain(app): app.start_worker()\n")
+    head = commit(repo)
+    with pytest.raises(DependencyDeclarationError, match="tests/plain/test_plain.py"):
+        cache.snapshot(repo, head, deferred_graph)
+
+
 def test_one_rule_can_defer_several_assignments_to_one_consumer_list(
     repo: Path, deferred_graph: ImpactConfig, cache: GraphCache
 ) -> None:

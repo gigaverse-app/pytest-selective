@@ -256,6 +256,12 @@ class ParsedSource(ImpactModel):
     dependencies: list[DependencyComment] = Field(default_factory=list)
 
 
+class DeferredAssignments(ImpactModel):
+    """Blob-local facts; consumers and repository paths are never cached here."""
+
+    values: dict[str, list[str] | None]
+
+
 class GitTree(ImpactModel):
     tree: str
     files: dict[str, str]
