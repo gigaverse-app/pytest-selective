@@ -12,7 +12,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{name = "Gigaverse"}]
 keywords = ["pytest", "test-selection", "test-impact-analysis", "incremental-testing", "git", "ci"]
-dependencies = ["pydantic>=2.11,<3", "pyyaml>=6,<7"]
+dependencies = ["pydantic>=2.11,<3", "pyyaml>=6,<7", "pytest>=8"]
 classifiers = [
   "Framework :: Pytest",
   "Intended Audience :: Developers",
@@ -32,6 +32,9 @@ audit = ["pytest>=8"]
 [project.scripts]
 pytest-selective = "pytest_selective.impact_cli:main"
 pytest-selective-expansion = "pytest_selective.pytest_expansion:main"
+
+[project.entry-points.pytest11]
+selective = "pytest_selective.plugin"
 
 [project.urls]
 Homepage = "https://github.com/gigaverse-app/pytest-selective"

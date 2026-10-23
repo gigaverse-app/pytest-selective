@@ -911,6 +911,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
+    { name = "pytest" },
     { name = "pyyaml" },
 ]
 
@@ -934,6 +935,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pydantic", specifier = ">=2.11,<3" },
+    { name = "pytest", specifier = ">=8" },
     { name = "pytest", marker = "extra == 'audit'", specifier = ">=8" },
     { name = "pyyaml", specifier = ">=6,<7" },
 ]

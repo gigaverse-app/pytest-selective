@@ -62,10 +62,14 @@ def main(argv: list[str] | None = None) -> int:
         if cache is not None:
             cache.close()
     extra = args.pytest_args[1:] if args.pytest_args[:1] == ["--"] else args.pytest_args
+    # The outer runner has already planned (or explicitly requested full).
+    # Loading by entry-point name works with autoload disabled too. Never let
+    # an ini default reselect a full run or calculate a second, different plan.
+    pytest_command = [sys.executable, "-m", "pytest", "-p", "selective", "--no-selective"]
     # No shell splitting: paths with spaces remain one argument. In particular,
     # an empty successful plan never becomes bare pytest (which runs everything).
     try:
-        return subprocess.run([sys.executable, "-m", "pytest", *selected, *extra], cwd=repo).returncode
+        return subprocess.run([*pytest_command, *selected, *extra], cwd=repo).returncode
     except OSError as error:
         if selected == config.test_roots or (error.errno != errno.E2BIG and getattr(error, "winerror", None) != 206):
             raise
@@ -75,4 +79,4 @@ def main(argv: list[str] | None = None) -> int:
             "Test selection full-suite fallback: pytest command line is too long; running configured roots.",
             file=sys.stderr,
         )
-    return subprocess.run([sys.executable, "-m", "pytest", *config.test_roots, *extra], cwd=repo).returncode
+    return subprocess.run([*pytest_command, *config.test_roots, *extra], cwd=repo).returncode
