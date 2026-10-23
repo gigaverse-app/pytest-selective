@@ -68,3 +68,41 @@ reports, and repeat a control on the original revision. Do not disable security
 software, mock Git, or drop coverage to make the graph look better. See
 [CI-esta's portable recipes](https://github.com/gigaverse-app/ci-esta/blob/main/docs/critical-path-optimizations.md)
 for database client matching and profiling recovery tests.
+
+## Observed optimized workflow timeline
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif", "fontSize": "13px", "doneTaskBkgColor": "#3B82F6", "doneTaskBorderColor": "#2563EB", "critBkgColor": "#EA580C", "activeTaskBkgColor": "#2EA043", "activeTaskBorderColor": "#1A7F37", "critBorderColor": "#C2410C", "taskBkgColor": "#3B82F6", "taskBorderColor": "#2563EB", "taskTextColor": "#FFFFFF", "taskTextDarkColor": "#FFFFFF", "taskTextLightColor": "#FFFFFF", "taskTextOutsideColor": "#8B949E", "titleColor": "#8B949E", "sectionBkgColor": "rgba(234, 88, 12, 0.07)", "altSectionBkgColor": "rgba(139, 148, 158, 0.05)", "sectionBkgColor2": "rgba(234, 88, 12, 0.07)", "gridColor": "rgba(139, 148, 158, 0.3)", "todayLineColor": "rgba(0, 0, 0, 0)"}, "gantt": {"barHeight": 20, "barGap": 6, "topPadding": 44, "leftPadding": 230, "sectionFontSize": 13, "fontSize": 12}}}%%
+gantt
+    title 3m 5s to merge-ready · orange is what the merge waited on
+    dateFormat YYYY-MM-DD HH:mm:ss
+    axisFormat %M:%S
+    todayMarker off
+    section distributions
+    41s :done, j0, 2000-01-01 00:00:03, 2000-01-01 00:00:44
+    section quality
+    16s :done, j1, 2000-01-01 00:00:03, 2000-01-01 00:00:19
+    section select-tests
+    11s :crit, j2, 2000-01-01 00:00:03, 2000-01-01 00:00:14
+    section pytest-minimum
+    24s :done, j3, 2000-01-01 00:00:16, 2000-01-01 00:00:40
+    section tests · 3.11, ubuntu-latest
+    42s :done, j4, 2000-01-01 00:00:16, 2000-01-01 00:00:58
+    section tests · 3.11, macos-latest
+    59s :done, j5, 2000-01-01 00:00:17, 2000-01-01 00:01:16
+    section tests · 3.14, macos-latest
+    1m 33s :done, j6, 2000-01-01 00:00:17, 2000-01-01 00:01:50
+    section tests · 3.14, ubuntu-latest
+    43s :done, j7, 2000-01-01 00:00:17, 2000-01-01 00:01:00
+    section tests · 3.14, windows-latest
+    2m 42s :crit, j8, 2000-01-01 00:00:17, 2000-01-01 00:02:59
+    section tests · 3.11, windows-latest
+    1m 42s · ⏳ 42s :done, j9, 2000-01-01 00:00:56, 2000-01-01 00:02:38
+    section Validation gate
+    4s :crit, j10, 2000-01-01 00:03:01, 2000-01-01 00:03:05
+    section ✅ merge-ready 3m 5s
+    ✅ :active, m, 2000-01-01 00:03:05, 2000-01-01 00:04:01
+```
+
+Orange follows the actual `needs` graph. Bars are observed API timestamps,
+normalized to workflow creation; gaps include runner/admission delay.
