@@ -43,8 +43,9 @@ from pytest_selective.impact_models import (
     contents_node,
     file_of,
 )
+from pytest_selective.pytest_plugins import declared_plugins
 
-VERSION = "19"
+VERSION = "20"
 OPAQUE_CALLS = {
     "__import__",
     "import_module",
@@ -370,6 +371,7 @@ def parse_source(source: bytes) -> ParsedSource:
             else:
                 opaque.add(f"{name} at line {node.lineno}")
     return ParsedSource(
+        registered_plugins=declared_plugins(tree) if b"pytest_plugins" in source else [],
         django_urlconf=str(registration.value) if isinstance(registration, ast.Constant) else None,
         imports=imports,
         strings=sorted(strings),
@@ -727,8 +729,29 @@ def resolve_graph(
         for consumer in route.consumers:
             edges[consumer].update(targets - {consumer})
 
-    globals_set = plugins | global_module_files(index, config)
     conftests = {path for path in python_files if PurePosixPath(path).name == "conftest.py"}
+    globals_set = plugins | global_module_files(index, config)
+    # Registration affects the whole session, including when a test module
+    # loads the plugin. Follow nested declarations and retain the owner so
+    # removing/changing its registration also invalidates every test.
+    pending = list(conftests | set(tests) | globals_set)
+    visited: set[str] = set()
+    while pending:
+        owner = pending.pop()
+        if owner in visited:
+            continue
+        visited.add(owner)
+        declared = parsed[files[owner]].registered_plugins
+        if declared is None:
+            raise ValueError(f"{owner}: cannot statically resolve pytest_plugins; run the full suite")
+        if declared:
+            globals_set.add(owner)
+            for name in declared:
+                targets = index.resolve(name)
+                edges[owner].update(targets - {owner})
+                if name not in index.modules:
+                    unresolved[owner] = sorted(set(unresolved.get(owner, [])) | {name})
+                pending.extend(targets)
     for test in tests:
         edges[test].update(globals_set - {test})
         for conftest in conftests:
@@ -736,6 +759,7 @@ def resolve_graph(
             if within(test, parent):
                 edges[test].add(conftest)
     return Snapshot(
+        plugin_tests=sorted(globals_set & set(tests)),
         tree=tree,
         files=files,
         edges={path: sorted(deps) for path, deps in edges.items() if deps},

@@ -247,6 +247,7 @@ class DependencyComment(ImpactModel):
 
 
 class ParsedSource(ImpactModel):
+    registered_plugins: list[str] | None = Field(default_factory=list)
     django_urlconf: str | None = None
     imports: list[ImportSpec]
     strings: list[str]
@@ -262,6 +263,7 @@ class GitTree(ImpactModel):
 
 
 class Snapshot(ImpactModel):
+    plugin_tests: list[str] = Field(default_factory=list)
     tree: str
     files: dict[str, str]
     edges: dict[str, list[str]]
