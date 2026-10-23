@@ -124,8 +124,9 @@ you can enumerate every job, action, and reusable workflow that affects a lane.
 ## 4. Measure one equivalent pair
 
 Open a README-only probe PR. Save the source SHA, tested merge, run ID and attempt
-of its successful selected run. Add `test:full` and trigger the same revision
-without changing source or workflow settings. Compare successful completed runs;
+of its successful selected run. Add `test:full`, then explicitly rerun the workflow at that revision. A label
+change alone may not trigger CI. The example also forces full execution on
+reruns. Do not change source or workflow settings between the paired runs. Compare successful completed runs;
 keep cancelled experiments and observer overhead separate.
 
 Use [CI-esta's critical-path tutorial](https://ci-esta.readthedocs.io/en/latest/docs/tutorials/measure-critical-path/)

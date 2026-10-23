@@ -1,4 +1,40 @@
-# Tutorial: catch a regression with one of three test files
+# Start using pytest-selective
+
+## Try your existing project
+
+Start in a Git repository whose full pytest suite passes. You need Python 3.11+,
+Git 2.24+ and your project's test dependencies.
+
+```bash
+uv add --dev pytest-selective
+uv run pytest --no-selective
+```
+
+Commit the dependency/lockfile change using your normal workflow. Environment
+changes intentionally select everything; leaving the installation uncommitted
+would obscure the first narrow selection. Edit one application function, then:
+
+```bash
+uv run pytest --selective
+```
+
+Read the selection summary and run the full suite to compare outcomes. If every
+test runs, inspect the fallback reason before adding exceptions. Shared fixtures,
+plugins and dependency files can legitimately affect the whole suite. Declare
+runtime file reads and subprocess inputs using [configuration](configuration.md).
+
+For a branch whose changes are already committed, choose a known passing base:
+
+```bash
+uv run pytest --selective --selective-base origin/main
+```
+
+That compares directly with `origin/main`, not an implicit merge-base. Default
+HEAD comparison covers local edits only. Keep `--no-selective` checkpoints and
+read [native versus pre-collection behavior](local-development.md) before making
+selection your default.
+
+## Controlled example: catch a pricing regression
 
 This exercise runs the installed CLI and real pytest processes against a temporary
 Git repository. It needs Python 3.11+, Git 2.24+, and the development dependencies.

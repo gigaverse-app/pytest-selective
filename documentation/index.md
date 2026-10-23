@@ -1,43 +1,72 @@
 ---
 title: pytest-selective documentation
-description: Run affected Python tests safely, explain every selection, and skip unrelated CI lanes.
+description: Run the tests your Python change can affect.
 ---
 
-# pytest-selective
+![pytest-selective](assets/banner.svg)
 
-Run affected Python tests safely, explain every selection, and skip unrelated CI lanes.
+# Run the tests your Python change can affect.
 
-[Get started](../docs/tutorial.md){ .md-button .md-button--primary }
-[Source on GitHub](https://github.com/gigaverse-app/pytest-selective){ .md-button }
+pytest-selective follows Python dependencies across Git revisions, explains why
+each test was selected, and falls back to full execution when scope cannot be
+established. Use it for the local edit/test loop or to skip entire unrelated CI
+lanes before services and runners start.
 
-## Follow a measured example
+[Try it in your project](../docs/tutorial.md){ .md-button .md-button--primary }
+[Skip unrelated CI jobs](../docs/tutorials/skip-unrelated-ci.md){ .md-button }
 
-[Skip unrelated CI jobs safely](../docs/tutorials/skip-unrelated-ci.md). Apply the steps to your own
-repository, and inspect the original runs, retained checks, and measurement limits.
+## Start locally
 
-## Run the tests an edit can affect
+In an existing Git-backed Python project with a passing pytest suite:
 
-Use affected-test selection for quick local feedback, or select complete CI
-lanes when every test and validator in a contract must run together. Inspect the
-explanation before relying on a skipped test. Keep full checkpoints and explicit
-inputs for dependencies that Python imports cannot reveal.
+```bash
+uv add --dev pytest-selective
+# Commit the dependency change, then edit application code.
+uv run pytest --selective
+# Keep a full-suite checkpoint:
+uv run pytest --no-selective
+```
 
-- [Run the executable tutorial](../docs/tutorial.md): try selection in a small real Git repository.
-- [Configure dependency inputs](../docs/configuration.md): declare collection policy and dynamic dependencies.
-- [Select complete CI lanes](../docs/ci.md#select-whole-ci-lanes): avoid starting unrelated test infrastructure.
-- [Improve local development](../docs/local-development.md): integrate selection into your pytest workflow.
-- [Audit selection health](../docs/selection-health.md): investigate growing scope and fixture dependencies.
-- [Read the evidence and limits](../docs/evidence.md): decide where selection is appropriate.
+Python 3.11+ and Git 2.24+ are required. Native mode compares HEAD with staged,
+unstaged and nonignored untracked changes. It collects normally, then deselects
+unaffected tests. Use a known passing branch base for committed changes. The
+[tutorial](../docs/tutorial.md) covers the first run and a controlled regression.
 
-## Use the tools together
+```mermaid
+flowchart LR
+  A[Git change] --> B[Dependency graph + declared inputs]
+  B --> C{Selection}
+  C --> D[Affected tests or complete lanes]
+  C --> E[No affected work]
+  C --> F[Uncertain scope: full execution]
+```
 
-[Choose the tool for your problem](ecosystem.md). Each project works on its own;
-combine them when you need both faster feedback and evidence that the required
-work still happened.
+## Pick the right level
 
-## Versions and support
+| Your bottleneck | Start here |
+| --- | --- |
+| Repeating local tests after each edit | [Native pytest plugin](../docs/local-development.md) |
+| Importing and collecting a large suite | [Pre-collection runner](../docs/local-development.md#pre-collection-runner) |
+| Starting databases and every OS lane for README changes | [Whole-lane tutorial](../docs/tutorials/skip-unrelated-ci.md) |
+| Selection is unexpectedly broad | [Dependency explanations and audit](../docs/selection-health.md) |
 
-`latest` follows the main branch. Release-specific documentation is available
-through Read the Docs when that release contains the site configuration.
-Use [GitHub issues](https://github.com/gigaverse-app/pytest-selective/issues) for a minimal
-reproducer or a missing explanation. [Contributions](../CONTRIBUTING.md) are welcome.
+Imports cannot reveal every file read, subprocess or external dependency. Declare
+those inputs and keep full checkpoints. Conformance suites and whole-suite
+coverage may need complete lanes. [Guarantees and limits](../docs/evidence.md).
+
+## Measured, scenario-specific savings
+
+![README-only CI comparison: 627 versus 48 runner-seconds and 211 versus 26 seconds elapsed](assets/routing-comparison.svg)
+
+One same-revision full/selected pair retained quality and package checks while
+skipping unrelated test lanes. This is a historical workflow comparison, not a
+universal speedup or a bill. [Runs, retained checks and measurement limits](../docs/benchmarks/2026-10-22-routing.md).
+
+## Related tools and support
+
+[Choose a related tool](ecosystem.md) when you also need test selection, CI
+measurement or background-work guarantees. Each project works independently.
+
+`latest` follows main and can contain APIs newer than your installed package.
+Check the release notes for that version. [Report an issue](https://github.com/gigaverse-app/pytest-selective/issues)
+with a minimal reproducer, or read [the contribution guide](../CONTRIBUTING.md).

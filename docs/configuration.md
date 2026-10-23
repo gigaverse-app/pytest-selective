@@ -87,8 +87,10 @@ Declare lock files, environment manifests, and other suite-wide inputs explicitl
 
 Add that rule to the configuration's `dependencies` array and adapt the reader
 patterns to your actual inventory. Central-rule reader patterns use shell-style
-matching: here `*` also covers nested paths under `tests/`. Unknown non-Python files are not automatically
-global inputs. Use `global_modules` for modules loaded by every test and
+matching: here `*` also covers nested paths under `tests/`. Common lockfiles, dependency manifests and pytest configuration already belong
+to the default `global_inputs`. Keep those defaults unless you have reviewed a
+narrower environment contract; these reader-specific rules are for additional
+inputs. Other non-Python files are not automatically global inputs. Use `global_modules` for modules loaded by every test and
 `always_run` for explicit canary test paths. Retain full-suite checkpoints.
 
 ## Explain and audit
@@ -104,7 +106,7 @@ To record real file reads, install the optional extra in the Python 3.11+ test
 environment and run a representative suite:
 
 ```bash
-pip install "pytest-selective[audit] @ git+https://github.com/gigaverse-app/pytest-selective.git"
+pip install "pytest-selective[audit]"
 pytest -p pytest_selective.impact_audit_plugin --impact-audit-dir impact-audit
 pytest-selective audit --config .github/test-impact.json --records impact-audit
 ```
