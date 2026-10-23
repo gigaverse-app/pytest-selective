@@ -27,7 +27,11 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts/run_ci_tests.py"
     ],
 )
 def test_execution_respects_selection_and_falls_back_on_missing_proof(tmp_path, result, mode, files, expected):
-    write(tmp_path, "tests/test_selected.py", "def test_selected(): pass\n")
+    write(
+        tmp_path,
+        "tests/test_selected.py",
+        "def test_selected(pytestconfig): assert not pytestconfig.pluginmanager.hasplugin('selective')\n",
+    )
     write(tmp_path, "tests/test_unrelated.py", "def test_unrelated(): assert False\n")
     completed = subprocess.run(
         [sys.executable, str(SCRIPT), "-q"],

@@ -30,7 +30,9 @@ def main() -> int:
         coverage = ["--cov", "--cov-report=term-missing", "--cov-report=xml"]
     print(f"Executing {mode} test plan: {len(roots)} paths", flush=True)
     return subprocess.run(
-        [sys.executable, "-m", "pytest", "--no-selective", *sys.argv[1:], *coverage, "--", *roots]
+        # Planning already happened. Integration tests load the plugin in their
+        # subprocesses; do not make it an implicit dependency of every CI test.
+        [sys.executable, "-m", "pytest", "-p", "no:selective", *sys.argv[1:], *coverage, "--", *roots]
     ).returncode
 
 

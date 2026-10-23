@@ -73,8 +73,11 @@ global execution inputs with the graph's environment inputs. Declare subprocess
 and non-import dependencies at their readers. Full plans collect whole-suite
 coverage; scoped plans produce JUnit timing evidence without presenting partial
 coverage as a whole-suite result. The small execution wrapper only consumes the
-public action's JSON file list: it does not implement another selector. Missing
-or failed planning runs complete roots, and an empty successful plan never starts
+public action's JSON file list: it does not implement another selector.
+The outer pytest process disables the selective plugin to avoid a second planner
+and a hidden dependency of every test on plugin startup. Plugin integration tests
+still load it normally in subprocesses and declare that dependency explicitly.
+Missing or failed planning runs complete roots, and an empty successful plan never starts
 pytest. The aggregate gate still fails when planning fails.
 
 ## Conventional Commits

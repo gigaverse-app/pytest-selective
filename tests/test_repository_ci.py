@@ -123,3 +123,25 @@ def test_repository_file_plan_skips_docs_and_follows_imports(tmp_path, path, exp
     with closing(GraphCache(tmp_path / "cache.sqlite3")) as cache:
         result = affected(tmp_path, base, head, file_config(lanes), cache)
     assert result.selected == expected, result.reasons
+
+
+@pytest.mark.parametrize(
+    "reader",
+    ["tests/testing/test_pytest_plugin.py", "tests/testing/test_working_tree.py", "tests/test_tutorial.py"],
+)
+def test_subprocess_plugin_readers_declare_their_runtime(tmp_path, reader):
+    init(tmp_path)
+    write(tmp_path, "pyproject.toml", (ROOT / "pyproject.toml").read_text())
+    write(tmp_path, "src/pytest_selective/__init__.py")
+    write(tmp_path, "src/pytest_selective/plugin.py", "VALUE = 1")
+    write(tmp_path, "src/pytest_selective/__main__.py", "VALUE = 1")
+    write(tmp_path, "scripts/tutorial.py", (ROOT / "scripts/tutorial.py").read_text())
+    write(tmp_path, reader, (ROOT / reader).read_text())
+    write(tmp_path, "tests/test_unrelated.py", "def test_unrelated(): pass")
+    base = commit(tmp_path)
+    write(tmp_path, "src/pytest_selective/plugin.py", "VALUE = 2")
+    head = commit(tmp_path)
+    lanes = LaneConfig.model_validate_json((ROOT / ".github/test-lanes.json").read_text())
+    with closing(GraphCache(tmp_path / "cache.sqlite3")) as cache:
+        result = affected(tmp_path, base, head, file_config(lanes), cache)
+    assert result.selected == [reader], result.reasons
