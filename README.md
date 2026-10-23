@@ -16,7 +16,8 @@ the affected test files, and explains the result. Use it directly as a pytest
 plugin, or plan before collection and service startup with the CLI and CI actions.
 
 Built from the selector used in Gigaverse's backend, AI, and shared Python
-infrastructure. Use the compatible `1.x` package range and moving `@v1` Actions tag.
+infrastructure. Use the moving `@v1` Actions tag. The Python package has its own
+version and compatible dependency range.
 [Provenance and extraction scope](https://github.com/gigaverse-app/pytest-selective/blob/main/PROVENANCE.md).
 
 [Quick tutorial](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/tutorial.md) ·

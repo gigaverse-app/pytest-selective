@@ -7,9 +7,10 @@ analyze your project still need your project's checkout.
 
 ## Availability and pinning
 
-Version 1 provides these public paths. Use the moving `@v1` tag to receive
-compatible updates after each successful publication. Full release tags remain
-immutable. Python package versions and installed agent skills are separate:
+Actions version 1 provides these public paths. Use the moving `@v1` tag to receive
+updates after each successful Actions publication. The Actions major is independent
+of the Python package version; `@v1` does not imply Python package `1.0.0`.
+Full package release tags remain immutable. Installed agent skills are separate:
 updating one does not update the others.
 
 Each `actions/NAME` directory contains the implementation and its helper files.
