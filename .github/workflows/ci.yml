@@ -55,6 +55,12 @@ jobs:
         python: ['3.11', '3.14']
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      # Keep temporary Git repositories beside the checkout on the runner's work disk.
+      # Windows otherwise puts tempfile/pytest trees on the system/user-profile disk.
+      TMP: ${{ runner.temp }}
+      TEMP: ${{ runner.temp }}
+      TMPDIR: ${{ runner.temp }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: gigaverse-app/ci-esta/.github/actions/setup-cached-uv@966f25c4fac4c64bf4ff9df0404321f91f882293

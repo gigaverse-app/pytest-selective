@@ -23,7 +23,9 @@ def init(root: Path) -> None:
     if _template is None:
         directory = Path(tempfile.mkdtemp(prefix="pytest-selective-git-template-"))
         atexit.register(shutil.rmtree, directory, ignore_errors=True)
-        subprocess.run(["git", "init", "-q", str(directory)], check=True, capture_output=True)
+        # Git's sample hooks and description are never used by these fixtures.
+        # Avoid copying them hundreds of times, especially on Windows filesystems.
+        subprocess.run(["git", "init", "--template=", "-q", str(directory)], check=True, capture_output=True)
         _template = directory / ".git"
     root.mkdir(parents=True, exist_ok=True)
     shutil.copytree(_template, root / ".git")
