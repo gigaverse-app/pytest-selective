@@ -37,3 +37,28 @@ jobs:
           path: dist
       - name: Publish tested distributions with attestations
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
+
+  action-version:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Advance the compatible Actions tag after publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            exit 0
+          fi
+          alias="v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+          if gh api "repos/$GH_REPO/git/ref/tags/$alias" --silent; then
+            gh api --method PATCH "repos/$GH_REPO/git/refs/tags/$alias" \
+              -f sha="$RELEASE_SHA" -F force=true --silent
+          else
+            gh api --method POST "repos/$GH_REPO/git/refs" \
+              -f ref="refs/tags/$alias" -f sha="$RELEASE_SHA" --silent
+          fi

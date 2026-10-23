@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pytest-selective"
-version = "0.1.0a1"
+version = "0.1.0"
 description = "Explainable Python test impact analysis: select affected pytest files from Git changes"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -14,7 +14,6 @@ authors = [{name = "Gigaverse"}]
 keywords = ["pytest", "test-selection", "test-impact-analysis", "incremental-testing", "git", "ci"]
 dependencies = ["pydantic>=2.11,<3", "pyyaml>=6,<7"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
   "Framework :: Pytest",
   "Intended Audience :: Developers",
   "Programming Language :: Python :: 3",
