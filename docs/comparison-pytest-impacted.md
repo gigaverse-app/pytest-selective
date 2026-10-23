@@ -5,6 +5,8 @@ with pytest-selective baseline `12694bf` and CI-esta baseline `e9d2792` in the
 original pass. Those improvements shipped in the 0.1 releases. The follow-up
 below compares current upstream with pytest-selective 0.1.1 and measures the
 new work at explicit commits. CI-esta consumes the shared planner and sharding code.
+Use the release notes to check availability in an older installed version.
+The benchmark revisions remain frozen for reproducibility.
 
 pytest-impacted is a useful source of ideas for the local edit/test loop.
 pytest-selective owns our dependency analysis and routing. CI-esta consumes that
@@ -124,6 +126,9 @@ missing history, empty selections and explicit full execution. Dependency-file
 tests cover addition, modification and deletion and assert both selected files
 and whole lanes. Parser tests retain syntax errors and encoding behavior.
 
+The parser samples above measure parser work only. Separate hosted execution
+evidence is published in [the Windows report](benchmarks/2026-10-23-windows-saleor.md);
+do not attribute that whole-workflow improvement to parsing alone.
 Hosted savings for the new follow-up remain unmeasured. Previous release/adopter
 validation is separate evidence; these local graph timings do not substitute for
 hosted execution checks. The native

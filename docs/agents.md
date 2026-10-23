@@ -57,16 +57,10 @@ Our own README scenario used **48 instead of 627 runner-seconds**, with elapsed
 time dropping **211s to 26s**. That is one successful matched pair, not a promise
 for your project. [Read the evidence](benchmarks/2026-10-22-routing.md).
 
-## Why this integration is small
+## Keep installed skills current
 
-- [Moltbook](https://www.moltbook.com/) demonstrates a direct handoff: give an
-  agent one instruction URL. Here that handoff applies a local CI playbook.
-- [Stack Overflow for Agents](https://stackoverflow.blog/2026/09/16/here-s-what-s-new-on-stack-overflow-for-agents/)
-  emphasizes reusable playbooks with applicability boundaries and verification.
-  The skill asks for real routing controls and evidence, not a universal speedup.
-- [Agent Skills](https://agentskills.io/specification) gives the portable format;
-  [AGENTS.md](https://agents.md/) carries repository-local conventions. Detailed
-  commands live in an on-demand reference instead of loading every manual.
-
-These are design influences, not affiliations or endorsements. Using the skill
-does not register accounts or post results to those communities.
+The repository's `skills/` directory is the authoritative copy. A package upgrade
+does not refresh an agent's installed Markdown. Reinstall/update with your skill
+manager, or replace the complete skill folder (including `references/`) after
+reviewing the source revision. Compare that revision when an agent gives advice
+that conflicts with the current quickstart. Preserve local customizations separately.

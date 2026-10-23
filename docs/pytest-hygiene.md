@@ -35,8 +35,8 @@ intentional cost; it does not make a global dependency cheaper. Ordinary edits,
 removals and moves retain their existing behavior. Invalid syntax or missing Git
 history fail with an actionable error instead of approving an unexamined change.
 
-The composite action is `.github/actions/pytest-expansion` in this repository.
-Pin it to a reviewed commit. It uses the existing checkout and interpreter, with
+The public action is `gigaverse-app/pytest-selective/pytest-expansion`.
+Pin a reviewed commit that includes the [public entry point](actions.md). It uses the existing checkout and interpreter, with
 no dependency install. Its `python-executable` input defaults to `python3.14`;
 choose an interpreter at least as new as the inspected source syntax. The CLI
 supports Python 3.11+ when the inspected syntax does too.

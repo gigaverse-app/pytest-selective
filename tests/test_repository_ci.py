@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 @pytest.mark.parametrize(
     "path, expected",
     [
+        ("action.yml", True),
+        ("plan-lanes/action.yml", True),
         ("README.md", False),
         ("docs/ci.md", False),
         ("docs/benchmarks/data.json", False),

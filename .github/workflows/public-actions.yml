@@ -1,0 +1,54 @@
+name: Public action smoke
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Use the reviewed repository graph
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          graph = json.loads(Path('.github/test-lanes.json').read_text())['graph']
+          Path('smoke-impact.json').write_text(json.dumps(graph))
+          PY
+      - uses: ./
+        id: impact
+        with:
+          config: smoke-impact.json
+          base: ${{ github.sha }}
+          full: 'true'
+          full-roots: tests
+          max-shards: '2'
+          explanation-artifact: ''
+      - name: Verify forwarded file-plan outputs
+        env:
+          MODE: ${{ steps.impact.outputs.mode }}
+          ROOTS: ${{ steps.impact.outputs.test_roots }}
+        run: |
+          test "$MODE" = full
+          test -n "$ROOTS"
+      - uses: ./plan-lanes
+        id: lanes
+        with:
+          config: .github/test-lanes.json
+          base: ${{ github.sha }}
+          full: 'true'
+          artifact-name: ''
+      - name: Verify forwarded lane outputs
+        env:
+          LANES: ${{ steps.lanes.outputs.lanes }}
+        run: |
+          python - <<'PY'
+          import json, os
+          assert json.loads(os.environ['LANES']) == {'tests': True}
+          PY
