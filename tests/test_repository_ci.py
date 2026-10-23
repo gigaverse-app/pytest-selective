@@ -2,6 +2,7 @@
 
 # gv:test-dependency: .github/test-lanes.json
 # gv:test-dependency: .github/workflows/ci.yml
+# gv:test-dependency: .github/workflows/observe-ci.yml
 
 from contextlib import closing
 from pathlib import Path
@@ -92,6 +93,8 @@ def test_pytest_jobs_consume_the_public_actions_shared_file_plan():
         assert execution["env"]["CI_PLANNER_RESULT"] == "${{ needs.select-tests.result }}"
         assert execution["env"]["CI_TEST_MODE"] == "${{ needs.select-tests.outputs.mode }}"
         assert execution["env"]["CI_TEST_FILES"] == "${{ needs.select-tests.outputs.files }}"
+    observer = yaml.safe_load((ROOT / ".github/workflows/observe-ci.yml").read_text())
+    assert observer["jobs"]["report"]["with"]["test-selection-artifact"] == "test-impact-explanation"
 
 
 @pytest.mark.parametrize(
