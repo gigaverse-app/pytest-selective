@@ -3,7 +3,7 @@
 This comparison uses [pytest-impacted at 8670157](https://github.com/promptromp/pytest-impacted/tree/8670157aca529be2f19cdb5df26f5476434db240),
 with pytest-selective baseline `12694bf` and CI-esta baseline `e9d2792` in the
 original pass. Those improvements shipped in the 0.1 releases. The follow-up
-below compares current upstream with pytest-selective 0.1.1 and measures the
+below compares the pinned upstream revision with pytest-selective 0.1.1 and measures the
 new work at explicit commits. CI-esta consumes the shared planner and sharding code.
 Use the release notes to check availability in an older installed version.
 The benchmark revisions remain frozen for reproducibility.
@@ -17,11 +17,11 @@ It should not grow another dependency graph.
 
 | Capability | pytest-impacted | pytest-selective and CI-esta | Decision |
 | --- | --- | --- | --- |
-| Uncommitted edits | Staged, unstaged and untracked changes | Previously committed trees only | Adopted: `affected --working-tree` and `run`; private index preserves staging and HEAD |
+| Uncommitted edits | Staged, unstaged and untracked changes | Committed revisions and working-tree snapshots | Adopted: `affected --working-tree` and `run`; private index preserves staging and HEAD |
 | Local execution | Standard pytest plugin | Native `pytest --selective` and a pre-collection runner | Adopted opt-in plugin registration, CLI/ini options and conservative item handling; both interfaces reuse the same planner |
 | Collection overhead | Plugin marks unaffected items skipped after collection | Native plugin deselects after collection; runner passes selected files before collection | Choose native pytest compatibility or the runner's import savings |
 | Branch comparison | Merge-base by default, explicit tip comparison | Explicit base/head; CI supplies the intended base | Preserve explicit CI contract; local runner defaults to HEAD and accepts `--base` |
-| Dependency environments | Broad built-in lock, requirements and pytest configuration patterns | Lane defaults covered uv/pyproject; file selection needed declarations | Adopted shared environment defaults for file selection and lanes, including deletions |
+| Dependency environments | Broad built-in lock, requirements and pytest configuration patterns | Shared environment defaults for file and lane selection | Adopted shared environment defaults for file selection and lanes, including deletions |
 | Non-Python inputs | Configurable full invalidation globs | Reader-specific declarations, sidecars, and lane input globs | Preserve precision; new `global_inputs` also offers full invalidation |
 | Conftest dependencies | Fixture imports; application imports require an option | Ancestor conftests and their transitive imports always apply | Keep conservative existing behavior and scoped-hook review |
 | Plugin inputs | pytest_plugins, `-p`, environment plugin names | Literal module references, declared globals, collection fingerprints | Keep explicit startup contract; environment-only plugins still require declaration |
@@ -32,7 +32,7 @@ It should not grow another dependency graph.
 | Invalid Python | Import parsing can return no imports | Selection reports an invalid dependency | Keep actionable failure; do not silently lose dependency edges |
 | Parsing cost | Optional Rust batch parser; cheap declaration prefilters | Richer Python analysis of imports, strings, calls and declarations | Adopted declaration prefilter and one AST traversal; measured below |
 | Rust acceleration | Ruff parser and Rayon batch import extraction | Full facts include strings, calls, declarations and syntax errors | Measured the extension; adopted bounded parallel full parsing while retaining encoding/error semantics |
-| Plugin declarations | Explicit `pytest_plugins` analysis | Generic strings previously missed undotted/comma-separated names | Adopted recursive declaration analysis with session-wide effects; computed values retain full-run fallback |
+| Plugin declarations | Explicit `pytest_plugins` analysis | Recursive literal declarations; computed values require full execution | Adopted recursive declaration analysis with session-wide effects; computed values retain full-run fallback |
 | Collection prerequisites | Plugins are registered during collection | File selection and independent shards can omit the registering test module | Retain registration modules and keep collection-dependent files in one session |
 | Graph caching | Process-local cached graph, explicit cache clearing | Persistent blob/tree/config/interpreter keys and checksummed records | Preserve content-addressed cache; local snapshots reuse it |
 | Traversal | Shared multi-source graph traversal | Shared multi-source closure already exists | No second implementation needed |
