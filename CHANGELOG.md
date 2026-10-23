@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/gigaverse-app/pytest-selective/compare/v0.1.1...v0.2.0) (2026-10-23)
+
+
+### Features
+
+* add public action entry points and task-focused onboarding ([#41](https://github.com/gigaverse-app/pytest-selective/issues/41)) ([94da1e6](https://github.com/gigaverse-app/pytest-selective/commit/94da1e6d4088d9ded93ce491dc88993ac140e0ea))
+
+
+### Bug fixes
+
+* **selection:** preserve plugin sessions and accelerate graph construction ([#42](https://github.com/gigaverse-app/pytest-selective/issues/42)) ([2994c88](https://github.com/gigaverse-app/pytest-selective/commit/2994c887d916a965b78f5ff8d48476abed705e37))
+
 ## 0.1.1 (2026-10-23)
 
 - Register a native pytest plugin: `pytest --selective`, ini defaults, optional existing impact JSON, an exact comparison base, and `--no-selective` for full execution.
