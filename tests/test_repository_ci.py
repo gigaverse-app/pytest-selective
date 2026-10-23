@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
     [
         ("action.yml", True),
         ("plan-lanes/action.yml", True),
+        ("actions/plan-lanes/action.yml", True),
+        ("actions/plan-lanes/helper.py", True),
         ("README.md", False),
         ("docs/ci.md", False),
         ("docs/benchmarks/data.json", False),

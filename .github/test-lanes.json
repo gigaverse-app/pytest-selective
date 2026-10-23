@@ -37,6 +37,7 @@
     "action.yml",
     "*/action.yml",
     "examples/**",
-    ".github/workflows/public-actions.yml"
+    ".github/workflows/public-actions.yml",
+    "actions/**"
   ]
 }

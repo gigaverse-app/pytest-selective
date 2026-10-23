@@ -58,6 +58,7 @@ dependency paths and startup floors; record representative runtime reads and
 repair missing declarations. Offer expansion/isolation guards where global
 fixtures or test imports keep widening the graph. Audits only cover observed paths.
 Use the [public root and named actions](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/actions.md)
+with named entry points under `gigaverse-app/pytest-selective/actions/NAME@REF`,
 and verify the chosen release contains those paths; do not put a new path on an
 older tag. Keep legacy action paths only for existing compatible consumers.
 

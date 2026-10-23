@@ -22,7 +22,7 @@ jobs:
         with:
           fetch-depth: 0
       - id: plan
-        uses: ./plan-lanes
+        uses: ./actions/plan-lanes
         with:
           config: .github/test-lanes.json
           base: ${{ github.event.pull_request.base.sha || github.event.before }}
