@@ -84,7 +84,7 @@ select-tests:
       with:
         config: .github/test-lanes.json
         base: ${{ github.event.pull_request.base.sha || github.event.before }}
-        full: ${{ github.run_attempt > 1 || github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'test:full') }}
+        full: ${{ github.run_attempt > 1 || contains(fromJSON('["workflow_dispatch","workflow_call","schedule","release"]'), github.event_name) || contains(github.event.pull_request.labels.*.name, 'test:full') }}
 ```
 
 Keep the test job's services, matrix, commands, coverage and conformance checks.
