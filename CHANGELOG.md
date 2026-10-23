@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.3.0](https://github.com/gigaverse-app/pytest-selective/compare/v0.2.0...v0.3.0) (2026-10-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **actions:** named action callers upgrading from older layouts must replace `.github/actions/NAME` or `NAME` with `actions/NAME` and select a revision containing that path.
+
+### Features
+
+* **actions:** group public entry points under actions directory ([#44](https://github.com/gigaverse-app/pytest-selective/issues/44)) ([236aefc](https://github.com/gigaverse-app/pytest-selective/commit/236aefc83d9f0ee1696a5ffa29fc83cbcc4a53dc))
+
+
+### Bug fixes
+
+* **ci:** dogfood dependency-based test selection ([#57](https://github.com/gigaverse-app/pytest-selective/issues/57)) ([76afb69](https://github.com/gigaverse-app/pytest-selective/commit/76afb69cea84681bd661ec2bfff7be857b434129))
+* **ci:** select all runtime tests by declared dependencies ([9673e50](https://github.com/gigaverse-app/pytest-selective/commit/9673e50dd8a709db9347d2e325da242aca96cece))
+* **docs:** refresh cached artwork when branding changes ([5726530](https://github.com/gigaverse-app/pytest-selective/commit/5726530a445099e7cf24a1a7a89016fed0270308))
+
+
+### Refactoring
+
+* **actions:** move implementations into the public actions directory ([#46](https://github.com/gigaverse-app/pytest-selective/issues/46)) ([bd5aae3](https://github.com/gigaverse-app/pytest-selective/commit/bd5aae32176ae83b121d2353f40b562642184cd8))
+
 ## [0.2.0](https://github.com/gigaverse-app/pytest-selective/compare/v0.1.1...v0.2.0) (2026-10-23)
 
 
