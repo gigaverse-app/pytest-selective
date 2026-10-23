@@ -3,7 +3,7 @@ title: pytest-selective documentation
 description: Run the tests your Python change can affect.
 ---
 
-![pytest-selective](assets/banner.svg)
+![pytest-selective](../docs/assets/banner.svg)
 
 # Run the tests your Python change can affect.
 

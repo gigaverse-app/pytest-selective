@@ -1,3 +1,5 @@
+![pytest-selective: Run affected Python tests. See why they matter.](https://raw.githubusercontent.com/gigaverse-app/pytest-selective/main/docs/assets/banner.png)
+
 # pytest-selective
 
 [![Documentation](https://readthedocs.org/projects/pytest-selective/badge/?version=latest)](https://pytest-selective.readthedocs.io/en/latest/)
