@@ -14,6 +14,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
+from pytest_selective.checkpoint import full_checkpoint
 from pytest_selective.impact_audit import audit, load_records, summary
 from pytest_selective.impact_explanation import dependent_tests, explain
 from pytest_selective.impact_graph import (
@@ -294,7 +295,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--graph-base", default="")
     parser.add_argument("--extra-files", type=Path)
     parser.add_argument("--github-output", type=Path)
-    parser.add_argument("--full", action="store_true")
+    parser.add_argument("--full", nargs="?", const=True, default=False, type=full_checkpoint, metavar="auto|true|false")
     parser.add_argument("--minimum-files", type=int, default=0)
     parser.add_argument("--max-shards", type=int, default=8)
     parser.add_argument("--durations", type=Path, default=Path(".test_durations"))
@@ -376,6 +377,11 @@ def main(argv: list[str] | None = None) -> int:
                     output.write(f"dependencies_unchanged={str(report.dependencies_unchanged).lower()}\n")
                     output.write(
                         f"test_roots={' '.join(config.test_roots if report.mode == 'full' else report.selected)}\n"
+                    )
+                    output.write(
+                        "test_roots_json="
+                        + json.dumps(config.test_roots if report.mode == "full" else report.selected)
+                        + "\n"
                     )
                     output.write(f"shard_count={shards}\ngroups={json.dumps(list(range(1, shards + 1)))}\n")
                     reason = (

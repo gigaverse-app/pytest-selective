@@ -87,7 +87,7 @@ def test_pytest_jobs_consume_the_public_actions_shared_file_plan():
     file_step = next(step for step in planner["steps"] if step.get("id") == "files")
     assert file_step["uses"] == "./"
     assert planner["outputs"]["mode"] == "${{ steps.files.outputs.mode }}"
-    assert planner["outputs"]["files"] == "${{ steps.paths.outputs.files }}"
+    assert planner["outputs"]["files"] == "${{ steps.files.outputs.test_roots_json }}"
     for job in ("tests", "pytest-minimum"):
         execution = next(step for step in jobs[job]["steps"] if "scripts/run_ci_tests.py" in step.get("run", ""))
         assert execution["env"]["CI_PLANNER_RESULT"] == "${{ needs.select-tests.result }}"

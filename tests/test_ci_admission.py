@@ -59,6 +59,6 @@ def test_ordinary_pushes_do_not_force_full_tests():
                 continue
             for step in job.get("steps", []):
                 if "plan-lanes" in step.get("uses", "") or step.get("id") == "files":
-                    full = step.get("with", {}).get("full", "")
+                    full = step.get("with", {}).get("full", "auto")
                     assert "github.event_name != 'pull_request'" not in str(full), path
-                    assert "workflow_dispatch" in str(full), path
+                    assert full == "auto" or "workflow_dispatch" in str(full), path
