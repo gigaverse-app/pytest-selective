@@ -11,6 +11,7 @@ from typing import Any
 import yaml
 from pydantic import Field, field_validator, model_validator
 
+from pytest_selective.checkpoint import full_checkpoint
 from pytest_selective.impact_graph import DependencyDeclarationError, GraphCache, git, matches, within
 from pytest_selective.impact_models import ImpactConfig, ImpactModel
 from pytest_selective.impact_selection import affected
@@ -231,7 +232,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo", type=Path, default=Path("."))
     parser.add_argument("--base", required=True)
     parser.add_argument("--head", default="HEAD")
-    parser.add_argument("--full", action="store_true")
+    parser.add_argument("--full", nargs="?", const=True, default=False, type=full_checkpoint, metavar="auto|true|false")
     parser.add_argument("--github-output", type=Path)
     args = parser.parse_args(argv)
     try:

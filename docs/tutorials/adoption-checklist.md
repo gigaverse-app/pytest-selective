@@ -127,8 +127,8 @@ Use the [complete CI recipe](../ci.md), or the
 | Interface | Choose it when | Override / contract |
 | --- | --- | --- |
 | `gigaverse-app/pytest-selective@v1` | Plan ordinary pytest files before collection | Root convenience entry point; same implementation as `actions/test-impact` |
-| `actions/test-impact@v1` | Use the direct action, including runners without root self-reference support | `full` preserves a deliberate full checkpoint; inspect `mode` and exact planned paths |
-| `actions/plan-lanes@v1` | Skip complete unaffected jobs while preserving coverage/conformance | `full` runs every configured lane; `lanes` is a boolean JSON map |
+| `actions/test-impact@v1` | Use the direct action, including runners without root self-reference support | Shared `full: auto` checkpoints; consume `mode` and `test_roots_json` without reparsing reports |
+| `actions/plan-lanes@v1` | Skip complete unaffected jobs while preserving coverage/conformance | Shared `full: auto` checkpoints; `lanes` is a boolean JSON map |
 | `actions/pytest-expansion@v1` | Reject unexplained global conftest expansion before application setup | Configure roots/prefixes to your project; this does not itself run tests |
 
 Specialized action paths above are relative to `gigaverse-app/pytest-selective/`.

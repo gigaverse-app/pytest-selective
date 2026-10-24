@@ -6,10 +6,10 @@ inputs:
     required: true
   base:
     description: Base commit containing the complete change set.
-    required: true
+    default: ${{ github.event.pull_request.base.sha || github.event.before }}
   full:
-    description: Run every lane for an explicit full-test checkpoint; ordinary PRs and pushes use selection.
-    default: 'false'
+    description: 'auto selects on PRs/pushes and runs full on reruns, manual/scheduled/release events or test:full. Override with true or false.'
+    default: auto
   artifact-name:
     description: >
       Upload the lane plan under this name, where CI-esta's report renders it as
@@ -41,7 +41,7 @@ runs:
       run: |
         export PYTHONPATH="$SELECTIVE_ACTION/../../src${PYTHONPATH:+:$PYTHONPATH}"
         args=(--config "$SELECTIVE_CONFIG" --base "$SELECTIVE_BASE" --github-output "$GITHUB_OUTPUT")
-        if [ "$SELECTIVE_FULL" = true ]; then args+=(--full); fi
+        args+=(--full "$SELECTIVE_FULL")
         uv run --no-project --python 3.14 --with pydantic==2.13.4 --with pyyaml==6.0.3 \
           python -m pytest_selective.ci "${args[@]}" | tee test-lanes.json
         {

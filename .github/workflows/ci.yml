@@ -18,7 +18,7 @@ jobs:
     outputs:
       lanes: ${{ steps.plan.outputs.lanes }}
       mode: ${{ steps.files.outputs.mode }}
-      files: ${{ steps.paths.outputs.files }}
+      files: ${{ steps.files.outputs.test_roots_json }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -27,8 +27,6 @@ jobs:
         uses: ./actions/plan-lanes
         with:
           config: .github/test-lanes.json
-          base: ${{ github.event.pull_request.base.sha || github.event.before }}
-          full: ${{ github.run_attempt > 1 || contains(fromJSON('["workflow_dispatch","workflow_call","schedule","release"]'), github.event_name) || contains(github.event.pull_request.labels.*.name, 'test:full') }}
       - name: Share the repository graph and execution inputs with file selection
         env:
           PYTHONPATH: src
@@ -39,21 +37,7 @@ jobs:
         uses: ./
         with:
           config: ${{ runner.temp }}/test-impact.json
-          base: ${{ github.event.pull_request.base.sha || github.event.before }}
           full-roots: tests
-          full: ${{ github.run_attempt > 1 || contains(fromJSON('["workflow_dispatch","workflow_call","schedule","release"]'), github.event_name) || contains(github.event.pull_request.labels.*.name, 'test:full') }}
-      - id: paths
-        name: Forward exact selected paths without shell splitting
-        env:
-          MODE: ${{ steps.files.outputs.mode }}
-        run: |
-          python - <<'PY'
-          import json, os
-          from pathlib import Path
-          files = json.loads(Path('test-impact-report.json').read_text())['selected'] if os.environ['MODE'] == 'scoped' else []
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('files=' + json.dumps(files) + '\n')
-          PY
   quality:
     runs-on: ubuntu-latest
     steps:

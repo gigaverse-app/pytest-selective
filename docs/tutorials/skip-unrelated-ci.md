@@ -83,8 +83,6 @@ select-tests:
       uses: gigaverse-app/pytest-selective/actions/plan-lanes@v1
       with:
         config: .github/test-lanes.json
-        base: ${{ github.event.pull_request.base.sha || github.event.before }}
-        full: ${{ github.run_attempt > 1 || contains(fromJSON('["workflow_dispatch","workflow_call","schedule","release"]'), github.event_name) || contains(github.event.pull_request.labels.*.name, 'test:full') }}
 ```
 
 Keep the test job's services, matrix, commands, coverage and conformance checks.

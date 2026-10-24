@@ -19,8 +19,6 @@ jobs:
         uses: ./actions/plan-lanes
         with:
           config: .github/test-lanes.json
-          base: ${{ github.event.pull_request.base.sha || github.event.before }}
-          full: ${{ github.run_attempt > 1 || contains(fromJSON('["workflow_dispatch","workflow_call","schedule","release"]'), github.event_name) || contains(github.event.pull_request.labels.*.name, 'test:full') }}
           artifact-name: public-action-selection
   public-actions:
     needs: select-tests

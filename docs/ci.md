@@ -8,8 +8,8 @@ the base forward after a failed run.
 
 This job uses the repository's composite action and runs the plan on the checked-out
 head. Use the moving `v1` release tag and adapt dependency installation to
-your project. The example assumes a uv project
-and test paths without spaces (the action's `test_roots` output is space-separated).
+your project. The example assumes a uv project and passes the planned paths as
+JSON, so spaces in filenames survive execution.
 
 ```yaml
 name: Affected tests
@@ -28,26 +28,44 @@ jobs:
         uses: gigaverse-app/pytest-selective@v1
         with:
           config: .github/test-impact.json
-          base: ${{ github.event.pull_request.base.sha }}
           full-roots: tests
       - if: steps.impact.outputs.mode != 'none'
         run: uv sync --locked
       - if: steps.impact.outputs.mode != 'none'
         env:
-          TEST_ROOTS: ${{ steps.impact.outputs.test_roots }}
+          TEST_ROOTS: ${{ steps.impact.outputs.test_roots_json }}
         shell: bash
         run: |
-          read -r -a roots <<< "$TEST_ROOTS"
-          if [ "${#roots[@]}" -eq 0 ]; then
-            echo "Expected test roots for a nonempty plan" >&2
-            exit 1
-          fi
-          uv run --locked pytest "${roots[@]}"
+          uv run --locked python - <<'PY'
+          import json, os, subprocess, sys
+          roots = json.loads(os.environ['TEST_ROOTS'])
+          if not roots:
+              raise SystemExit('Expected test roots for a nonempty plan')
+          raise SystemExit(subprocess.call([sys.executable, '-m', 'pytest', '-p', 'no:selective', *roots]))
+          PY
 ```
 
 The action creates its own Python 3.14 planner environment. Your uv project
 controls the test interpreter. `full-roots` must contain the complete roots, not
-the previous selection. With `full: 'true'`, the action requests a complete run.
+the previous selection. `base` defaults to the PR base or the push's previous
+commit. Override it only when you have validated a different comparison base.
+
+Both file and lane actions default to `full: auto`:
+
+| Trigger | Default |
+| --- | --- |
+| First ordinary PR or push attempt | Select affected work |
+| Rerun, manual, schedule or release | Full checkpoint |
+| PR carrying `test:full` | Full checkpoint |
+| Unknown event or unreadable required event metadata | Full checkpoint |
+
+Use `full: 'true'` to always run everything, or `full: 'false'` to request
+selection even for a manual experiment. Operational uncertainty still falls back
+to full execution. Existing explicit expressions keep their behavior; remove a
+copied standard expression to adopt the shared policy. Updating an action does
+not add missing jobs, schedules, permissions or test dependency declarations.
+GitHub reusable workflows retain the caller's event, so pass `full: 'true'` when
+the reusable invocation itself must be a checkpoint.
 
 | Planner outcome | Action behavior |
 | --- | --- |
@@ -193,8 +211,8 @@ when the README is embedded in the built package.
 The action returns a `lanes` JSON object. Expose it as a planning-job output,
 then gate each expensive job with `always() && !cancelled()` and either a true
 lane value **or a failed planning job**. This preserves tests if planning fails.
-Run the action with `full: true` for manual/release checkpoints, schedules, and
-full-test overrides. Ordinary PRs and main pushes use dependency selection.
+The default event policy handles manual/release checkpoints, schedules and
+`test:full`. Ordinary PRs and main pushes use dependency selection.
 Selected jobs retain all of their existing tests and evidence checks.
 
 
