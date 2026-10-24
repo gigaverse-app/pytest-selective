@@ -4,6 +4,20 @@ Plan on committed revisions with complete Git history and a known passing base.
 Keep a scheduled full-suite run. Do not drop unresolved failures merely by moving
 the base forward after a failed run.
 
+PR and push reruns preserve the selection policy for the same base, head and
+inputs. Rerunning does not request the full suite. Use `full: 'true'`, a
+`test:full` label present in the event, or a scheduled/manual/release checkpoint
+for full validation. `full: 'false'` overrides event defaults, while missing
+history and operational uncertainty still retain conservative execution.
+
+The planner records its actual reasons once and carries them into its report.
+The CLI explanation format 2 includes `selection_reasons`; `--explanation-format 1`
+omits that field for older strict readers. The public `actions/test-impact@v1`
+action defaults to format 1 for compatibility. A compatible reporter can request
+`explanation-format: '2'`; CI-esta's wrapper does this automatically. Older
+artifacts cannot identify a trigger they never recorded, so readers must say
+that the reason is unavailable rather than infer it from the attempt number.
+
 ## GitHub Actions
 
 This job uses the repository's composite action and runs the plan on the checked-out

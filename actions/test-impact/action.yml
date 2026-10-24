@@ -17,7 +17,7 @@ inputs:
     description: Space-separated complete test roots used if planning cannot prove a narrower scope.
     required: true
   full:
-    description: 'auto selects on PRs/pushes and runs full on reruns, manual/scheduled/release events or test:full. Override with true or false.'
+    description: 'auto preserves selection on PR/push reruns and runs full for manual/scheduled/release checkpoints or test:full. Override with true or false.'
     default: auto
   extra-files:
     description: Optional newline file containing prior failure canaries or additional changed paths.
@@ -60,6 +60,9 @@ inputs:
       its merge base with `head`, so they stay visible after `base` moves to a validated tree.
       Without it, or without the history, they compare against `base`.
     default: ${{ github.event.pull_request.base.sha }}
+  explanation-format:
+    description: '1 preserves the legacy explanation schema; 2 includes the actual planner reasons. Use 2 with a compatible reporter.'
+    default: '1'
 outputs:
   base:
     value: ${{ steps.select.outputs.base }}
@@ -123,6 +126,7 @@ runs:
         # Environment only: the CLI never takes it on argv, and git gets it per process, not in config.
         IMPACT_DEPENDENCY_TOKEN: ${{ inputs.dependency-token }}
         IMPACT_GRAPH_BASE: ${{ inputs.graph-base }}
+        IMPACT_EXPLANATION_FORMAT: ${{ inputs.explanation-format }}
         SHARED_ACTION_PATH: ${{ github.action_path }}
       run: |
         export PYTHONPATH="$SHARED_ACTION_PATH/../../src${PYTHONPATH:+:$PYTHONPATH}"
@@ -139,7 +143,7 @@ runs:
         args=(affected --config "$IMPACT_CONFIG" --base "$IMPACT_BASE" --head "$IMPACT_HEAD"
               --max-shards "$IMPACT_SHARDS" --minimum-files "$IMPACT_MINIMUM" --github-output "$GITHUB_OUTPUT" --output test-impact-report.json
               --durations "$IMPACT_DURATIONS" --shard-seconds "$IMPACT_SHARD_SECONDS"
-              --explanation-output test-impact-explanation.json)
+              --explanation-output test-impact-explanation.json --explanation-format "${IMPACT_EXPLANATION_FORMAT:-1}")
         # A reused workspace must not upload a previous plan's explanation.
         rm -f test-impact-explanation.json
         args+=(--full "$IMPACT_FULL")

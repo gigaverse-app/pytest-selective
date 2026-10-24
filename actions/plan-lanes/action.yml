@@ -8,7 +8,7 @@ inputs:
     description: Base commit containing the complete change set.
     default: ${{ github.event.pull_request.base.sha || github.event.before }}
   full:
-    description: 'auto selects on PRs/pushes and runs full on reruns, manual/scheduled/release events or test:full. Override with true or false.'
+    description: 'auto preserves selection on PR/push reruns and runs full for manual/scheduled/release checkpoints or test:full. Override with true or false.'
     default: auto
   artifact-name:
     description: >

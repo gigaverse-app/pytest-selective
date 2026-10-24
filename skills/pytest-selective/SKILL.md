@@ -100,7 +100,8 @@ before/after table with evidence. Follow the user's existing PR/merge scope.
 and overlapping runs separately; receipt reuse is a distinct optional decision.
 Keep the [measured impact](https://github.com/gigaverse-app/ci-esta/blob/main/docs/measured-impact.md)
 visible in the report, with linked full/selected controls and a collapsed timeline.
-File-count reduction alone cannot establish time savings. Preserve full reruns
+File-count reduction alone cannot establish time savings. PR/push reruns preserve selection;
+request a full checkpoint explicitly. Preserve explicit full requests
 when removing broad label triggers. Bun projects use their native runner and
 CI-esta's Bun evidence adapter; pytest-selective stays optional for CI-esta.
 The [92.3% README runner-time reduction](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/benchmarks/2026-10-22-routing.md)

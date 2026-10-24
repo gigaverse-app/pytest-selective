@@ -60,8 +60,9 @@ benchmark pairs can be declared with exact run/attempt/head references through
 Never turn the fraction of files or lanes skipped into a measured time saving.
 
 Ordinary label edits no longer launch the CI validation workflows. Add `test:full`
-before the next code update to force full validation, or use an explicit rerun
-or manual dispatch for immediate full execution. Ordinary PRs and main pushes
+before the next code update to force full validation, or use a manual dispatch
+for immediate full execution. A PR/push rerun preserves selection and uses the
+original event payload; adding a label afterward may not change that payload. Ordinary PRs and main pushes
 use dependency selection, including for contract and installed-package tests.
 Unreferenced documentation runs zero tests; explicit full checkpoints and
 failed-planning fallbacks retain complete coverage and required gates.
