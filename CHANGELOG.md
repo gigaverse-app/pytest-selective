@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/gigaverse-app/pytest-selective/compare/v0.3.0...v0.4.0) (2026-10-24)
+
+
+### Features
+
+* **actions:** simplify selection adoption with shared defaults ([#63](https://github.com/gigaverse-app/pytest-selective/issues/63)) ([85e082d](https://github.com/gigaverse-app/pytest-selective/commit/85e082dfdbcf2f8c02ac3de38613c818cb749807))
+
 ## [0.3.0](https://github.com/gigaverse-app/pytest-selective/compare/v0.2.0...v0.3.0) (2026-10-23)
 
 
