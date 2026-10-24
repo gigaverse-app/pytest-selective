@@ -12,7 +12,7 @@ services and application installation altogether.
 
 Use this checklist in your adoption PR. Mark each stage **verified**, **deferred**
 or **not applicable**, with a reason. Pair it with the
-[CI-esta adoption checklist](https://github.com/gigaverse-app/ci-esta/blob/6a694957568c81929a2b3021064ad9674516fb7b/docs/tutorials/adoption-checklist.md)
+[CI-esta adoption checklist](https://github.com/gigaverse-app/ci-esta/blob/main/docs/tutorials/adoption-checklist.md)
 for reporting, setup, sharding, history, evidence reuse and security integration.
 Selection remains opt-in; installing the package alone does not narrow pytest.
 
