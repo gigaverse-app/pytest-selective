@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/gigaverse-app/pytest-selective/compare/v0.4.0...v0.4.1) (2026-10-24)
+
+
+### Bug fixes
+
+* **selection:** preserve rerun scope and record planner reasons ([29d1df8](https://github.com/gigaverse-app/pytest-selective/commit/29d1df806816203bad1e7a4a53f38b7e75c1d268))
+
 ## [0.4.0](https://github.com/gigaverse-app/pytest-selective/compare/v0.3.0...v0.4.0) (2026-10-24)
 
 
