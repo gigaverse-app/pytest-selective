@@ -83,8 +83,8 @@ python -m pytest_selective.ci --repo . --config .github/test-lanes.json \
 
 For Actions, use `plan-lanes` with full history and expose its `lanes` job output.
 An admitted job runs when its lane is true **or planning failed**. Prefer the
-shared `full: auto` and `base` defaults: reruns, manual/release runs, schedules
-and `test:full` become complete checkpoints; ordinary main pushes use the changed
+shared `full: auto` and `base` defaults: PR/push reruns preserve selection;
+manual/release runs, schedules and `test:full` become complete checkpoints. Ordinary main pushes use the changed
 base/head trees so docs-only merges also execute zero tests. Preserve deliberate
 consumer overrides with explicit `full: 'true'` or `full: 'false'`. Use
 `test_roots_json` when forwarding a file plan; do not split paths on spaces or

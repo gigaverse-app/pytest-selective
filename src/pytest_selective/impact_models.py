@@ -458,6 +458,9 @@ class SelectionExplanation(ImpactModel):
     #: The complete suite ran because it was requested (a schedule, a dispatch, coverage, a label),
     #: not because the change reaches every test. Such a run times something other than a PR run.
     forced_full: bool = False
+    #: Planner decisions, including the exact full override, fallback or padding reason.
+    #: Older artifacts omit this field; readers must not guess the missing trigger.
+    selection_reasons: list[str] = Field(default_factory=list)
     #: The tree floor and widening deltas compare against: the PR's merge base, else `base`.
     graph_base: str
     #: Traversal seeds that are startup-floor files: each alone selects nearly every test.

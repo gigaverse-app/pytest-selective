@@ -19,26 +19,37 @@ class _PullRequestEvent(BaseModel):
     pull_request: _PullRequest
 
 
-def full_checkpoint(value: str) -> bool:
+def full_checkpoint_reason(value: str) -> str | None:
     """Resolve auto once at planning; uncertain event metadata requires full work.
 
     Explicit booleans bypass event policy, but never bypass the planners' missing
     history/configuration fallbacks. CLI callers remain selective unless they
     request ``--full`` or ``--full auto``.
     """
-    if value in {"true", "false"}:
-        return value == "true"
+    if value == "true":
+        return "full suite explicitly requested (--full true)"
+    if value == "false":
+        return None
     if value != "auto":
         raise argparse.ArgumentTypeError("full must be auto, true, or false")
     try:
-        if int(os.environ.get("GITHUB_RUN_ATTEMPT", "0")) != 1:
-            return True
         event = os.environ.get("GITHUB_EVENT_NAME", "")
         if event == "push":
-            return False
+            return None
+        if event in {"workflow_dispatch", "workflow_call", "schedule", "release"}:
+            return f"full suite required by {event} checkpoint"
         if event != "pull_request":
-            return True
+            return "full suite fallback: unsupported or missing event metadata"
         payload = _PullRequestEvent.model_validate_json(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
-        return any(label.name == "test:full" for label in payload.pull_request.labels)
+        return (
+            "full suite requested by test:full label"
+            if any(label.name == "test:full" for label in payload.pull_request.labels)
+            else None
+        )
     except (KeyError, OSError, ValueError, ValidationError):
-        return True
+        return "full suite fallback: pull request event metadata unavailable or invalid"
+
+
+def full_checkpoint(value: str) -> bool:
+    """Compatibility boolean API; the planners retain the reason as well."""
+    return full_checkpoint_reason(value) is not None

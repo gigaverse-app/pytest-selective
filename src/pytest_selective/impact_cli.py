@@ -14,7 +14,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from pytest_selective.checkpoint import full_checkpoint
+from pytest_selective.checkpoint import full_checkpoint_reason
 from pytest_selective.impact_audit import audit, load_records, summary
 from pytest_selective.impact_explanation import dependent_tests, explain
 from pytest_selective.impact_graph import (
@@ -161,7 +161,8 @@ def _write_explanation(
         print(f"::warning::Test selection explanation unavailable: {error}", file=sys.stderr)
         return
     args.explanation_output.parent.mkdir(parents=True, exist_ok=True)
-    args.explanation_output.write_text(explanation.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    excluded = {"selection_reasons"} if args.explanation_format == "1" else set()
+    args.explanation_output.write_text(explanation.model_dump_json(indent=2, exclude=excluded) + "\n", encoding="utf-8")
 
 
 def _typecheck_scope(args: argparse.Namespace) -> int:
@@ -291,11 +292,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", type=Path)
     # affected: why the selection is this large, for the PR sticky (never changes the selection).
     parser.add_argument("--explanation-output", type=Path)
+    parser.add_argument(
+        "--explanation-format",
+        choices=["1", "2"],
+        default="2",
+        help="format 1 supports legacy readers; format 2 includes planner reasons",
+    )
     # affected: the PR's base, which floor and widening deltas compare against (its merge base).
     parser.add_argument("--graph-base", default="")
     parser.add_argument("--extra-files", type=Path)
     parser.add_argument("--github-output", type=Path)
-    parser.add_argument("--full", nargs="?", const=True, default=False, type=full_checkpoint, metavar="auto|true|false")
+    parser.add_argument(
+        "--full", nargs="?", const="true", default="false", type=full_checkpoint_reason, metavar="auto|true|false"
+    )
     parser.add_argument("--minimum-files", type=int, default=0)
     parser.add_argument("--max-shards", type=int, default=8)
     parser.add_argument("--durations", type=Path, default=Path(".test_durations"))
@@ -316,6 +325,8 @@ def main(argv: list[str] | None = None) -> int:
     # floor-budget: the explanation `affected --explanation-output` wrote for this plan.
     parser.add_argument("--explanation", type=Path, default=Path("test-impact-explanation.json"))
     args = parser.parse_args(argv)
+    full_reason = args.full
+    args.full = full_reason is not None
     args.base = args.base or ("HEAD" if args.working_tree else "HEAD^")
     if args.working_tree and args.command not in {"affected", "warm", "dependencies", "explain", "conftest-impact"}:
         parser.error("--working-tree is supported for affected, warm, dependencies, explain and conftest-impact")
@@ -355,7 +366,7 @@ def main(argv: list[str] | None = None) -> int:
                 snapshot = cache.snapshot(args.repo, args.head, config)
                 report.selected = snapshot.tests
                 report.mode = "full"
-                report.reasons.append("explicit full-suite event/label")
+                report.reasons.append(full_reason)
             if report.selected and len(report.selected) < args.minimum_files:
                 snapshot = cache.snapshot(args.repo, args.head, config)
                 extras = [test for test in snapshot.tests if test not in report.selected]

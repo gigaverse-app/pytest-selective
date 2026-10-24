@@ -11,7 +11,7 @@ from typing import Any
 import yaml
 from pydantic import Field, field_validator, model_validator
 
-from pytest_selective.checkpoint import full_checkpoint
+from pytest_selective.checkpoint import full_checkpoint_reason
 from pytest_selective.impact_graph import DependencyDeclarationError, GraphCache, git, matches, within
 from pytest_selective.impact_models import ImpactConfig, ImpactModel
 from pytest_selective.impact_selection import affected
@@ -232,12 +232,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo", type=Path, default=Path("."))
     parser.add_argument("--base", required=True)
     parser.add_argument("--head", default="HEAD")
-    parser.add_argument("--full", nargs="?", const=True, default=False, type=full_checkpoint, metavar="auto|true|false")
+    parser.add_argument(
+        "--full", nargs="?", const="true", default="false", type=full_checkpoint_reason, metavar="auto|true|false"
+    )
     parser.add_argument("--github-output", type=Path)
     args = parser.parse_args(argv)
     try:
         config = LaneConfig.model_validate_json(args.config.read_text(encoding="utf-8"))
-        result = plan(args.repo, config, args.base, args.head, full=args.full)
+        result = plan(args.repo, config, args.base, args.head, full=args.full is not None)
+        if args.full is not None:
+            result.reason = args.full
     except (ValueError, OSError, DependencyDeclarationError) as error:
         print(f"Invalid lane configuration/dependency: {error}", file=sys.stderr)
         return 2

@@ -113,7 +113,8 @@ Exercise actual Git commits, not a function that classifies extensions:
 | Missing history or operational uncertainty | Conservative full execution |
 | Invalid configuration | Diagnostic and failed required gate |
 | Ordinary PR or main push containing only unreferenced docs | Zero tests |
-| Manual/release checkpoint, explicit rerun, or `test:full` | Full execution |
+| PR/push rerun | Same selection policy as the first attempt |
+| Manual/release checkpoint or explicit `test:full` request | Full execution |
 
 Select these routing tests through declared dependencies on configuration,
 execution workflows, helpers and the inputs they inspect. Include wheel smoke,
@@ -127,9 +128,9 @@ you can enumerate every job, action, and reusable workflow that affects a lane.
 ## 4. Measure one equivalent pair
 
 Open a README-only probe PR. Save the source SHA, tested merge, run ID and attempt
-of its successful selected run. Add `test:full`, then explicitly rerun the workflow at that revision. A label
-change alone may not trigger CI. The example also forces full execution on
-reruns. Do not change source or workflow settings between the paired runs. Compare successful completed runs;
+of its successful selected run. Use a manual full-checkpoint dispatch at that revision.
+A PR/push rerun alone preserves selection; its event payload may also retain the original labels.
+Do not change source or workflow settings between the paired runs. Compare successful completed runs;
 keep cancelled experiments and observer overhead separate.
 
 Use [CI-esta's critical-path tutorial](https://ci-esta.readthedocs.io/en/latest/docs/tutorials/measure-critical-path/)

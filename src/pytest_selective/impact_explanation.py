@@ -448,6 +448,7 @@ def explain(
         selected=len(report.selected),
         total=report.total_files,
         forced_full=forced_full,
+        selection_reasons=report.reasons,
         graph_base=graph_before.tree,
         floor_seeds=floor_seeds,
         routes=_routes(union_edges(before, after), report.seeds, report.selected, floor_seeds, reach_after, after),

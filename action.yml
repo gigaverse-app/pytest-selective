@@ -18,8 +18,8 @@ inputs:
     description: Space-separated complete test roots used if planning cannot prove a narrower scope.
     required: true
   full:
-    description: auto selects on PRs/pushes and runs full on reruns, manual/scheduled/release events or test:full. Override
-      with true or false.
+    description: auto preserves selection on PR/push reruns and runs full for manual/scheduled/release checkpoints or test:full.
+      Override with true or false.
     default: auto
   extra-files:
     description: Optional newline file containing prior failure canaries or additional changed paths.
@@ -59,6 +59,10 @@ inputs:
       with `head`, so they stay visible after `base` moves to a validated tree. Without it, or without the history, they compare
       against `base`.
     default: ${{ github.event.pull_request.base.sha }}
+  explanation-format:
+    description: 1 preserves the legacy explanation schema; 2 includes the actual planner reasons. Use 2 with a compatible
+      reporter.
+    default: '1'
 outputs:
   base:
     description: The base the selection was made from; `alternate-base` when it selected fewer tests.
@@ -108,3 +112,4 @@ runs:
       dependency-token: ${{ inputs.dependency-token }}
       explanation-artifact: ${{ inputs.explanation-artifact }}
       graph-base: ${{ inputs.graph-base }}
+      explanation-format: ${{ inputs.explanation-format }}

@@ -15,14 +15,16 @@ from tests.testing.git_repo import commit, init, write
     [
         ("pull_request", "1", [], "auto", False),
         ("push", "1", [], "auto", False),
-        ("pull_request", "2", [], "auto", True),
+        ("pull_request", "2", [], "auto", False),
+        ("push", "3", [], "auto", False),
+        ("pull_request", "2", ["test:full"], "auto", True),
         ("pull_request", "1", ["test:full"], "auto", True),
         ("workflow_dispatch", "1", [], "auto", True),
         ("workflow_call", "1", [], "auto", True),
         ("schedule", "1", [], "auto", True),
         ("release", "1", [], "auto", True),
         ("unknown", "1", [], "auto", True),
-        ("pull_request", "invalid", [], "auto", True),
+        ("pull_request", "invalid", [], "auto", False),
         ("pull_request", "1", None, "auto", True),
         ("schedule", "2", [], "false", False),
         ("push", "1", [], "true", True),
@@ -60,7 +62,27 @@ def test_checkpoint_policy_drives_real_selection(tmp_path, monkeypatch, planner,
         str(output),
     ]
     if planner == "files":
-        assert files_main(["affected", *args, "--cache", str(tmp_path / "cache.sqlite3")]) == 0
+        explanation = tmp_path / "explanation.json"
+        assert (
+            files_main(
+                [
+                    "affected",
+                    *args,
+                    "--cache",
+                    str(tmp_path / "cache.sqlite3"),
+                    "--explanation-output",
+                    str(explanation),
+                ]
+            )
+            == 0
+        )
+        reasons = json.loads(explanation.read_text())["selection_reasons"]
+        if policy == "true":
+            assert "full suite explicitly requested (--full true)" in reasons
+        elif policy == "auto" and labels == ["test:full"]:
+            assert "full suite requested by test:full label" in reasons
+        elif policy == "auto" and event in {"schedule", "workflow_dispatch", "workflow_call", "release"}:
+            assert f"full suite required by {event} checkpoint" in reasons
         assert ("mode=full" if full else "mode=none") in output.read_text()
         roots = next(
             line.removeprefix("test_roots_json=")
@@ -73,7 +95,11 @@ def test_checkpoint_policy_drives_real_selection(tmp_path, monkeypatch, planner,
         assert f"tests={str(full).lower()}" in output.read_text()
 
 
-def test_json_output_preserves_selected_paths_with_spaces(tmp_path):
+@pytest.mark.parametrize("attempt", ["1", "2", "7"])
+@pytest.mark.parametrize("explanation_format", ["1", "2"])
+def test_json_output_preserves_selected_paths_with_spaces(tmp_path, monkeypatch, attempt, explanation_format):
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "push")
+    monkeypatch.setenv("GITHUB_RUN_ATTEMPT", attempt)
     init(tmp_path)
     test = "tests/test_with spaces.py"
     write(tmp_path, test, "def test_example(): assert True")
@@ -83,6 +109,7 @@ def test_json_output_preserves_selected_paths_with_spaces(tmp_path):
     commit(tmp_path)
     write(tmp_path, "config.json", json.dumps({"module_roots": ["."], "test_roots": ["tests"]}))
     output = tmp_path / "output"
+    explanation = tmp_path / "explanation.json"
     assert (
         files_main(
             [
@@ -93,6 +120,12 @@ def test_json_output_preserves_selected_paths_with_spaces(tmp_path):
                 str(tmp_path / "config.json"),
                 "--base",
                 base,
+                "--full",
+                "auto",
+                "--explanation-output",
+                str(explanation),
+                "--explanation-format",
+                explanation_format,
                 "--github-output",
                 str(output),
                 "--cache",
@@ -104,3 +137,4 @@ def test_json_output_preserves_selected_paths_with_spaces(tmp_path):
     values = dict(line.split("=", 1) for line in output.read_text().splitlines())
     assert values["mode"] == "scoped"
     assert json.loads(values["test_roots_json"]) == [test]
+    assert ("selection_reasons" in json.loads(explanation.read_text())) == (explanation_format == "2")
