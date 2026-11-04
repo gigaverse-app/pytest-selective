@@ -285,3 +285,15 @@ show provenance, runner cost and the actual dependency paths. This repository
 also uses CI-esta's shared native Windows Git action while retaining full
 coverage on all six Python/platform lanes.
 
+<!-- dry-lint-progress:start -->
+[![dry-lint cleanup progress](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fgigaverse-app%2Fpytest-selective%2Fmain%2F.dry-lint%2Fprogress.json)](https://github.com/gigaverse-app/dry-lint)
+
+**Cleaning up duplication with dry-lint.** CI checks new changes against the accepted backlog.
+
+| Duplicate pairs cleaned | Remaining | Dismissed |
+| ---: | ---: | ---: |
+| 0 | 9 | 0 |
+
+[Accepted backlog](.dry-lint/baseline.json). Counts cover judged pairs in the configured scope, not lines of code; dismissals do not count as cleanup.
+[Read the audit](https://github.com/gigaverse-app/pytest-selective/actions/workflows/dry-lint-audit.yml) to choose the next refactor.
+<!-- dry-lint-progress:end -->
