@@ -28,7 +28,7 @@ jobs:
     steps:
       - name: Only process the tested main head
         id: current
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@v8
         with:
           script: |
             const {data: branch} = await github.rest.repos.getBranch({...context.repo, branch: 'main'});
@@ -44,7 +44,7 @@ jobs:
           fi
       - name: Prepare release PR or publish its GitHub release
         if: steps.current.outputs.matches == 'true'
-        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        uses: googleapis/release-please-action@v5
         with:
           # This credential triggers CI on release PRs and Publish on releases.
           # GITHUB_TOKEN would suppress those follow-up workflow events.
