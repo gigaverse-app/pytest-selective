@@ -4,7 +4,7 @@ import ast
 import unicodedata
 import warnings
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path, PurePosixPath
 
 
@@ -20,7 +20,7 @@ def module_prefixes(name: str) -> Iterator[str]:
         yield ".".join(parts[:end])
 
 
-def within_modules(module: str, prefixes: tuple[str, ...]) -> bool:
+def within_modules(module: str, prefixes: Iterable[str]) -> bool:
     """Match dotted package boundaries without confusing a sibling name for a child."""
     return any(module == prefix or module.startswith(prefix + ".") for prefix in prefixes)
 

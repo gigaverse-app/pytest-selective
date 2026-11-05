@@ -27,6 +27,7 @@ from pytest_selective.ast_imports import (
     module_prefixes,
     normalized_name,
     parse_ast,
+    within_modules,
 )
 from pytest_selective.git_operations import git as git
 from pytest_selective.git_operations import git_environment as git_environment
@@ -624,7 +625,7 @@ class ModuleIndex:
         # Union ambiguous roots/self.modules conservatively. Ancestor initializers
         # execute for every submodule import, even when never named explicitly.
         normalized = normalized_name(candidate)
-        if any(normalized == link or normalized.startswith(link + ".") for link in self.linked_modules):
+        if within_modules(normalized, self.linked_modules):
             raise ValueError(f"import through unsupported Git symlink: {candidate}")
         result: set[str] = set()
         for prefix in module_prefixes(normalized):
