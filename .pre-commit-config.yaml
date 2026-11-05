@@ -22,7 +22,7 @@ repos:
         types: [markdown]
 
   - repo: https://github.com/gigaverse-app/dry-lint
-    rev: v1.4.0
+    rev: v1
     hooks:
       - id: dry-lint
         args: [--preset, sonnet, --baseline, .dry-lint/baseline.json]
