@@ -291,14 +291,7 @@ Local hooks and the required PR check prevent new copies. The weekly audit
 records progress against the accepted backlog. [Setup and cleanup workflow](CONTRIBUTING.md#duplication).
 
 <!-- dry-lint-progress:start -->
-[![dry-lint cleanup progress](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fgigaverse-app%2Fpytest-selective%2Fmain%2F.dry-lint%2Fprogress.json)](https://github.com/gigaverse-app/dry-lint)
+<a href="https://github.com/gigaverse-app/dry-lint"><picture><source media="(prefers-color-scheme: dark)" srcset="https://dry-lint-counter.gigaverse-oss.workers.dev/v1/sign.svg?theme=dark&amp;key=f8e41d50ca4018845c305f2f0dbd1cfd6d9b281e53b352490af53154a54e6265&amp;name=gigaverse-app%2Fpytest-selective&amp;cleaned=2&amp;remaining=7&amp;dismissed=0"><img alt="dry-lint in gigaverse-app/pytest-selective: new duplicates kept out of its pull requests, 2 old duplicates cleaned up, 7 remaining" src="https://dry-lint-counter.gigaverse-oss.workers.dev/v1/sign.svg?key=f8e41d50ca4018845c305f2f0dbd1cfd6d9b281e53b352490af53154a54e6265&amp;name=gigaverse-app%2Fpytest-selective&amp;cleaned=2&amp;remaining=7&amp;dismissed=0" width="100%"></picture></a>
 
-**Cleaning up duplication with dry-lint.** CI checks new changes against the accepted backlog.
-
-| Duplicate pairs cleaned | Remaining | Dismissed |
-| ---: | ---: | ---: |
-| 0 | 9 | 0 |
-
-[Accepted backlog](.dry-lint/baseline.json). Counts cover judged pairs in the configured scope, not lines of code; dismissals do not count as cleanup.
-[Read the audit](https://github.com/gigaverse-app/pytest-selective/actions/workflows/dry-lint-audit.yml) to choose the next refactor.
+[Accepted backlog](.dry-lint/baseline.json) · [Weekly audit](https://github.com/gigaverse-app/pytest-selective/actions/workflows/dry-lint-audit.yml)
 <!-- dry-lint-progress:end -->
