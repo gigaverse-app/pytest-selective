@@ -35,20 +35,24 @@ jobs:
           cache-suffix: matched-windows-${{ matrix.python }}
       - run: uv sync --directory baseline --locked
       - run: uv sync --directory candidate --locked
+      - name: Preserve the baseline Git search path
+        shell: pwsh
+        run: '"BASELINE_GIT_PATH=$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'
+      - uses: gigaverse-app/ci-esta/actions/native-windows-git@v1
       - name: Run complete suites in both orders on the same worker
         shell: pwsh
         run: |
           $results = Join-Path $env:GITHUB_WORKSPACE 'measurements'
           New-Item -ItemType Directory -Path $results | Out-Null
           $measurements = @()
-          $originalPath = $env:PATH
+          $originalPath = $env:BASELINE_GIT_PATH
+          $nativeGitPath = $env:PATH
           foreach ($sample in @('baseline-1', 'candidate-1', 'candidate-2', 'baseline-2')) {
             $arm = $sample.Split('-')[0]
             Push-Location (Join-Path $env:GITHUB_WORKSPACE $arm)
             try {
               # Start every arm with the same PATH; only the candidate opts in.
-              $env:PATH = $originalPath
-              if ($arm -eq 'candidate') { ./scripts/use_native_windows_git.ps1 }
+              $env:PATH = if ($arm -eq 'candidate') { $nativeGitPath } else { $originalPath }
               $sha = git rev-parse HEAD
               # Keep repeated arms from timing cleanup of an earlier arm's Git fixtures.
               $temp = Join-Path $env:RUNNER_TEMP "matched-pytest-$sample"
