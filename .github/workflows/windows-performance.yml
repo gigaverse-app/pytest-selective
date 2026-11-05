@@ -21,34 +21,38 @@ jobs:
       matrix:
         python: ['3.11', '3.14']
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.baseline || github.event.pull_request.base.sha }}
           path: baseline
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           path: candidate
-      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           python-version: ${{ matrix.python }}
           cache-suffix: matched-windows-${{ matrix.python }}
       - run: uv sync --directory baseline --locked
       - run: uv sync --directory candidate --locked
+      - name: Preserve the baseline Git search path
+        shell: pwsh
+        run: '"BASELINE_GIT_PATH=$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'
+      - uses: gigaverse-app/ci-esta/actions/native-windows-git@v1
       - name: Run complete suites in both orders on the same worker
         shell: pwsh
         run: |
           $results = Join-Path $env:GITHUB_WORKSPACE 'measurements'
           New-Item -ItemType Directory -Path $results | Out-Null
           $measurements = @()
-          $originalPath = $env:PATH
+          $originalPath = $env:BASELINE_GIT_PATH
+          $nativeGitPath = $env:PATH
           foreach ($sample in @('baseline-1', 'candidate-1', 'candidate-2', 'baseline-2')) {
             $arm = $sample.Split('-')[0]
             Push-Location (Join-Path $env:GITHUB_WORKSPACE $arm)
             try {
               # Start every arm with the same PATH; only the candidate opts in.
-              $env:PATH = $originalPath
-              if ($arm -eq 'candidate') { ./scripts/use_native_windows_git.ps1 }
+              $env:PATH = if ($arm -eq 'candidate') { $nativeGitPath } else { $originalPath }
               $sha = git rev-parse HEAD
               # Keep repeated arms from timing cleanup of an earlier arm's Git fixtures.
               $temp = Join-Path $env:RUNNER_TEMP "matched-pytest-$sample"
@@ -63,7 +67,7 @@ jobs:
               if ($result -ne 0) { throw "${sample} failed: $result" }
             } finally { Pop-Location }
           }
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: matched-windows-${{ matrix.python }}

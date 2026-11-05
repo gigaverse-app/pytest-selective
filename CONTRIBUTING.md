@@ -41,7 +41,8 @@ environment on both Python versions. Evidence artifacts carry coverage and tutor
 
 Use `uv lock --upgrade-package NAME` for a targeted dependency update and run the
 affected checks. Dependabot proposes weekly uv and GitHub Actions updates.
-Actions are pinned to commits. Review their release notes before updating pins.
+Established Actions use published major-version tags; use a published release tag when no major tag exists.
+Review release notes when upgrading a major version.
 
 ## Pull requests
 
@@ -152,3 +153,53 @@ workflows, selector configuration, helpers, locks and non-import inputs; missing
 history or failed planning must execute the full affected lanes and fail the
 required planning gate. Ordinary PRs and pushes use selection; manual/release/scheduled/full overrides
 remain complete checkpoints.
+
+## Duplication
+
+`uv run pre-commit install` installs both the staged dry-lint check and the
+`prepare-commit-msg` trailer hook, alongside Ruff and documentation checks.
+Put your own `ANTHROPIC_API_KEY` in the shell or the ignored `.env`. The hook uses
+Sonnet, Python 3.13 and the same accepted baseline as CI. Missing judge credentials
+fail strict checking. The trailer records duplicates fixed before the first push,
+so the PR sticky includes that local prevention credit.
+
+The required judged `dry-lint` check rejects new blocking duplicates, incomplete
+judgments and baseline widening. Forks detect candidates without secrets; the
+trusted judge workflow assesses their artifacts. CI's general quality job skips
+only the semantic hook, because the dedicated required job owns judging and its
+credentials. Other pre-commit hooks still run there.
+
+When a finding appears, inspect both functions. Reuse the existing owner when they
+implement one concept, preserve selection/fallback behavior and run the affected
+tests. For genuinely distinct concepts, add a narrow `distinct-from` comment and
+its reason. Do not weaken thresholds or use blanket ignores to make CI pass.
+
+The PR sticky tracks findings and fixes across pushes. Every default-branch push
+can finish folding merged PRs into the repository ledger. The README sign shows
+new duplicates prevented separately from old debt cleaned and remaining. Counts
+are pairs, not lines or estimated time savings; dismissals never count as cleanup.
+The cache-backed ledger starts a new accounting period if evicted.
+
+The weekly/manual **dry-lint audit** retains its reports, then opens or updates one
+`dry-lint/ratchet` PR with only the baseline, progress JSON and README metadata.
+The inherited `GV_CI_CROSS_REPO_TOKEN` lets that PR run ordinary CI. New debt,
+incomplete judging or missing authentication fails visibly. Humans and agents
+choose refactors; the audit never edits application code or merges its own PR.
+
+```bash
+uv tool install --no-config --python 3.13 'dry-lint[anthropic] @ git+https://github.com/gigaverse-app/dry-lint@v1'
+dry-lint sweep --budget-usd 5 --report audit.json --output audit.md
+# Review both sides, refactor and test before recording progress.
+dry-lint sweep --update --budget-usd 5 --readme README.md --repository gigaverse-app/pytest-selective --repository-id 1430133155
+```
+
+Commit the generated metadata with a cleanup, or dispatch the audit after the
+cleanup merges. A manual run of the **dry-lint** workflow also calls the same
+reusable audit, allowing validation on an adoption branch before the new scheduled
+workflow exists on `main`. Ratchet PRs target the selected branch. Preserve the nine-pair adoption history; never delete and
+reinitialize the baseline. No-change audits produce no metadata diff. Keep raw
+reports and verdict caches outside Git. The scope uses dry-lint's default
+exclusions; changes to detection policy require an explicitly reviewed migration.
+
+See the [full adoption playbook](https://github.com/gigaverse-app/dry-lint/blob/main/docs/adoption-playbook.md)
+and [sweep semantics](https://github.com/gigaverse-app/dry-lint/blob/main/docs/sweeps.md).

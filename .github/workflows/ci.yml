@@ -20,7 +20,7 @@ jobs:
       mode: ${{ steps.files.outputs.mode }}
       files: ${{ steps.files.outputs.test_roots_json }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - id: plan
@@ -41,11 +41,14 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7
       - uses: gigaverse-app/ci-esta/actions/setup-cached-uv@v1
         with:
           python-version: '3.14'
+      # Semantic judging owns its credentials and fork boundary in the required dry-lint job.
       - run: uv run --locked pre-commit run --all-files
+        env:
+          SKIP: dry-lint
       - name: Check aggregate gate against the execution lanes
         run: >-
           uv run --no-project --python 3.14
@@ -65,7 +68,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7
       - uses: gigaverse-app/ci-esta/actions/setup-cached-uv@v1
         with:
           python-version: ${{ matrix.python }}
@@ -90,7 +93,7 @@ jobs:
           junit-pattern: test-timings.xml
           artifact-name: test-timings-${{ matrix.python }}-${{ matrix.os }}
       - run: uv run --locked python scripts/tutorial.py --output tutorial-report.json
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - uses: actions/upload-artifact@v7
         with:
           name: evidence-${{ matrix.os }}-${{ matrix.python }}
           path: |
@@ -103,7 +106,7 @@ jobs:
           fromJSON(needs.select-tests.outputs.lanes).tests) }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7
       - uses: gigaverse-app/ci-esta/actions/setup-cached-uv@v1
         with:
           python-version: '3.11'
@@ -120,7 +123,7 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7
       - uses: gigaverse-app/ci-esta/actions/setup-cached-uv@v1
         with:
           python-version: '3.14'
@@ -132,7 +135,7 @@ jobs:
           ${{ needs.select-tests.result != 'success' ||
               fromJSON(needs.select-tests.outputs.lanes).tests }}
         run: uv run --locked python scripts/smoke_distribution.py
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - uses: actions/upload-artifact@v7
         with:
           name: distributions
           path: dist/*
