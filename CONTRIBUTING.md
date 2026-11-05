@@ -32,6 +32,23 @@ Changes to collection policy, runtime auditing, or the composite action need tes
 at that boundary. Update the tutorial when the public command contract changes.
 Keep performance claims tied to reproducible measurements and their limitations.
 
+### Shared implementation owners
+
+| Contract | Owner |
+| --- | --- |
+| Repository-scoped Git, hook environment isolation, binary and UTF-8 output | `git_operations.py` |
+| Private working-tree snapshots, staged inputs and index timestamp preservation | `working_tree.py` |
+| Python module names, Unicode matching and dotted import relationships | `ast_imports.py` |
+| Test-file discovery and cache exclusions | `test_inventory.py` |
+| Repository-relative path containment, including the dot root | `impact_graph.within` |
+
+The expansion guard imports the first three owners directly when run as a script;
+keep them stdlib-only. Its snapshot updates Python paths and preserves the stat
+cache; the planner rebuilds the staged entries to see edits hidden by index flags
+and updates all inputs. Preserve the copied index timestamp: Git uses it to detect
+same-size edits made within its stat-cache window. The snapshot tests cover ordinary indexes,
+split indexes and linked worktrees without modifying the user's index or HEAD.
+
 ## CI and dependency maintenance
 
 CI tests Python 3.11 and 3.14 on Linux, Windows, and macOS. A separate job checks

@@ -16,13 +16,13 @@ import fnmatch
 import io
 import re
 import tokenize
-import unicodedata
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
 from pytest_selective.ast_imports import import_candidates, iter_imports, parse_ast
+from pytest_selective.ast_imports import normalized_name as _casefold
 from pytest_selective.impact_declarations import SIDECAR_SUFFIX, match_inputs
 from pytest_selective.impact_graph import (
     ModuleIndex,
@@ -221,10 +221,6 @@ def externally_read(names: Iterable[str], module: NameScopedModule, routed: set[
         for name in names
         if name not in routed and (name in module.external_names or name.startswith(tuple(module.external_prefixes)))
     }
-
-
-def _casefold(name: str) -> str:
-    return unicodedata.normalize("NFKC", name).casefold()
 
 
 def _bindings(

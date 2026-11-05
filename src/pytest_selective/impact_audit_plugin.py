@@ -28,6 +28,7 @@ from pathlib import Path
 
 import pytest
 
+from pytest_selective.git_operations import git_text as _git
 from pytest_selective.impact_models import AuditRecord
 
 #: The positions of the program and its arguments in each process-launch audit event.
@@ -148,12 +149,6 @@ def tracked_files(root: Path) -> list[str]:
 
 def repository_root(start: Path) -> Path:
     return Path(_git(start, "rev-parse", "--show-toplevel").strip())
-
-
-def _git(directory: Path, *args: str) -> str:
-    return subprocess.run(
-        ["git", "-C", str(directory), *args], check=True, capture_output=True, text=True, encoding="utf-8"
-    ).stdout
 
 
 class ImpactAuditPlugin:

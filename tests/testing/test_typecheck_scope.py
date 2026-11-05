@@ -76,6 +76,26 @@ def test_a_deleted_module_still_checks_its_former_importers(repo: Path, config: 
     assert "src/pkg/leaf.py" not in result.files, "a deleted file cannot be checked"
 
 
+@pytest.mark.parametrize("settings", [{}, {"include": ["."]}, {"include": ["./"]}])
+def test_repository_root_include_keeps_affected_files(
+    repo: Path, config: ImpactConfig, tmp_path: Path, settings: dict[str, list[str]]
+) -> None:
+    """The default/root include cannot turn an affected import closure into an empty check."""
+    write(repo, "pyrightconfig.json", json.dumps(settings))
+    base = commit(repo)
+    write(repo, "src/pkg/leaf.py", "def value() -> str:\n    return 'changed'\n")
+    head = commit(repo)
+    result = run(repo, config, tmp_path, base, head)
+    assert result.mode == "scoped"
+    assert result.files == [
+        "src/pkg/generated/big.py",
+        "src/pkg/leaf.py",
+        "src/pkg/middle.py",
+        "src/pkg/top.py",
+        "tests/test_top.py",
+    ]
+
+
 @pytest.mark.parametrize("path", ["pyrightconfig.json", "uv.lock", "src/pkg/stub.pyi", "deployment/tool.py"])
 def test_a_global_input_forces_the_full_check(repo: Path, config: ImpactConfig, tmp_path: Path, path: str) -> None:
     """Configuration, stubs, installed packages and paths the graph cannot resolve change every verdict."""

@@ -27,7 +27,7 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 
 from pytest_selective.ast_imports import import_candidates, iter_imports, module_file, parse_ast
-from pytest_selective.test_inventory import TEST_FILE_PATTERNS, is_test_module_name
+from pytest_selective.test_inventory import discover_test_files, is_test_module_name
 
 
 class TestImportViolation(BaseModel):
@@ -48,15 +48,8 @@ def is_test_module(path: Path) -> bool:
 
 
 def discover_test_modules(test_roots: list[Path]) -> list[Path]:
-    discovered: set[Path] = set()
-    for root in test_roots:
-        if root.is_file():
-            if is_test_module(root):
-                discovered.add(root)
-            continue
-        for pattern in TEST_FILE_PATTERNS:
-            discovered.update(root.rglob(pattern))
-    return sorted(discovered)
+    """Keep the sorted-list API while sharing the canonical test inventory."""
+    return sorted(discover_test_files(test_roots))
 
 
 def find_test_import_violations(

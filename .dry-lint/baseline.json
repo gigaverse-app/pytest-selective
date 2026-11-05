@@ -2,7 +2,7 @@
   "schema": 1,
   "contract": "fbf56a4a852e47539b956057d11e9f3ee56a986bbb3b26ac209dc491d4b45f6e",
   "started_at": "fee809549a83ddfb432cb6599ea57ae73efbe66a",
-  "checked_at": "79c38e65863b132e422427818ff10f2f3ab17ffa",
+  "checked_at": "031cafd1748babfecff2ef2629a0320715d8fe9c",
   "entries": [
     {
       "hashes": {
@@ -10,7 +10,7 @@
         "src/pytest_selective/test_inventory.py::discover_test_files": "567e0cacf263d340"
       },
       "context_hash": "",
-      "state": "remaining"
+      "state": "cleaned"
     },
     {
       "hashes": {
@@ -18,7 +18,7 @@
         "src/pytest_selective/typecheck_scope.py::_under": "221f42a33c38887c"
       },
       "context_hash": "",
-      "state": "remaining"
+      "state": "cleaned"
     },
     {
       "hashes": {
@@ -26,7 +26,7 @@
         "src/pytest_selective/impact_graph.py::git": "a53bf9a83105b354"
       },
       "context_hash": "",
-      "state": "remaining"
+      "state": "cleaned"
     },
     {
       "hashes": {
@@ -34,7 +34,7 @@
         "src/pytest_selective/pytest_expansion.py::git": "42cac77499ad42b1"
       },
       "context_hash": "",
-      "state": "remaining"
+      "state": "cleaned"
     },
     {
       "hashes": {
@@ -42,7 +42,7 @@
         "src/pytest_selective/pytest_expansion.py::SourceTree.module_name": "633b2e80dfaac9e6"
       },
       "context_hash": "",
-      "state": "remaining"
+      "state": "cleaned"
     },
     {
       "hashes": {
@@ -50,7 +50,7 @@
         "src/pytest_selective/pytest_expansion.py::git": "42cac77499ad42b1"
       },
       "context_hash": "",
-      "state": "remaining"
+      "state": "cleaned"
     },
     {
       "hashes": {
@@ -58,7 +58,7 @@
         "src/pytest_selective/pytest_expansion.py::git_environment": "df7139fadaa213a9"
       },
       "context_hash": "",
-      "state": "remaining"
+      "state": "cleaned"
     },
     {
       "hashes": {
