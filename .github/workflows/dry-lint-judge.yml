@@ -18,9 +18,13 @@ jobs:
     steps:
       # Only trusted default-branch settings and baseline; fork code is artifact data.
       - uses: actions/checkout@v7
-      - uses: gigaverse-app/dry-lint@main
+        with:
+          persist-credentials: false
+      - uses: gigaverse-app/dry-lint@v1
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           plugins: anthropic==2.4.0
           baseline: .dry-lint/baseline.json
           require-complete: 'true'
+          comment: 'true'
+          comment-on-clean: 'true'

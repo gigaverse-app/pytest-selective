@@ -45,7 +45,10 @@ jobs:
       - uses: gigaverse-app/ci-esta/actions/setup-cached-uv@v1
         with:
           python-version: '3.14'
+      # Semantic judging owns its credentials and fork boundary in the required dry-lint job.
       - run: uv run --locked pre-commit run --all-files
+        env:
+          SKIP: dry-lint
       - name: Check aggregate gate against the execution lanes
         run: >-
           uv run --no-project --python 3.14

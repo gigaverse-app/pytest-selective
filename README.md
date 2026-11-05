@@ -285,6 +285,11 @@ show provenance, runner cost and the actual dependency paths. This repository
 also uses CI-esta's shared native Windows Git action while retaining full
 coverage on all six Python/platform lanes.
 
+### Duplicates kept out
+
+Local hooks and the required PR check prevent new copies. The weekly audit
+records progress against the accepted backlog. [Setup and cleanup workflow](CONTRIBUTING.md#duplication).
+
 <!-- dry-lint-progress:start -->
 [![dry-lint cleanup progress](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fgigaverse-app%2Fpytest-selective%2Fmain%2F.dry-lint%2Fprogress.json)](https://github.com/gigaverse-app/dry-lint)
 
