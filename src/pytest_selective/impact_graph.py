@@ -11,19 +11,25 @@ import fnmatch
 import hashlib
 import io
 import json
-import os
 import re
 import sqlite3
-import subprocess
 import sys
 import tokenize
 import tomllib
-import unicodedata
 from collections import Counter, deque
 from pathlib import Path, PurePosixPath
 from typing import TypeVar
 
-from pytest_selective.ast_imports import import_candidates, iter_imports, parse_ast
+from pytest_selective.ast_imports import (
+    import_candidates,
+    iter_imports,
+    module_name,
+    module_prefixes,
+    normalized_name,
+    parse_ast,
+)
+from pytest_selective.git_operations import git as git
+from pytest_selective.git_operations import git_environment as git_environment
 from pytest_selective.impact_declarations import (
     DependencyDeclarationError,
     is_declaration,
@@ -86,32 +92,6 @@ def matches(path: str, patterns: list[str]) -> bool:
 
 def within(path: str, root: str) -> bool:
     return root == "." or path == root or path.startswith(root.rstrip("/") + "/")
-
-
-def git(repo: Path, *args: str, data: bytes | None = None) -> bytes:
-    return subprocess.run(
-        ["git", "-C", str(repo), *args],
-        input=data,
-        capture_output=True,
-        check=True,
-        env=git_environment(),
-    ).stdout
-
-
-def git_environment() -> dict[str, str]:
-    """Explicit repository paths win over location variables inherited from hooks."""
-    locations = {
-        "GIT_DIR",
-        "GIT_WORK_TREE",
-        "GIT_INDEX_FILE",
-        "GIT_COMMON_DIR",
-        "GIT_OBJECT_DIRECTORY",
-        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-        "GIT_PREFIX",
-        "GIT_SHALLOW_FILE",
-        "GIT_GRAFT_FILE",
-    }
-    return {name: value for name, value in os.environ.items() if name not in locations}
 
 
 CacheKey = TypeVar("CacheKey")
@@ -625,20 +605,16 @@ class ModuleIndex:
                 if not within(path, root):
                     continue
                 relative = path if root == "." else path[len(root.rstrip("/")) + 1 :]
-                parts = relative.removesuffix(".py").split("/")
-                is_package = parts[-1] == "__init__"
-                if is_package:
-                    parts.pop()
-                dotted = unicodedata.normalize("NFKC", ".".join(parts)).casefold()
+                source = PurePosixPath(relative)
+                is_package = source.name == "__init__.py"
+                dotted = normalized_name(module_name(source))
                 self.modules.setdefault(dotted, set()).add(path)
                 package = dotted if is_package else dotted.rpartition(".")[0]
                 self.packages.setdefault(path, set()).add(package)
                 self.names.setdefault(path, set()).add(dotted)
 
         self.linked_modules = {
-            unicodedata.normalize(
-                "NFKC", (link if root == "." else link[len(root.rstrip("/")) + 1 :]).replace("/", ".")
-            ).casefold()
+            normalized_name((link if root == "." else link[len(root.rstrip("/")) + 1 :]).replace("/", "."))
             for link in links
             for root in roots
             if within(link, root)
@@ -647,13 +623,11 @@ class ModuleIndex:
     def resolve(self, candidate: str) -> set[str]:
         # Union ambiguous roots/self.modules conservatively. Ancestor initializers
         # execute for every submodule import, even when never named explicitly.
-        normalized = unicodedata.normalize("NFKC", candidate).casefold()
+        normalized = normalized_name(candidate)
         if any(normalized == link or normalized.startswith(link + ".") for link in self.linked_modules):
             raise ValueError(f"import through unsupported Git symlink: {candidate}")
         result: set[str] = set()
-        parts = unicodedata.normalize("NFKC", candidate).casefold().split(".")
-        for end in range(1, len(parts) + 1):
-            prefix = ".".join(parts[:end])
+        for prefix in module_prefixes(normalized):
             result.update(self.modules.get(prefix, ()))
         return result
 

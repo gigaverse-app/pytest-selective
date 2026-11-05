@@ -25,6 +25,7 @@ from pytest_selective.impact_graph import (
     reverse_edges,
     seed_nodes,
     union_edges,
+    within,
 )
 from pytest_selective.impact_models import ImpactConfig
 
@@ -55,15 +56,11 @@ class PyrightSelection(BaseModel):
                 raise UnsupportedPattern(pattern)
 
     def checks(self, path: str) -> bool:
-        return any(_under(path, root) for root in self.include) and not any(
-            path.split("/").count(pattern[3:]) if pattern.startswith("**/") else _under(path, pattern)
+        # A repository-root include (also the default) includes every graph path.
+        return any(within(path, root.rstrip("/")) for root in self.include) and not any(
+            path.split("/").count(pattern[3:]) if pattern.startswith("**/") else within(path, pattern.rstrip("/"))
             for pattern in self.exclude
         )
-
-
-def _under(path: str, root: str) -> bool:
-    root = root.rstrip("/")
-    return path == root or path.startswith(root + "/")
 
 
 class TypecheckScope(BaseModel):
