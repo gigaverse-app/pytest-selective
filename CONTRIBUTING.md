@@ -194,7 +194,9 @@ dry-lint sweep --update --budget-usd 5 --readme README.md --repository gigaverse
 ```
 
 Commit the generated metadata with a cleanup, or dispatch the audit after the
-cleanup merges. Preserve the nine-pair adoption history; never delete and
+cleanup merges. A manual run of the **dry-lint** workflow also calls the same
+reusable audit, allowing validation on an adoption branch before the new scheduled
+workflow exists on `main`. Ratchet PRs target the selected branch. Preserve the nine-pair adoption history; never delete and
 reinitialize the baseline. No-change audits produce no metadata diff. Keep raw
 reports and verdict caches outside Git. The scope uses dry-lint's default
 exclusions; changes to detection policy require an explicitly reviewed migration.
