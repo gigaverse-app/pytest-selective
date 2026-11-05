@@ -130,6 +130,14 @@ class TestReporting:
         assert discover_test_modules([repo / "tests" / "test_alpha" / "builders.py"]) == []
 
 
+def test_discovery_ignores_cached_test_copies(repo: Path) -> None:
+    """Generated cache contents must not create isolation violations in the source suite."""
+    _write(repo, "tests/__pycache__/test_stale.py", "import tests.test_alpha.test_core\n")
+    assert _violations(repo) == []
+    _write(repo, "tests/test_beta/test_current.py", "import tests.test_alpha.test_core\n")
+    assert _violations(repo) == ["tests.test_alpha.test_core"]
+
+
 def test_backend_common_tests_hold_the_isolation_invariant() -> None:
     """
     The repo's own suite complies: no test module imports another.
