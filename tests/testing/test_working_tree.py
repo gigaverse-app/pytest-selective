@@ -97,6 +97,20 @@ def test_private_snapshot_detects_same_size_edits_in_the_index_timestamp_window(
     assert index.read_bytes() == index_before
 
 
+@pytest.mark.parametrize("flag", ["--assume-unchanged", "--skip-worktree"])
+def test_planner_snapshot_observes_edits_hidden_by_index_flags(repo: Path, flag: str) -> None:
+    """Selection must see tracked local edits even if Git's stat-cache hints hide them."""
+    git(repo, "update-index", flag, "pkg/value.py")
+    write(repo, "pkg/value.py", "VALUE = 2\n")
+    index = repo / ".git/index"
+    index_before = index.read_bytes()
+
+    tree = snapshot_working_tree(repo)
+
+    assert git(repo, "show", f"{tree}:pkg/value.py") == b"VALUE = 2\n"
+    assert index.read_bytes() == index_before
+
+
 @pytest.mark.parametrize("change", ["unstaged", "staged", "deleted", "renamed", "untracked"])
 def test_working_tree_selection_preserves_index_and_head(repo: Path, tmp_path: Path, change: str) -> None:
     if change == "deleted":

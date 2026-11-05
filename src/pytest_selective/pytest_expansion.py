@@ -20,12 +20,14 @@ from pathlib import Path, PurePosixPath
 
 if __package__:
     from .ast_imports import module_name, parse_ast
+    from .ast_imports import within_modules as within
     from .git_operations import git_environment as git_environment
     from .git_operations import git_text
     from .working_tree import snapshot_working_tree
 else:
     # The composite action executes this file directly without installing us.
     from ast_imports import module_name, parse_ast
+    from ast_imports import within_modules as within
     from git_operations import git_environment as git_environment
     from git_operations import git_text
     from working_tree import snapshot_working_tree
@@ -36,7 +38,7 @@ SCOPES = {"function": 0, "class": 1, "module": 2, "package": 3, "session": 4}
 DeclarationKey = tuple[str, str]
 PYTHON_SOURCES = "*.py"
 # Only Python edits participate in expansion rename detection; other staged inputs stay intact.
-worktree_snapshot = partial(snapshot_working_tree, pathspec=PYTHON_SOURCES)
+worktree_snapshot = partial(snapshot_working_tree, pathspec=PYTHON_SOURCES, preserve_stat_cache=True)
 # Declarations named by module path; a move renames them without adding anything.
 MODULE_DECLARATIONS = {"project-import", "plugin"}
 
@@ -120,10 +122,6 @@ def protected(source: str) -> bool:
         token.type == tokenize.COMMENT and token.start[1] == 0 and token.string.strip() == ACTIVATION
         for token in tokenize.generate_tokens(io.StringIO(source).readline)
     )
-
-
-def within(module: str, prefixes: tuple[str, ...]) -> bool:
-    return any(module == prefix or module.startswith(prefix + ".") for prefix in prefixes)
 
 
 def reason_before(lines: list[str], line: int) -> str:

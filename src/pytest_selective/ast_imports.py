@@ -20,6 +20,11 @@ def module_prefixes(name: str) -> Iterator[str]:
         yield ".".join(parts[:end])
 
 
+def within_modules(module: str, prefixes: tuple[str, ...]) -> bool:
+    """Match dotted package boundaries without confusing a sibling name for a child."""
+    return any(module == prefix or module.startswith(prefix + ".") for prefix in prefixes)
+
+
 def module_name(relative: PurePosixPath) -> str:
     """Dotted Python name after source-root removal; an initializer names its package."""
     source = relative.with_suffix("")

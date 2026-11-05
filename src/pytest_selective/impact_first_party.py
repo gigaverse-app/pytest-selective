@@ -25,7 +25,7 @@ import tomllib
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from pytest_selective.ast_imports import module_name, module_prefixes
+from pytest_selective.ast_imports import module_name, module_prefixes, within_modules
 from pytest_selective.impact_graph import (
     GraphCache,
     inventory,
@@ -347,7 +347,7 @@ def importers(candidates_by_file: dict[str, list[str]], prefix: str, modules: se
     selected: set[str] = set()
     for path, candidates in candidates_by_file.items():
         for candidate in candidates:
-            if candidate != prefix and not candidate.startswith(prefix + "."):
+            if not within_modules(candidate, (prefix,)):
                 continue
             if any(name in modules for name in module_prefixes(candidate)):
                 selected.add(path)
