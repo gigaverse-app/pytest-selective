@@ -117,6 +117,17 @@ pytest-selective audit --config .github/test-impact.json --records impact-audit
 Audit results cover executed paths, not every possible execution. Declare missing
 edges at their readers. See [evidence and limitations](evidence.md).
 
+Audit discovery uses the requested repository even when a calling Git hook exports
+location variables for another checkout. It shares repository isolation with the
+planner and expansion guard.
+
+### Type-check scope roots
+
+For `typecheck-scope`, omitting the checker's `include` list or setting it to `["."]`
+includes the repository. A trailing slash is accepted. Changed files and their
+affected importers still participate; excludes continue to limit the checker scope.
+Unsupported checker patterns retain the full-check fallback.
+
 ### Custom and nested pytest configuration
 
 The policy fingerprints cover conventional pytest configuration names, including

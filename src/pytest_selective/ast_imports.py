@@ -1,10 +1,34 @@
 """Parse Python for static analysis and extract imports without walking expressions."""
 
 import ast
+import unicodedata
 import warnings
 from collections import deque
-from collections.abc import Iterator
-from pathlib import Path
+from collections.abc import Iterable, Iterator
+from pathlib import Path, PurePosixPath
+
+
+def normalized_name(name: str) -> str:
+    """Canonical Python identifier/module matching across Unicode and case variants."""
+    return unicodedata.normalize("NFKC", name).casefold()
+
+
+def module_prefixes(name: str) -> Iterator[str]:
+    """A dotted import executes its ancestor packages before the named module."""
+    parts = name.split(".")
+    for end in range(1, len(parts) + 1):
+        yield ".".join(parts[:end])
+
+
+def within_modules(module: str, prefixes: Iterable[str]) -> bool:
+    """Match dotted package boundaries without confusing a sibling name for a child."""
+    return any(module == prefix or module.startswith(prefix + ".") for prefix in prefixes)
+
+
+def module_name(relative: PurePosixPath) -> str:
+    """Dotted Python name after source-root removal; an initializer names its package."""
+    source = relative.with_suffix("")
+    return ".".join(source.parent.parts if source.name == "__init__" else source.parts)
 
 
 def parse_ast(source: str | bytes, filename: str = "<unknown>") -> ast.Module:

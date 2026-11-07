@@ -25,6 +25,7 @@ import tomllib
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from pytest_selective.ast_imports import module_name, module_prefixes, within_modules
 from pytest_selective.impact_graph import (
     GraphCache,
     inventory,
@@ -271,13 +272,6 @@ def fetch_commits(spec: FirstPartyPackage, move: PinMove, cache_dir: Path, token
     return repo
 
 
-def _module_name(path: str, spec: FirstPartyPackage) -> str:
-    parts = list(PurePosixPath(path).relative_to(spec.source_root).with_suffix("").parts)
-    if parts and parts[-1] == "__init__":
-        parts.pop()
-    return ".".join(parts)
-
-
 def _owning_subsystem(path: str, spec: FirstPartyPackage) -> str:
     """
     Directory treated as reading a changed non-Python file: the package's first-level subpackage.
@@ -340,7 +334,7 @@ def package_change(
     affected = reachable(reverse, seeds) & python
     return PackageChange(
         installed_files=sorted(changed),
-        modules=sorted({_module_name(path, spec) for path in affected}),
+        modules=sorted({module_name(PurePosixPath(path).relative_to(spec.source_root)) for path in affected}),
     )
 
 
@@ -353,10 +347,9 @@ def importers(candidates_by_file: dict[str, list[str]], prefix: str, modules: se
     selected: set[str] = set()
     for path, candidates in candidates_by_file.items():
         for candidate in candidates:
-            if candidate != prefix and not candidate.startswith(prefix + "."):
+            if not within_modules(candidate, (prefix,)):
                 continue
-            parts = candidate.split(".")
-            if any(".".join(parts[:end]) in modules for end in range(1, len(parts) + 1)):
+            if any(name in modules for name in module_prefixes(candidate)):
                 selected.add(path)
                 break
     return selected

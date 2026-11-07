@@ -11,26 +11,34 @@ from __future__ import annotations
 import argparse
 import ast
 import io
-import os
-import shutil
 import subprocess
 import sys
-import tempfile
 import tokenize
 from dataclasses import dataclass, replace
+from functools import partial
 from pathlib import Path, PurePosixPath
 
 if __package__:
-    from .ast_imports import parse_ast
+    from .ast_imports import module_name, parse_ast
+    from .ast_imports import within_modules as within
+    from .git_operations import git_environment as git_environment
+    from .git_operations import git_text
+    from .working_tree import snapshot_working_tree
 else:
     # The composite action executes this file directly without installing us.
-    from ast_imports import parse_ast
+    from ast_imports import module_name, parse_ast
+    from ast_imports import within_modules as within
+    from git_operations import git_environment as git_environment
+    from git_operations import git_text
+    from working_tree import snapshot_working_tree
 
 ACTIVATION = "# gv:test-requires-expansion-reason"
 MARKER = "# pytest-global:"
 SCOPES = {"function": 0, "class": 1, "module": 2, "package": 3, "session": 4}
 DeclarationKey = tuple[str, str]
 PYTHON_SOURCES = "*.py"
+# Only Python edits participate in expansion rename detection; other staged inputs stay intact.
+worktree_snapshot = partial(snapshot_working_tree, pathspec=PYTHON_SOURCES, preserve_stat_cache=True)
 # Declarations named by module path; a move renames them without adding anything.
 MODULE_DECLARATIONS = {"project-import", "plugin"}
 
@@ -52,47 +60,13 @@ class Surface:
     imports: set[str]
 
 
-# Git hands every hook the repository it is committing in through these variables, and a pre-commit
-# hook inherits them. They are NOT overridden by `-C <root>`: GIT_DIR wins, so
-# `GIT_DIR=other/.git git -C root log` reports `other`'s history while looking like it asked for
-# `root`. Committing from a linked worktree (the only case where git exports GIT_DIR) therefore had
-# this command diffing the wrong repository. Stripping them is what makes `-C` authoritative.
-GIT_LOCATION_ENV = (
-    "GIT_DIR",
-    "GIT_WORK_TREE",
-    "GIT_INDEX_FILE",
-    "GIT_COMMON_DIR",
-    "GIT_PREFIX",
-    "GIT_OBJECT_DIRECTORY",
-    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-    "GIT_NAMESPACE",
-    "GIT_CEILING_DIRECTORIES",
-    "GIT_QUARANTINE_PATH",
-    "GIT_INDEX_VERSION",
-)
-
-
-def git_environment() -> dict[str, str]:
-    return {name: value for name, value in os.environ.items() if name not in GIT_LOCATION_ENV}
-
-
 def git(root: Path, *args: str, index: Path | None = None) -> str:
-    environment = git_environment()
-    if index is not None:
-        environment["GIT_INDEX_FILE"] = str(index)
-    # encoding is explicit because `text=True` alone decodes with the locale default, which is
-    # cp1252 on Windows and raises UnicodeDecodeError on any UTF-8 source byte it has no mapping
-    # for (0x8d among them).
-    result = subprocess.run(
-        ["git", "-C", str(root), *args],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        env=environment,
-    )
-    if result.returncode:
-        raise ValueError(f"Git history unavailable; fetch the requested base/head and retry: {result.stderr.strip()}")
-    return result.stdout
+    """Translate operational Git failures into the standalone CLI's actionable diagnostic."""
+    try:
+        return git_text(root, *args, index=index)
+    except subprocess.CalledProcessError as error:
+        detail = error.stderr.decode("utf-8").strip()
+        raise ValueError(f"Git history unavailable; fetch the requested base/head and retry: {detail}") from error
 
 
 @dataclass
@@ -139,10 +113,7 @@ class SourceTree:
         source = PurePosixPath(path)
         if source.suffix != ".py":
             return None
-        parts = [*self.package(path), source.stem]
-        if parts[-1] == "__init__":
-            parts.pop()
-        return ".".join(parts) or None
+        return module_name(PurePosixPath(*self.package(path), source.name)) or None
 
 
 def protected(source: str) -> bool:
@@ -151,10 +122,6 @@ def protected(source: str) -> bool:
         token.type == tokenize.COMMENT and token.start[1] == 0 and token.string.strip() == ACTIVATION
         for token in tokenize.generate_tokens(io.StringIO(source).readline)
     )
-
-
-def within(module: str, prefixes: tuple[str, ...]) -> bool:
-    return any(module == prefix or module.startswith(prefix + ".") for prefix in prefixes)
 
 
 def reason_before(lines: list[str], line: int) -> str:
@@ -322,22 +289,6 @@ def expansions(before: Surface, after: Surface) -> list[Expansion]:
             if wider_scope or wider_autouse:
                 result.append((entry, previous.reason))
     return result
-
-
-def worktree_snapshot(root: Path) -> str:
-    """
-    Record the working tree's Python sources as a tree object without touching the real index.
-
-    Rename detection needs both sides in Git, but the local check also sees unstaged and untracked
-    edits. Staging into a copy of the index keeps its stat cache, so only changed files are hashed.
-    """
-    real_index = root / git(root, "rev-parse", "--git-path", "index").strip()
-    with tempfile.TemporaryDirectory() as scratch:
-        index = Path(scratch) / "index"
-        if real_index.is_file():
-            shutil.copyfile(real_index, index)
-        git(root, "add", "--all", "--", PYTHON_SOURCES, index=index)
-        return git(root, "write-tree", index=index).strip()
 
 
 def moved_packages(paths: dict[str, str], before: SourceTree, after: SourceTree) -> list[tuple[str | None, str | None]]:
@@ -526,7 +477,7 @@ def main() -> int:
             project_prefixes=tuple(args.project_import_prefix),
             follow_prefixes=tuple(args.follow_import_prefix),
         )
-    except (OSError, ValueError, SyntaxError, tokenize.TokenError) as error:
+    except (OSError, ValueError, SyntaxError, tokenize.TokenError, subprocess.CalledProcessError) as error:
         print(f"Global pytest editing check: {error}")
         return 1
 

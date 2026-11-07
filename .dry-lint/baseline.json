@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "contract": "fbf56a4a852e47539b956057d11e9f3ee56a986bbb3b26ac209dc491d4b45f6e",
+  "started_at": "fee809549a83ddfb432cb6599ea57ae73efbe66a",
+  "checked_at": "031cafd1748babfecff2ef2629a0320715d8fe9c",
+  "entries": [
+    {
+      "hashes": {
+        "src/pytest_selective/hygiene.py::discover_test_modules": "49e17f87bfe24aeb",
+        "src/pytest_selective/test_inventory.py::discover_test_files": "567e0cacf263d340"
+      },
+      "context_hash": "",
+      "state": "cleaned"
+    },
+    {
+      "hashes": {
+        "src/pytest_selective/impact_graph.py::within": "5417d89a2cedc5ea",
+        "src/pytest_selective/typecheck_scope.py::_under": "221f42a33c38887c"
+      },
+      "context_hash": "",
+      "state": "cleaned"
+    },
+    {
+      "hashes": {
+        "src/pytest_selective/impact_audit_plugin.py::_git": "be715e103f83b281",
+        "src/pytest_selective/impact_graph.py::git": "a53bf9a83105b354"
+      },
+      "context_hash": "",
+      "state": "cleaned"
+    },
+    {
+      "hashes": {
+        "src/pytest_selective/impact_audit_plugin.py::_git": "be715e103f83b281",
+        "src/pytest_selective/pytest_expansion.py::git": "42cac77499ad42b1"
+      },
+      "context_hash": "",
+      "state": "cleaned"
+    },
+    {
+      "hashes": {
+        "src/pytest_selective/impact_first_party.py::_module_name": "c214530cc8698c18",
+        "src/pytest_selective/pytest_expansion.py::SourceTree.module_name": "633b2e80dfaac9e6"
+      },
+      "context_hash": "",
+      "state": "cleaned"
+    },
+    {
+      "hashes": {
+        "src/pytest_selective/impact_graph.py::git": "a53bf9a83105b354",
+        "src/pytest_selective/pytest_expansion.py::git": "42cac77499ad42b1"
+      },
+      "context_hash": "",
+      "state": "cleaned"
+    },
+    {
+      "hashes": {
+        "src/pytest_selective/impact_graph.py::git_environment": "1b32a738ac740022",
+        "src/pytest_selective/pytest_expansion.py::git_environment": "df7139fadaa213a9"
+      },
+      "context_hash": "",
+      "state": "cleaned"
+    },
+    {
+      "hashes": {
+        "src/pytest_selective/impact_name_scope.py::_casefold": "9ecabff1de943de2",
+        "src/pytest_selective/impact_graph.py::ModuleIndex.resolve": "a1089dfe99f751cd"
+      },
+      "context_hash": "",
+      "state": "cleaned"
+    },
+    {
+      "hashes": {
+        "src/pytest_selective/impact_name_scope.py::_casefold": "9ecabff1de943de2",
+        "src/pytest_selective/impact_graph.py::ModuleIndex.__init__": "84c3976fe798fb7e"
+      },
+      "context_hash": "",
+      "state": "cleaned"
+    }
+  ]
+}

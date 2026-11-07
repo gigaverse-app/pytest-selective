@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,6 +17,8 @@ import pytest
 from pytest_selective.impact_cli import main
 from pytest_selective.impact_graph import git
 from pytest_selective.impact_models import ImpactConfig
+from pytest_selective.pytest_expansion import worktree_snapshot
+from pytest_selective.working_tree import snapshot_working_tree
 from tests.testing.git_repo import commit, init, write
 
 
@@ -31,6 +34,81 @@ def repo(tmp_path: Path) -> Path:
     write(root, "selection.json", ImpactConfig(test_roots=["tests"]).model_dump_json())
     commit(root)
     return root
+
+
+@pytest.mark.parametrize("python_only", [False, True], ids=["planner", "expansion"])
+@pytest.mark.parametrize("layout", ["normal", "split-index", "linked-worktree"])
+def test_private_snapshots_preserve_index_and_requested_file_scope(
+    repo: Path, tmp_path: Path, python_only: bool, layout: str
+) -> None:
+    """Snapshots retain staged inputs, update their declared scope and never stage user edits."""
+    write(repo, "data.txt", "committed\n")
+    write(repo, ".gitignore", "ignored.py\n")
+    commit(repo)
+    if layout == "linked-worktree":
+        linked = tmp_path / "linked"
+        git(repo, "worktree", "add", "-b", "snapshot-test", str(linked))
+        repo = linked
+    write(repo, "data.txt", "staged\n")
+    write(repo, "ignored.py", "VALUE = 'staged'\n")
+    git(repo, "add", "--force", "data.txt", "ignored.py")
+    if layout == "split-index":
+        git(repo, "update-index", "--split-index")
+        assert git(repo, "rev-parse", "--shared-index-path").strip()
+    write(repo, "data.txt", "working\n")
+    write(repo, "ignored.py", "VALUE = 'working'\n")
+    write(repo, "new.py", "VALUE = 2\n")
+    write(repo, "new.txt", "new data\n")
+    (repo / "pkg/value.py").unlink()
+    index = repo / git(repo, "rev-parse", "--git-path", "index").decode().strip()
+    index_before = index.read_bytes()
+    head_before = git(repo, "rev-parse", "HEAD")
+
+    tree = worktree_snapshot(repo) if python_only else snapshot_working_tree(repo)
+
+    assert git(repo, "show", f"{tree}:ignored.py") == b"VALUE = 'working'\n"
+    assert git(repo, "show", f"{tree}:new.py") == b"VALUE = 2\n"
+    assert git(repo, "show", f"{tree}:data.txt") == (b"staged\n" if python_only else b"working\n")
+    paths = git(repo, "ls-tree", "-r", "--name-only", tree).decode().splitlines()
+    assert ("new.txt" in paths) is not python_only
+    assert "pkg/value.py" not in paths
+    assert index.read_bytes() == index_before
+    assert git(repo, "rev-parse", "HEAD") == head_before
+
+
+@pytest.mark.parametrize("python_only", [False, True], ids=["planner", "expansion"])
+def test_private_snapshot_detects_same_size_edits_in_the_index_timestamp_window(repo: Path, python_only: bool) -> None:
+    """Copying the index must preserve Git's racy-clean check, not make a dirty file look older."""
+    git(repo, "config", "core.trustctime", "false")
+    git(repo, "config", "core.checkstat", "minimal")
+    source = repo / "pkg/value.py"
+    timestamp = int(time.time()) - 10
+    os.utime(source, (timestamp, timestamp))
+    git(repo, "add", "pkg/value.py")
+    index = repo / ".git/index"
+    os.utime(index, (timestamp, timestamp))
+    index_before = index.read_bytes()
+    write(repo, "pkg/value.py", "VALUE = 2\n")
+    os.utime(source, (timestamp, timestamp))
+
+    tree = worktree_snapshot(repo) if python_only else snapshot_working_tree(repo)
+
+    assert git(repo, "show", f"{tree}:pkg/value.py") == b"VALUE = 2\n"
+    assert index.read_bytes() == index_before
+
+
+@pytest.mark.parametrize("flag", ["--assume-unchanged", "--skip-worktree"])
+def test_planner_snapshot_observes_edits_hidden_by_index_flags(repo: Path, flag: str) -> None:
+    """Selection must see tracked local edits even if Git's stat-cache hints hide them."""
+    git(repo, "update-index", flag, "pkg/value.py")
+    write(repo, "pkg/value.py", "VALUE = 2\n")
+    index = repo / ".git/index"
+    index_before = index.read_bytes()
+
+    tree = snapshot_working_tree(repo)
+
+    assert git(repo, "show", f"{tree}:pkg/value.py") == b"VALUE = 2\n"
+    assert index.read_bytes() == index_before
 
 
 @pytest.mark.parametrize("change", ["unstaged", "staged", "deleted", "renamed", "untracked"])

@@ -93,6 +93,11 @@ unreachable Git tree/blob objects that normal Git garbage collection can reclaim
 The runner keeps its graph cache inside Git's private directory, including linked
 worktrees. Planning and execution assume files are not concurrently being edited.
 
+Private snapshots preserve staged ignored files and include tracked edits hidden
+by `assume-unchanged` or `skip-worktree` flags. The expansion guard shares the
+snapshot mechanism with a Python-only scope and a preserved stat cache. Its copied
+index retains the timestamp Git uses to detect same-size edits in that window.
+
 Pass pytest options after `--`; exit status comes from pytest. Nonstandard
 collectors, doctests and whole-suite coverage need a full run with their usual
 arguments. CI lanes that require complete evidence should continue using
