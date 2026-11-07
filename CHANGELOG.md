@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/gigaverse-app/pytest-selective/compare/v0.4.1...v0.4.2) (2026-11-07)
+
+
+### Bug fixes
+
+* consolidate duplicated selection helpers and retire baseline debt ([#77](https://github.com/gigaverse-app/pytest-selective/issues/77)) ([a7427bf](https://github.com/gigaverse-app/pytest-selective/commit/a7427bf6f550789a835a38f3326b8a971bef114f))
+
 ## [0.4.1](https://github.com/gigaverse-app/pytest-selective/compare/v0.4.0...v0.4.1) (2026-10-24)
 
 
