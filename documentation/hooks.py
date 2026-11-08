@@ -2,6 +2,7 @@
 
 import posixpath
 import re
+import shutil
 from hashlib import sha256
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -9,6 +10,8 @@ from urllib.parse import unquote, urlsplit
 from mkdocs.structure.files import File
 
 ROOT = Path(__file__).resolve().parents[1]
+# The address llms.txt is written against; each Read the Docs version substitutes its own.
+CANONICAL_SITE = "https://pytest-selective.readthedocs.io/en/latest/"
 SOURCE_URIS: dict[str, str] = {}
 ASSET_VERSIONS: dict[str, str] = {}
 
@@ -19,12 +22,14 @@ def on_files(files, config):
     for file in files:
         if file.abs_src_path and Path(file.abs_src_path).is_relative_to(ROOT):
             SOURCE_URIS[Path(file.abs_src_path).relative_to(ROOT).as_posix()] = file.src_uri
-    for source in config.extra["published_sources"]:
+    for entry in config.extra["published_sources"]:
+        # A source publishes at its repository path, or at `as` when that path would make a poor URL.
+        source, uri = (entry["source"], entry["as"]) if isinstance(entry, dict) else (entry, entry)
         path = ROOT / source
         if not path.is_file():
             raise ValueError(f"Missing published source: {source}")
-        files.append(File.generated(config, source, abs_src_path=str(path)))
-        SOURCE_URIS[source] = source
+        files.append(File.generated(config, uri, abs_src_path=str(path)))
+        SOURCE_URIS[source] = uri
     for name in ("logo.svg", "icon.png", "banner.svg", "social-preview.png"):
         files.append(File.generated(config, f"assets/{name}", abs_src_path=str(ROOT / "docs/assets" / name)))
         SOURCE_URIS[f"docs/assets/{name}"] = f"assets/{name}"
@@ -74,3 +79,15 @@ def on_page_markdown(markdown, page, config, files):
         parts[index] = re.sub(r"(\]\()([^\s)]+)([^)]*\))", lambda m: m[1] + rewrite(m[2]) + m[3], parts[index])
         parts[index] = re.sub(r"^(\[[^]]+\]:\s*)(\S+)", lambda m: m[1] + rewrite(m[2]), parts[index], flags=re.M)
     return "".join(parts)
+
+
+def on_post_build(config):
+    """
+    Raw files for agents and crawlers, from the same sources as the pages: the agent setup procedure, verbatim, so the
+    page a person reads and the file an agent fetches never differ, and llms.txt, pointed at this build's own URL.
+    """
+    site = Path(config.site_dir)
+    for source, target in config.extra["raw_files"].items():
+        shutil.copyfile(ROOT / source, site / target)
+    llms = (ROOT / config.extra["llms_txt"]).read_text(encoding="utf-8")
+    (site / "llms.txt").write_bytes(llms.replace(CANONICAL_SITE, config.site_url).encode("utf-8"))

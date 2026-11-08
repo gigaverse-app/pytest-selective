@@ -1,0 +1,31 @@
+# pytest-selective
+
+> pytest-selective is a Python test impact analysis tool for pytest. It follows imports and declared non-Python inputs through both sides of a Git change, selects the affected test files, explains why, and falls back to running everything when it cannot prove a narrower scope. Use it as a pytest plugin for local edits, or plan before CI starts: skip whole unaffected CI jobs (lanes) or run only affected test files, behind a required gate that accepts a skip only when a successful plan said so.
+
+To set pytest-selective up in a repository with a coding agent, give the agent this one prompt: "Set up pytest-selective in this repository. Fetch https://pytest-selective.readthedocs.io/en/latest/agent-setup.md and follow it." The agent stops for a person before making the gate a required check.
+
+## Set it up
+
+- [Agent setup procedure (raw Markdown)](https://pytest-selective.readthedocs.io/en/latest/agent-setup.md): the complete, self-contained procedure a coding agent follows to adopt pytest-selective in CI and open a pull request
+- [Quickstart](https://pytest-selective.readthedocs.io/en/latest/docs/tutorial/): a first local run and a controlled regression
+- [Skip unrelated CI jobs](https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/skip-unrelated-ci/): whole-lane selection by hand, with the documentation-only audit
+- [Set up CI selection](https://pytest-selective.readthedocs.io/en/latest/docs/ci/): file and lane planning in GitHub Actions or another runner
+- [GitHub Actions reference](https://pytest-selective.readthedocs.io/en/latest/docs/actions/): every public action and its contract
+
+## Configure
+
+- [Configuration reference](https://pytest-selective.readthedocs.io/en/latest/docs/configuration/): roots, collection-policy fingerprints and dependency rules
+- [Declare file inputs with sidecars](https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/sidecar-dependencies/): templates, fixtures and data files imports cannot reveal
+- [Run affected tests locally](https://pytest-selective.readthedocs.io/en/latest/docs/local-development/): the pytest plugin and the pre-collection runner
+
+## Understand it
+
+- [Guarantees and limits](https://pytest-selective.readthedocs.io/en/latest/docs/evidence/): what a green selected run means and what it does not
+- [Diagnose broad selections](https://pytest-selective.readthedocs.io/en/latest/docs/selection-health/): explanations, startup floors and the runtime read audit
+
+## Optional
+
+- [Adoption tutorial and checklist](https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/adoption-checklist/): every capability stage, by hand
+- [Docs-only CI routing savings](https://pytest-selective.readthedocs.io/en/latest/docs/benchmarks/2026-10-22-routing/): one measured full/selected pair and its method
+- [Compare with pytest-impacted](https://pytest-selective.readthedocs.io/en/latest/docs/comparison-pytest-impacted/)
+- [Source code](https://github.com/gigaverse-app/pytest-selective)

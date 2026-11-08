@@ -40,7 +40,11 @@ Start with one lane if your tests share a global contract. Create
 
 ```json
 {
-  "graph": {"module_roots": ["src", "."], "test_roots": ["tests"]},
+  "graph": {
+    "module_roots": ["src", "."],
+    "test_roots": ["tests"],
+    "global_inputs": ["pyproject.toml", "uv.lock", ".python-version"]
+  },
   "lanes": {
     "tests": {
       "roots": ["tests"],
@@ -59,6 +63,8 @@ Add service configuration, generated inputs, fixtures loaded by filename,
 subprocess helpers, and external checkout pins. Static imports cannot discover
 every runtime dependency. A broad global input takes precedence over narrower
 Python analysis; declaring `.github/**` would select tests for PR-template edits.
+`graph.global_inputs` names your environment files; without it, the built-in list
+(which matches any `*requirements*.txt`, including a docs site's) runs every lane.
 
 Configured pytest collection policy also needs review. Follow the
 [configuration and fingerprints guide](../configuration.md) before expecting
@@ -98,8 +104,9 @@ if: >-
 The failed-planner branch is necessary: a planning failure must not turn into a
 passing empty test run. An invalid declaration should still block the aggregate
 gate while you fix it. Keep quality, docs, package builds, and the required gate
-outside this condition. Use the [strict gate integration](../ci-toolkit.md) to
-accept a skip only when a successful plan explicitly says that lane is unaffected.
+outside this condition. Make an aggregate job the required check and run
+[`actions/validation-gate`](../actions.md) in it, to accept a skip only when a
+successful plan explicitly says that lane is unaffected.
 
 ## 3. Prove the routing boundaries
 
@@ -143,7 +150,7 @@ repositories had at least one:
 | Routing regressions in an always-run quality job | The lane-routing tests ran on every docs PR | Give them their own lane: lane config, workflows, CI helpers and the routing tests |
 | Directory inputs that also hold prose | `examples/**` selected the test lane when an example's README changed | Name execution files: `examples/*.py` **and** `examples/**/*.py`, and so on |
 | `dir/**/*.ext` alone (until 0.4.3) | `examples/**/*.toml` missed `examples/gold.toml`, so a data change skipped its tests | Fixed: `**/` now also matches no directory, as in gitignore |
-| Docs-site requirements | Bumping `documentation/requirements.txt` ran every lane, because the built-in environment policy matches `*requirements*.txt` anywhere | Set `graph.global_inputs` to your real environment files |
+| Docs-site requirements | Bumping `documentation/requirements.txt` ran every lane, because the built-in environment policy matches `*requirements*.txt` anywhere | Set `graph.global_inputs` to your real environment files (lanes follow it since the release after 1.0.0; before that, also set top-level `global_inputs`) |
 | A whole workflow file as a global input | Adding a file to a lint job's list ran every test | Use `<workflow>#<job>` lane inputs for the jobs that run each lane |
 
 Prove each input with the planner itself before opening the PR. Commit a probe edit

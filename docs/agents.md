@@ -3,15 +3,16 @@
 Give your coding agent this prompt from the repository you want to improve:
 
 ```text
-Read https://raw.githubusercontent.com/gigaverse-app/pytest-selective/main/skills/pytest-selective/SKILL.md
-and use it to improve this repository's Python test/CI time. Choose file or
-whole-lane selection to preserve our coverage and conformance requirements.
-Add routing regressions, retain docs/package checks and full checkpoints,
-and show measured before/after results with the assumptions and run links.
+Set up pytest-selective in this repository. Fetch https://pytest-selective.readthedocs.io/en/latest/agent-setup.md and follow it.
 ```
 
-The [skill](../skills/pytest-selective/SKILL.md) is ordinary Markdown with standard
-metadata. An agent with repository, Git and shell access can read it directly.
+The agent maps your CI jobs to lanes, adds the planner, a gate and routing tests, proves a docs-only pull request skips the expensive jobs while code changes keep full coverage, measures the difference and opens a pull request. Making the gate a required check, labels and merging stay with you.
+
+The [agent setup procedure](../skills/pytest-selective/SKILL.md) is the repository's
+skill, published byte for byte at that URL and listed in the site's
+[llms.txt](https://pytest-selective.readthedocs.io/en/latest/llms.txt). It is ordinary
+Markdown with standard metadata and absolute links only, so an agent with repository,
+Git and shell access can follow it without fetching anything else.
 It can use connected CI tools or `gh` for live measurements; without CI access it
 can still prepare the change and local routing evidence. No new agent service
 or MCP server is required.
@@ -29,7 +30,7 @@ npx skills add gigaverse-app/ci-esta --skill ci-esta
 The second skill adds GitHub Actions reporting and optional evidence reuse for
 any application language. It is optional for Python selection. Alternatively,
 copy the complete `skills/pytest-selective/` folder into your agent's skill
-directory; keep `references/` alongside `SKILL.md`. Review the source/revision
+directory. Review the source/revision
 when installing or updating. The two projects' Git repositories are the source
 of these skills; a Python wheel install is not an agent-skill installation.
 
@@ -61,6 +62,8 @@ for your project. [Read the evidence](benchmarks/2026-10-22-routing.md).
 
 The repository's `skills/` directory is the authoritative copy. A package upgrade
 does not refresh an agent's installed Markdown. Reinstall/update with your skill
-manager, or replace the complete skill folder (including `references/`) after
+manager, or replace the complete skill folder after
 reviewing the source revision. Compare that revision when an agent gives advice
 that conflicts with the current quickstart. Preserve local customizations separately.
+The published `agent-setup.md` always follows `main`; the procedure itself pins the
+actions and package it adds to one release.

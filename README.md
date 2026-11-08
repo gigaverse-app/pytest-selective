@@ -12,6 +12,15 @@
 
 **Run affected Python tests. See why they matter.**
 
+**Set it up with your coding agent.** Paste this one prompt into Claude Code, Codex, Cursor or any coding agent in
+your repository:
+
+```text
+Set up pytest-selective in this repository. Fetch https://pytest-selective.readthedocs.io/en/latest/agent-setup.md and follow it.
+```
+
+The agent maps your CI jobs to lanes, adds the planner, a gate and routing tests, proves a docs-only pull request skips the expensive jobs while code changes keep full coverage, measures the difference and opens a pull request. Making the gate a required check, labels and merging stay with you. [Read the procedure it follows](https://pytest-selective.readthedocs.io/en/latest/agent-setup/).
+
 [Read the documentation](https://pytest-selective.readthedocs.io/en/latest/) · [Related tools](https://pytest-selective.readthedocs.io/en/latest/ecosystem/)
 
 pytest-selective is a **Python test impact analysis** tool for incremental testing
@@ -20,8 +29,9 @@ the affected test files, and explains the result. Use it directly as a pytest
 plugin, or plan before collection and service startup with the CLI and CI actions.
 
 Built from the selector used in Gigaverse's backend, AI, and shared Python
-infrastructure. Use the moving `@v1` Actions tag. The Python package has its own
-version and compatible dependency range.
+infrastructure. Pin the actions and the package to the same release: `@vX.Y.Z`
+(or its commit SHA) and `pytest-selective==X.Y.Z`. The moving `@v1` tag follows
+the newest release.
 [Provenance and extraction scope](https://github.com/gigaverse-app/pytest-selective/blob/main/PROVENANCE.md).
 
 [Quick tutorial](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/tutorial.md) ·
@@ -65,14 +75,8 @@ Older immutable releases retain their original layouts.
 
 ## Have your agent set it up
 
-Paste this into your coding agent in the Python project you want to improve:
-
-```text
-Read https://raw.githubusercontent.com/gigaverse-app/pytest-selective/main/skills/pytest-selective/SKILL.md
-and use it to speed up this project's tests/CI. Preserve coverage, add routing
-regressions, and prove the result with measured before/after evidence.
-```
-
+The one-prompt setup above fetches the [agent setup procedure](https://pytest-selective.readthedocs.io/en/latest/agent-setup.md),
+which is the repository's [agent skill](skills/pytest-selective/SKILL.md) published verbatim.
 [Install the skill or add AGENTS.md instructions](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/agents.md).
 Works through existing Git/CLI tools; no new agent server is needed.
 
@@ -171,7 +175,7 @@ hold. It uses a temporary repository and leaves your checkout untouched.
 Install from PyPI using Python 3.11+:
 
 ```bash
-pip install "pytest-selective>=0.1.0,<0.2.0"
+pip install "pytest-selective>=1,<2"
 ```
 
 For source development, GitHub installation is also available:
