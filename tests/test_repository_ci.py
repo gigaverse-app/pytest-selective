@@ -3,6 +3,7 @@
 # gv:test-dependency: .github/test-lanes.json
 # gv:test-dependency: .github/workflows/ci.yml
 # gv:test-dependency: .github/workflows/observe-ci.yml
+# gv:test-dependency: .github/workflows/public-actions.yml
 
 from contextlib import closing
 from pathlib import Path
@@ -137,6 +138,22 @@ def test_pytest_jobs_consume_the_public_actions_shared_file_plan():
         assert execution["env"]["CI_TEST_FILES"] == "${{ needs.select-tests.outputs.files }}"
     observer = yaml.safe_load((ROOT / ".github/workflows/observe-ci.yml").read_text())
     assert observer["jobs"]["report"]["with"]["test-selection-artifact"] == "test-impact-explanation"
+
+
+@pytest.mark.parametrize("name", ["ci.yml", "public-actions.yml"])
+def test_self_adoption_keeps_weekly_full_checkpoints(name):
+    workflow = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())
+    assert workflow[True]["schedule"]
+    planner = workflow["jobs"]["select-tests"]
+    selection = next(step for step in planner["steps"] if step.get("uses") == "./actions/plan-lanes")
+    assert selection.get("with", {}).get("full", "auto") == "auto"
+
+
+def test_tutorial_executes_through_selected_pytest_without_a_second_matrix_run():
+    jobs = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())["jobs"]
+    commands = [step.get("run", "") for step in jobs["tests"]["steps"]]
+    assert any("scripts/run_ci_tests.py" in command for command in commands)
+    assert not any("scripts/tutorial.py" in command for command in commands)
 
 
 @pytest.mark.parametrize(

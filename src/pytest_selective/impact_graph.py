@@ -13,6 +13,7 @@ import hashlib
 import io
 import json
 import re
+import shlex
 import sqlite3
 import sys
 import tokenize
@@ -55,7 +56,7 @@ from pytest_selective.impact_models import (
 from pytest_selective.parse_batch import parse_records
 from pytest_selective.pytest_plugins import declared_plugins
 
-VERSION = "22"
+VERSION = "24"
 OPAQUE_CALLS = {
     "__import__",
     "import_module",
@@ -221,6 +222,47 @@ def pytest_policies(repo: Path, files: dict[str, str], extra_files: tuple[str, .
     return policies
 
 
+def command_line_plugins(policies: dict[str, str]) -> set[str]:
+    """Modules that ``-p NAME`` in an ``addopts`` setting loads into every session.
+
+    ``-p no:NAME`` disables a plugin and loads nothing. Plugins given only on the command line or
+    in ``PYTEST_ADDOPTS`` are invisible here; configure those as ``global_modules``.
+    """
+    names: set[str] = set()
+    for canonical in policies.values():
+        policy = json.loads(canonical)
+        if isinstance(policy, str):
+            # A -c file is kept verbatim; read it as ini when it parses as one.
+            parser = configparser.ConfigParser(interpolation=None)
+            try:
+                parser.read_string(policy)
+            except configparser.Error:
+                continue
+            policy = {section: dict(parser[section]) for section in parser.sections()}
+        for value in _setting_values(policy, "addopts"):
+            arguments = shlex.split(value) if isinstance(value, str) else [str(item) for item in value]
+            for index, argument in enumerate(arguments):
+                if argument == "-p" and index + 1 < len(arguments):
+                    name = arguments[index + 1]
+                elif argument.startswith("-p") and len(argument) > 2:
+                    name = argument[2:].removeprefix("=")
+                else:
+                    continue
+                if not name.startswith("no:"):
+                    names.add(name)
+    return names
+
+
+def _setting_values(policy: object, key: str) -> list[str | list[object]]:
+    """Every value of ``key`` in a parsed configuration, at any depth."""
+    if isinstance(policy, dict):
+        found: list[str | list[object]] = [value for name, value in policy.items() if name == key]
+        for value in policy.values():
+            found += _setting_values(value, key)
+        return found
+    return []
+
+
 def policy_fingerprints(repo: Path, tree: GitTree, extra_files: tuple[str, ...] = ()) -> dict[str, str]:
     return {
         path: hashlib.sha256(canonical.encode()).hexdigest()
@@ -299,6 +341,7 @@ def parse_source(source: bytes) -> ParsedSource:
         isinstance(node, ast.Name) and node.id == "ROOT_URLCONF" and isinstance(node.ctx, ast.Store) for node in nodes
     )
     registration = registrations[0].value if len(registrations) == writes == 1 else None
+    exports = sorted(_literal_exports(tree))
     imports = [
         ImportSpec(module="", names=[alias.name for alias in node.names])
         if isinstance(node, ast.Import)
@@ -385,7 +428,27 @@ def parse_source(source: bytes) -> ParsedSource:
         opaque=sorted(opaque),
         pytest_plugin=plugin,
         dependencies=dependencies,
+        exports=exports,
     )
+
+
+def _literal_exports(tree: ast.Module) -> set[str]:
+    """Names a module-level ``__all__`` lists as string literals, across assignments and ``+=``."""
+    names: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            targets, value = node.targets, node.value
+        elif isinstance(node, (ast.AnnAssign, ast.AugAssign)):
+            targets, value = [node.target], node.value
+        else:
+            continue
+        if not any(isinstance(target, ast.Name) and target.id == "__all__" for target in targets):
+            continue
+        if isinstance(value, (ast.List, ast.Tuple)):
+            names.update(
+                item.value for item in value.elts if isinstance(item, ast.Constant) and isinstance(item.value, str)
+            )
+    return names
 
 
 def _cache_prefix() -> str:
@@ -479,7 +542,12 @@ class GraphCache:
                 pass
         parsed = self.parse_python(repo, files)
         deferred = deferred_routes(repo, tree, files, config, self)
-        snapshot = resolve_graph(tree, files, parsed, config, git_tree.links, deferred)
+        try:
+            policies = pytest_policies(repo, files, tuple(config.pytest_config_files))
+        except ValueError:
+            # The collection-policy check below reports an unreadable configuration.
+            policies = {}
+        snapshot = resolve_graph(tree, files, parsed, config, git_tree.links, deferred, command_line_plugins(policies))
         add_sidecar_edges(repo, tree, files, snapshot)
         # Declaration errors are actionable authoring failures, even when the
         # same tree also needs a collection-policy review/full-suite fallback.
@@ -618,6 +686,22 @@ def source_candidates(source: ParsedSource, package: str) -> set[str]:
     return candidates
 
 
+def star_import_candidates(
+    source: ParsedSource, package: str, index: "ModuleIndex", parsed: dict[str, ParsedSource], files: dict[str, str]
+) -> set[str]:
+    """Submodules ``from X import *`` loads because package X lists them in its ``__all__``."""
+    candidates: set[str] = set()
+    for spec in source.imports:
+        if "*" not in spec.names:
+            continue
+        node = ast.ImportFrom(module=spec.module, names=[ast.alias(name="*")], level=spec.level)
+        for base in import_candidates(node, package):
+            for initializer in index.modules.get(normalized_name(base), ()):
+                if PurePosixPath(initializer).name == "__init__.py":
+                    candidates.update(f"{base}.{name}" for name in parsed[files[initializer]].exports)
+    return candidates
+
+
 class ModuleIndex:
     """Resolve against a complete Git inventory without filesystem probes."""
 
@@ -696,6 +780,7 @@ def resolve_graph(
     config: ImpactConfig,
     links: list[str],
     deferred: list[DeferredRoute] | None = None,
+    plugins_from_options: set[str] | None = None,
 ) -> Snapshot:
     python_files = {path for path in files if path.endswith(".py")}
     index = ModuleIndex(python_files, config.module_roots, links)
@@ -721,6 +806,7 @@ def resolve_graph(
             candidates.add(source.django_urlconf)
         for package in index.packages.get(path, {""}):
             candidates.update(source_candidates(source, package))
+            candidates.update(star_import_candidates(source, package, index, parsed, files))
         for name in index.names.get(path, ()):
             edges[path].update(index.resolve(name))
         missing: list[str] = []
@@ -774,6 +860,9 @@ def resolve_graph(
 
     conftests = {path for path in python_files if PurePosixPath(path).name == "conftest.py"}
     globals_set = plugins | global_module_files(index, config)
+    # `-p NAME` in addopts loads the plugin into every session, as a global module does.
+    for name in plugins_from_options or ():
+        globals_set |= index.resolve(name)
     # Registration affects the whole session, including when a test module
     # loads the plugin. Follow nested declarations and retain the owner so
     # removing/changing its registration also invalidates every test.
