@@ -188,11 +188,16 @@ def plan(repo: Path, config: LaneConfig, base: str, head: str, *, full: bool = F
             reasons.extend(
                 f"affected test: {test}" for test in report.selected if any(within(test, root) for root in lane.roots)
             )
+            # A lane's roots hold its tests, not its inputs: a changed file there selects the lane
+            # as a test (a deleted one still needs its lane's completeness checks) or through the
+            # graph, like any other file. A README beside the tests reaches nothing.
+            under_roots = [path for path in report.changed if any(within(path, root) for root in lane.roots)]
             reasons.extend(
-                f"changed root input: {path}"
-                for path in report.changed
-                if path not in report.selected and any(within(path, root) for root in lane.roots)
+                f"deleted test: {path}"
+                for path in under_roots
+                if path in affected_tests and path not in report.selected
             )
+            unreferenced = [f"unreferenced under root: {path}" for path in under_roots if path not in affected_tests]
             globs = [value for value in lane.inputs if job_input(value) is None]
             reasons.extend(f"explicit input: {path}" for path in report.changed if matches(path, globs))
             unchanged_jobs = []
@@ -207,7 +212,7 @@ def plan(repo: Path, config: LaneConfig, base: str, head: str, *, full: bool = F
                 else:
                     unchanged_jobs.append(f"unchanged job: {value}")
             lanes[name] = bool(reasons)
-            evidence[name] = reasons or unchanged_jobs or ["no affected tests or changed inputs"]
+            evidence[name] = reasons or [*unchanged_jobs, *unreferenced] or ["no affected tests or changed inputs"]
         return LanePlan(
             lanes=lanes,
             selected=report.selected,

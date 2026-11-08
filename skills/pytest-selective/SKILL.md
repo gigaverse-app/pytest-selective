@@ -83,8 +83,7 @@ and documentation validation may still run without executing runtime tests.
 
 Every gigaverse-app adopter missed this at least once. Check these traps before
 delivering: a build/install/smoke job or routing tests outside any lane; a lane input
-like `examples/**` that also matches READMEs; `dir/**/*.ext` without `dir/*.ext`
-(inputs match with `fnmatch`); a docs site's `documentation/requirements.txt`
+like `examples/**` that also matches READMEs; a docs site's `documentation/requirements.txt`
 matching the built-in environment policy; a whole workflow file as a global input.
 Probe each narrowed input with `python -m pytest_selective.ci --config ... --base SHA
 --full false` on throwaway commits, then open a docs-only probe PR and read which jobs

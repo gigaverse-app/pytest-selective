@@ -8,6 +8,7 @@ resolves all saved candidates again, including previously unresolved names.
 import ast
 import configparser
 import fnmatch
+import functools
 import hashlib
 import io
 import json
@@ -87,8 +88,31 @@ def is_module_string(value: str) -> bool:
     return "." in value and len(value) < 300 and set(value) <= MODULE_STRING_CHARS
 
 
+@functools.cache
+def _glob_forms(pattern: str) -> tuple[str, ...]:
+    """`pattern` plus each form with a `**/` segment matching no directory, as in gitignore.
+
+    `fnmatch` alone makes `dir/**/x` require at least one directory, so `dir/**/*.py` would
+    silently skip `dir/a.py`. `*` still crosses `/`, as it always has here.
+    """
+    forms = {pattern}
+    pending = [pattern]
+    while pending:
+        current = pending.pop()
+        candidates = [current[3:]] if current.startswith("**/") else []
+        start = current.find("/**/")
+        while start != -1:
+            candidates.append(current[:start] + current[start + 3 :])
+            start = current.find("/**/", start + 1)
+        for candidate in candidates:
+            if candidate not in forms:
+                forms.add(candidate)
+                pending.append(candidate)
+    return tuple(sorted(forms))
+
+
 def matches(path: str, patterns: list[str]) -> bool:
-    return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
+    return any(fnmatch.fnmatchcase(path, form) for pattern in patterns for form in _glob_forms(pattern))
 
 
 def within(path: str, root: str) -> bool:

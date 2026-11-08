@@ -157,7 +157,11 @@ For tests that must produce complete conformance evidence, use
 }
 ```
 
-An affected test selects its entire lane. Explicit lane inputs cover external
+An affected test selects its entire lane. A lane's roots hold its tests, not its
+inputs: another file under them (a README, notes, an unimported helper) selects the
+lane only through the graph, and the plan names it as `unreferenced under root`.
+Declare data that tests read, and let the read audit find undeclared reads. A
+deleted test still selects its lane. Explicit lane inputs cover external
 checkouts, generated tests, and subprocess dependencies that imports cannot see.
 CI/dependency metadata changes and operational planning failures run every lane.
 Review collection policy and set `graph.pytest_policy` from the `fingerprints`
@@ -211,9 +215,9 @@ full meaning: declaring `[".github/**"]` includes Markdown and runs every lane.
 
 The built-in environment policy matches `*requirements*.txt` and `*requirements*.in`
 anywhere, including a documentation site's `documentation/requirements.txt`, so such a
-repository should set `graph.global_inputs` to its real environment files. Lane and
-global inputs match with `fnmatch`: `dir/**/*.py` does not match `dir/x.py`, so list
-`dir/*.py` beside it. [Audit a documentation-only pull request](tutorials/skip-unrelated-ci.md#audit-what-a-documentation-only-pull-request-still-runs)
+repository should set `graph.global_inputs` to its real environment files. Inputs and
+rules match like gitignore patterns: `dir/**/*.py` matches `dir/x.py` and
+`dir/a/x.py`, and `*` also crosses `/`. [Audit a documentation-only pull request](tutorials/skip-unrelated-ci.md#audit-what-a-documentation-only-pull-request-still-runs)
 before claiming the route works.
 
 Omit `global_inputs` or use `null` for the built-in policy. An explicit list
