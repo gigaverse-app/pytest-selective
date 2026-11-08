@@ -32,6 +32,23 @@ Changes to collection policy, runtime auditing, or the composite action need tes
 at that boundary. Update the tutorial when the public command contract changes.
 Keep performance claims tied to reproducible measurements and their limitations.
 
+### The selection contract
+
+[contracts/selection](contracts/selection/README.md) states the planner's core
+promise as a [Quint](https://quint.sh) model and checks it with
+[pytest-quint-connect](https://github.com/gigaverse-app/pytest-quint-connect):
+generated histories of real commits, each selected by `affected()` and compared
+with the model. It runs as its own CI lane, outside the xdist suite, and needs
+Node.js 22+ for Quint:
+
+```bash
+uv run --group quint pytest -c contracts/selection/quint.ini contracts/selection --quint-require-complete
+```
+
+When selection semantics change on purpose, change `selection.qnt` with them and
+regenerate the driver (`pytest-quint-connect codegen contracts/selection/quint-connect.json`).
+Never drop a witness, mutant or observed field to make it pass.
+
 ### Shared implementation owners
 
 | Contract | Owner |

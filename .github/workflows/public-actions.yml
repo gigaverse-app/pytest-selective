@@ -67,7 +67,9 @@ jobs:
         run: |
           python - <<'PY'
           import json, os
-          assert json.loads(os.environ['LANES']) == {'tests': True}
+          # A full checkpoint admits every configured lane.
+          configured = json.load(open('.github/test-lanes.json', encoding='utf-8'))['lanes']
+          assert json.loads(os.environ['LANES']) == dict.fromkeys(configured, True)
           PY
       - name: Require successful planning after fallback execution
         if: ${{ !cancelled() && needs.select-tests.result != 'success' }}

@@ -20,6 +20,16 @@
         "src/**",
         "tests/**"
       ]
+    },
+    "contracts": {
+      "roots": [
+        "contracts"
+      ],
+      "inputs": [
+        "src/**",
+        "contracts/**",
+        "tests/testing/git_repo.py"
+      ]
     }
   },
   "global_inputs": [

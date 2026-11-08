@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.11"
 
 [[package]]
@@ -910,6 +910,14 @@ wheels = [
 ]
 
 [[package]]
+name = "pytest-quint-connect"
+version = "0.0.0"
+source = { git = "https://github.com/gigaverse-app/pytest-quint-connect?rev=e36d0db8630f684291e2bbc16557f98417a06997#e36d0db8630f684291e2bbc16557f98417a06997" }
+dependencies = [
+    { name = "pytest" },
+]
+
+[[package]]
 name = "pytest-selective"
 version = "0.4.2"
 source = { editable = "." }
@@ -935,6 +943,9 @@ dev = [
     { name = "ruff" },
     { name = "twine" },
 ]
+quint = [
+    { name = "pytest-quint-connect" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -956,6 +967,7 @@ dev = [
     { name = "ruff", specifier = ">=0.14" },
     { name = "twine", specifier = ">=6" },
 ]
+quint = [{ name = "pytest-quint-connect", git = "https://github.com/gigaverse-app/pytest-quint-connect?rev=e36d0db8630f684291e2bbc16557f98417a06997" }]
 
 [[package]]
 name = "pytest-timeout"

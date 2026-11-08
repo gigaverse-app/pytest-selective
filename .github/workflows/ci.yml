@@ -141,9 +141,37 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  selection-contract:
+    name: Selection contract (Quint)
+    needs: select-tests
+    if: >-
+      ${{ always() && !cancelled() && (needs.select-tests.result != 'success' ||
+          fromJSON(needs.select-tests.outputs.lanes).contracts) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: gigaverse-app/ci-esta/actions/setup-cached-uv@v1
+        with:
+          python-version: '3.14'
+      # pytest-quint-connect installs its locked Quint with npm on first use.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Check the generated driver against the model
+        run: uv run --locked --group quint pytest-quint-connect codegen --check contracts/selection/quint-connect.json
+      - name: Generate histories from the model and replay them against the planner
+        run: uv run --locked --group quint pytest -c contracts/selection/quint.ini contracts/selection --quint-require-complete -q
+      - uses: actions/upload-artifact@v7
+        if: ${{ always() }}
+        with:
+          name: quint-selection-contract
+          path: contracts/selection/.artifacts/quint-connect/
+          include-hidden-files: true
+          if-no-files-found: warn
+
   validation-gate:
     name: Validation gate
-    needs: [select-tests, quality, tests, pytest-minimum, distributions]
+    needs: [select-tests, quality, tests, pytest-minimum, distributions, selection-contract]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
@@ -151,4 +179,4 @@ jobs:
         with:
           needs: ${{ toJSON(needs) }}
           lanes: ${{ needs.select-tests.outputs.lanes || '{}' }}
-          lane-jobs: '{"tests":["tests"],"pytest-minimum":["tests"]}'
+          lane-jobs: '{"tests":["tests"],"pytest-minimum":["tests"],"selection-contract":["contracts"]}'
