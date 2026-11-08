@@ -118,4 +118,6 @@ def test_the_action_forwards_every_input_to_this_file():
     (step,) = action["runs"]["steps"]
     assert step["env"]["GATE"] == "${{ github.action_path }}/../../src/pytest_selective/gate.py"
     forwarded = {name: value for name, value in step["env"].items() if name.startswith("VALIDATION_")}
-    assert forwarded == {f"VALIDATION_{key.upper().replace('-', '_')}": "${{ inputs." + key + " }}" for key in action["inputs"]}
+    assert forwarded == {
+        f"VALIDATION_{key.upper().replace('-', '_')}": "${{ inputs." + key + " }}" for key in action["inputs"]
+    }

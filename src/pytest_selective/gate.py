@@ -18,9 +18,7 @@ class GateError(ValueError):
     """The gate's inputs cannot support a decision; the job must fail."""
 
 
-def admissions(
-    needs: dict[str, Any], planner: str, lane_jobs: dict[str, Any], lanes: Any = None
-) -> dict[str, bool]:
+def admissions(needs: dict[str, Any], planner: str, lane_jobs: dict[str, Any], lanes: Any = None) -> dict[str, bool]:
     """Whether each direct prerequisite had to run. Only an explicit `false` lane makes a job optional."""
     if planner not in needs:
         raise GateError(f"the planner job {planner!r} must be a direct prerequisite (needs:) of the gate")
@@ -41,7 +39,11 @@ def admissions(
     for job, job_lanes in lane_jobs.items():
         if job not in needs or job == planner:
             raise GateError(f"lane-jobs names {job!r}, which is not a direct prerequisite other than the planner")
-        if not isinstance(job_lanes, list) or not job_lanes or not all(isinstance(lane, str) and lane for lane in job_lanes):
+        if (
+            not isinstance(job_lanes, list)
+            or not job_lanes
+            or not all(isinstance(lane, str) and lane for lane in job_lanes)
+        ):
             raise GateError(f"lane-jobs[{job!r}] must be a nonempty list of lane names")
         required[job] = not (planned and all(lanes.get(lane) is False for lane in job_lanes))
     return required

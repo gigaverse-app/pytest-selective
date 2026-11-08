@@ -82,7 +82,9 @@ def main():
     assert links and not relative, f"agent-setup.md needs absolute links, not {relative}"
     # llms.txt (https://llmstxt.org/): an H1, a blockquote summary, the agent setup file, and live links.
     llms = (site / "llms.txt").read_text(encoding="utf-8")
-    assert llms.startswith("# pytest-selective\n") and "\n> " in llms and "\n## Optional\n" in llms, "malformed llms.txt"
+    assert llms.startswith("# pytest-selective\n") and "\n> " in llms and "\n## Optional\n" in llms, (
+        "malformed llms.txt"
+    )
     assert "agent-setup.md" in llms, "llms.txt does not point at the agent setup"
     site_root = next(iter(canonical_urls)).split("/en/")[0] if canonical_urls else ""
     for link in re.findall(r"\]\((\S+?)\)", llms):
