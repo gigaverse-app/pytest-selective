@@ -209,6 +209,13 @@ dependency sidecar, central dependency rule, or lane `inputs` entry still select
 the consuming tests or lanes. Explicit `global_inputs` globs also retain their
 full meaning: declaring `[".github/**"]` includes Markdown and runs every lane.
 
+The built-in environment policy matches `*requirements*.txt` and `*requirements*.in`
+anywhere, including a documentation site's `documentation/requirements.txt`, so such a
+repository should set `graph.global_inputs` to its real environment files. Lane and
+global inputs match with `fnmatch`: `dir/**/*.py` does not match `dir/x.py`, so list
+`dir/*.py` beside it. [Audit a documentation-only pull request](tutorials/skip-unrelated-ci.md#audit-what-a-documentation-only-pull-request-still-runs)
+before claiming the route works.
+
 Omit `global_inputs` or use `null` for the built-in policy. An explicit list
 replaces that policy; `[]` disables lane-level global inputs while graph-level
 dependencies and environment inputs still apply. Serialized `LaneConfig` defaults

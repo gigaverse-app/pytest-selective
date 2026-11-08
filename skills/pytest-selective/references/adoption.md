@@ -93,6 +93,9 @@ reopen the report just to reconstruct an action output. Start from the
 not an invented action input. The repository's
 [routing tests](https://github.com/gigaverse-app/pytest-selective/blob/main/tests/test_repository_ci.py)
 show real-Git positive/negative controls; adapt the scenarios to the consumer.
+Before delivering, walk the
+[documentation-only audit](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/tutorials/skip-unrelated-ci.md#audit-what-a-documentation-only-pull-request-still-runs)
+and confirm a docs-only probe PR executes no test, build, install or smoke job.
 
 ## Measure
 

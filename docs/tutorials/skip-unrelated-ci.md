@@ -125,6 +125,39 @@ checkpoint. Do not advance a known-passing base past unresolved failures.
 Use [job-specific workflow inputs](../ci.md#depend-on-one-workflow-job) only when
 you can enumerate every job, action, and reusable workflow that affects a lane.
 
+### Audit what a documentation-only pull request still runs
+
+A planner that selects no lanes proves little if other jobs still start. List every
+job of every workflow that runs on pull requests, then open a probe PR that only
+edits a README, a docs page and, if present, `documentation/requirements.txt`. Read
+the jobs that actually executed (CI-esta's sticky reports the count). Only planning,
+cheap lint and link checks, the documentation build and the required gate should run.
+
+Each of these traps turned up in a gigaverse-app adopter on 2026-11-08; most
+repositories had at least one:
+
+| Trap | What happened | Fix |
+| --- | --- | --- |
+| No planner at all | Every job ran on README edits | Add `plan-lanes` and gate every runner job on its lane |
+| Build or smoke job outside any lane | `uv build`, `twine check` and an install smoke ran on a root README edit that is not the package README | Gate it on a `package` lane whose inputs are the package sources, metadata and lockfile, plus the README only when the build embeds it |
+| Routing regressions in an always-run quality job | The lane-routing tests ran on every docs PR | Give them their own lane: lane config, workflows, CI helpers and the routing tests |
+| Directory inputs that also hold prose | `examples/**` selected the test lane when an example's README changed | Name execution files: `examples/*.py` **and** `examples/**/*.py`, and so on |
+| `dir/**/*.ext` alone | `examples/**/*.toml` missed `examples/gold.toml`, so a data change skipped its tests | Inputs match with `fnmatch`, where `**/` needs at least one directory: list `dir/*.ext` too |
+| Docs-site requirements | Bumping `documentation/requirements.txt` ran every lane, because the built-in environment policy matches `*requirements*.txt` anywhere | Set `graph.global_inputs` to your real environment files |
+| A whole workflow file as a global input | Adding a file to a lint job's list ran every test | Use `<workflow>#<job>` lane inputs for the jobs that run each lane |
+
+Prove each input with the planner itself before opening the PR. Commit a probe edit
+on a throwaway branch and compare it with the base:
+
+```bash
+python -m pytest_selective.ci --config .github/test-lanes.json --base BASE_SHA --full false
+```
+
+Probe a docs-only change, a top-level and a nested file in each directory you
+narrowed, a source file and a lockfile. When a source change puts the dependency
+graph in full mode (for example, a conftest that registers session plugins),
+every lane is selected, including lanes without test roots. That is conservative, not a misroute.
+
 ## 4. Measure one equivalent pair
 
 Open a README-only probe PR. Save the source SHA, tested merge, run ID and attempt

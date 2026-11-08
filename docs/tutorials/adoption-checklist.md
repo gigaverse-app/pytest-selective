@@ -138,6 +138,12 @@ package versions, the moving Actions major and installed skills update separatel
 - [ ] Collect a complete change set with enough Git history before selecting.
 - [ ] Model lane execution inputs, including called actions/reusable workflows.
 - [ ] Avoid broad `.github/**` globals when only execution workflows affect tests.
+- [ ] Gate every job that builds, installs, smoke-tests or runs routing tests on a lane;
+      only planning, cheap lint and link checks, the docs build and the gate run unconditionally.
+- [ ] Name execution files in lane inputs, never a directory that also holds READMEs, and
+      list `dir/*.ext` beside `dir/**/*.ext` (inputs match with `fnmatch`).
+- [ ] Set `graph.global_inputs` explicitly when a docs site has its own `requirements.txt`.
+- [ ] Open a docs-only probe PR and confirm which jobs executed ([audit](skip-unrelated-ci.md#audit-what-a-documentation-only-pull-request-still-runs)).
 - [ ] Consume one successful plan consistently across matrix workers; do not run
   a second hidden selector against an already selected exact-file manifest.
 - [ ] Keep services, coverage and evidence validators intact inside admitted lanes.

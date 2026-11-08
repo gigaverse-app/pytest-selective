@@ -81,6 +81,15 @@ routing/contract tests, wheel/sdist smoke tests, tutorials and separate action
 workflows in this inventory; a quality or build job is not an exemption. Metadata
 and documentation validation may still run without executing runtime tests.
 
+Every gigaverse-app adopter missed this at least once. Check these traps before
+delivering: a build/install/smoke job or routing tests outside any lane; a lane input
+like `examples/**` that also matches READMEs; `dir/**/*.ext` without `dir/*.ext`
+(inputs match with `fnmatch`); a docs site's `documentation/requirements.txt`
+matching the built-in environment policy; a whole workflow file as a global input.
+Probe each narrowed input with `python -m pytest_selective.ci --config ... --base SHA
+--full false` on throwaway commits, then open a docs-only probe PR and read which jobs
+executed ([audit](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/tutorials/skip-unrelated-ci.md#audit-what-a-documentation-only-pull-request-still-runs)).
+
 Use dependency selection for ordinary PRs and pushes, including main. Retain scheduled full checkpoints and an explicit full override. Required
 check names must still resolve correctly on the empty route. A planner failure
 must not silently make a skipped required test green.
