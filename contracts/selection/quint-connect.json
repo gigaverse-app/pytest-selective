@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "name": "selection",
+  "description": "File-level selection across a history of real commits: import, conftest and declared-read closure over the base and head trees, global inputs, deleted files.",
+  "module": "selection",
+  "model": "selection.qnt",
+  "invariant": "selectsOnlyExistingTests",
+  "actions": {
+    "init": "create a fixture repository and commit it",
+    "edit": "rewrite one file's body, commit, then select between the two commits",
+    "link": "add an import to one file, commit, then select",
+    "unlink": "remove an import from one file, commit, then select",
+    "remove": "delete a module or test file, commit, then select",
+    "restore": "add a deleted file back without imports, commit, then select",
+    "touchGlobal": "edit requirements.txt, a default global input, commit, then select",
+    "inspect": "read the last selection without committing"
+  },
+  "witnesses": [
+    "transitiveEditTest",
+    "deletedModuleSelectsFormerImportersTest",
+    "declaredReadTest",
+    "conftestSelectsEveryTestTest",
+    "globalInputSelectsEveryTestTest",
+    "newImportWidensSelectionTest",
+    "deletedTestIsNotSelectedTest"
+  ],
+  "mutants": ["head-edges-only", "direct-importers-only", "global-inputs-ignored"],
+  "bounds": {"seed": 11, "max_samples": 400, "max_steps": 6, "n_traces": 12},
+  "root": "../..",
+  "sources": [
+    "src/pytest_selective/impact_selection.py",
+    "src/pytest_selective/impact_graph.py",
+    "src/pytest_selective/impact_declarations.py",
+    "src/pytest_selective/ast_imports.py"
+  ],
+  "attest": {"package": "pytest_selective", "source": "src/pytest_selective"},
+  "limits": [
+    "One repository: three modules, a conftest, two tests and one declared data file; at most 6 commits per sampled history.",
+    "Covers import, ancestor-conftest and declared-read edges, file deletion and the default global inputs. First-party pins, name-scoped modules, deferred strings, Django URLconf policy and plugin-registering test modules are outside the model.",
+    "Each step is a real Git commit selected by affected() through one GraphCache per history; the driver's mapping of paths to file names is trusted."
+  ]
+}
