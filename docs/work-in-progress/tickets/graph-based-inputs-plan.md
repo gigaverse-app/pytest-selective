@@ -1,84 +1,58 @@
-# Every input through the graph
+# Every Python input through the graph
 
-Retire when every phase below has shipped and the adopter configs in the
-gigaverse-app organization no longer list path globs for environment, workflow or
-package inputs.
+Retire when the phases below have shipped and Python adopters no longer list
+environment files as path globs.
 
 ## Why
 
-Python test selection is already graph based: a changed file reaches tests through
-imports, conftest ancestry and declared reads, and a file nothing references selects
-nothing. Everything around it is still a path rule:
+Python test selection is graph based: a changed file reaches tests through imports,
+conftest ancestry and declared reads, and a file nothing references selects nothing.
+The Python environment around it is still a path rule. The built-in policy
+(`*requirements*.txt`, `**/pyproject.toml`, locks, pytest files) runs every test. So a
+docs site's `documentation/requirements.txt`, a `[tool.ruff]` edit or an unrelated lock
+bump runs the whole suite, and adopters answered with docs-shaped exceptions.
 
-| Path rule today | What it costs |
+## Ownership
+
+pytest-selective answers one question: which Python tests does this change affect?
+CI facts that hold for every language live in
+[CI-esta](https://github.com/gigaverse-app/ci-esta), the first adoption surface. CI-esta
+already calls pytest-selective for Python and Bun's `--changed` for Bun:
+
+| Concern | Owner |
 | --- | --- |
-| Built-in environment policy (`*requirements*.txt`, `**/pyproject.toml`, locks, pytest files) runs every test | A docs site's `documentation/requirements.txt`, a `[tool.ruff]` edit or an unrelated lock bump runs the whole suite |
-| `.github/` non-Markdown files are global inputs; `ci.yml#job` inputs are declared by hand | Editing a lint job's file list ran every test in pytest-quint-connect |
-| Any changed file under a lane root selects the lane | `dogfood/README.md` started pytest-quint-connect's dogfood lane |
-| Lane `inputs` are the only way to gate non-pytest work (builds, smokes) | Every adopter hand-listed file types, and `dir/**/*.ext` silently missed `dir/x.ext` |
+| Imports, conftests, declarations, pytest policy | pytest-selective |
+| `uv.lock`, `poetry.lock`, `pdm.lock`, `requirements*`, `pyproject.toml` as graph nodes | pytest-selective (Python environment) |
+| Workflow jobs, the lanes they run, the files and actions they execute | CI-esta |
+| Composing selector results and the workflow graph into lanes and jobs; zero-config lanes; rules | CI-esta |
+| Package build and smoke targets | CI-esta, from package inputs this project reports (`readme`, `license-files`, package sources) |
 
-Adopters responded with docs-shaped exceptions. Documentation should need none: it
-has no edges, so it selects nothing.
+`plan-lanes` keeps working for repositories without CI-esta. It is a Python-only
+planner and does not grow a workflow graph.
 
 ## Model
 
-One graph. Nodes are repository files plus **derived nodes** for the parts of
-structured files that matter separately. **Targets** are what selection returns:
-test files, and named CI targets such as a package build.
+Structured Python environment files become **derived nodes** that reach tests through
+the same reverse reachability as source files:
 
-```text
-changed files ──► differs ──► changed nodes ──► reverse reachability ──► tests + targets ──► lanes
-                  (lock, pyproject, workflow, requirements, pytest config)
-```
-
-| Structured file | Differ produces | Default edges |
+| File | Differ produces | Default edges |
 | --- | --- | --- |
-| `uv.lock`, `poetry.lock`, `pdm.lock`, `requirements*.txt` | `dist:NAME` for each distribution whose resolved version or source changed | `dist:NAME` → every module that imports its import names (from the graph's unresolved imports); first-party pins keep their installed-file proof |
-| `pyproject.toml` | `pyproject:TABLE` for each changed table | dependencies and groups → `dist:` nodes; pytest tables → every test of that project; `readme`, `license-files`, version, build backend → `package:NAME`; known tool tables (`ruff`, `mypy`, `coverage.report`, …) → nothing; unknown tables → every test of that project |
-| Workflow YAML | `job:PATH#ID` per changed job, plus `workflow:PATH` for top-level keys | `job` → the lanes its `if:` condition reads; `workflow` → every lane it runs |
-| pytest configuration | `pytest-policy:PATH` | every test collected under it (the existing fingerprint check) |
+| `uv.lock`, `poetry.lock`, `pdm.lock`, `requirements*.txt` | `dist:NAME` for each distribution whose resolved version or source changed | `dist:NAME` → every module that imports its import names (the graph's unresolved imports); first-party pins keep their installed-file proof |
+| `pyproject.toml` | `pyproject:TABLE` for each changed table | dependencies and groups → `dist:` nodes; pytest tables → every test of that project; `readme`, `license-files`, version and build backend → reported as package inputs; known tool tables (`ruff`, `mypy`, `coverage.report`, …) → nothing; unknown tables → every test of that project |
 
 A distribution whose import names cannot be determined, or a file a differ cannot
 parse, falls back to every test of its project, with the reason in the report.
-
-**Lanes become sets of targets.** A lane selects when one of its tests or targets is
-reached: `{"roots": ["tests"], "targets": ["package"]}`. A file under a lane root
-that is neither a test nor reached by the graph does not select it. Undeclared reads
-are the read audit's job, which is the contract file selection already relies on.
-
-**Rules customize the graph, not a path list.** One declaration replaces
-`dependencies`, `always_run`, `global_inputs`, `ignored_changes` and lane `inputs`:
-
-```json
-{"rules": [
-  {"when": ["schemas/**"], "select": ["tests/contracts/**"], "reason": "schemas loaded by name"},
-  {"when": ["dist:django"], "select": ["lane:integration"], "reason": "service-backed checks"},
-  {"when": ["pyproject:tool.mycorp"], "select": ["all"], "reason": "read by our pytest plugin"},
-  {"when": ["job:.github/workflows/ci.yml#build"], "select": ["target:package"]}
-]}
-```
-
-Built-in defaults are named rules an adopter can inspect (`pytest-selective rules`),
-override or disable by name. Patterns match like gitignore: `dir/**/x` also matches `dir/x`.
+`documentation/requirements.txt` pins packages no test imports, so it selects nothing
+without any documentation rule.
 
 ## Phases
 
-Each phase ships on its own, keeps the existing configuration valid, and has
-real-Git routing tests plus the Quint selection contract kept green.
-
-- [ ] **1. Lane roots and globs through the graph.** A changed file under a lane root
-      selects the lane only as a test file (base or head inventory) or through the
-      graph; others are reported as unreferenced. `dir/**/x` matches `dir/x`.
-- [ ] **2. Workflows as derived nodes.** Per-job differ for every workflow; a changed
-      job selects the lanes its condition reads; top-level changes select every lane
-      the workflow runs. Workflows leave the built-in global inputs.
-- [ ] **3. `pyproject.toml` as derived nodes.** Table-level differ with the default
+- [x] **1. Lane roots and globs through the graph** ([#90](https://github.com/gigaverse-app/pytest-selective/pull/90)).
+- [ ] **2. `pyproject.toml` as derived nodes.** Table-level differ with the default
       classification above; replaces `pyproject.toml` in the built-in policy.
-- [ ] **4. Locks and requirements as `dist:` nodes.** Lock and requirements differs,
+- [ ] **3. Locks and requirements as `dist:` nodes.** Lock and requirements differs,
       import-name resolution, edges through unresolved imports; generalizes the
       first-party pin narrowing; replaces the remaining built-in environment patterns.
-- [ ] **5. Targets and rules.** `package:NAME` derived from build metadata, lane
-      `targets`, the unified `rules` syntax with named built-in defaults, and a
-      migration that reads every existing field.
-- [ ] **6. Adopters.** Release under `v1`, then remove the path globs from the
-      gigaverse-app adopters and the documentation-only audit's workarounds.
+- [ ] **4. A selector contract for CI-esta.** Report affected tests with node-level
+      reasons and the package inputs the change touched, so CI-esta can compose lanes
+      without a second Python graph.
