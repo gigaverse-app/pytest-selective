@@ -13,6 +13,7 @@ import hashlib
 import io
 import json
 import re
+import shlex
 import sqlite3
 import sys
 import tokenize
@@ -55,7 +56,7 @@ from pytest_selective.impact_models import (
 from pytest_selective.parse_batch import parse_records
 from pytest_selective.pytest_plugins import declared_plugins
 
-VERSION = "22"
+VERSION = "24"
 OPAQUE_CALLS = {
     "__import__",
     "import_module",
@@ -219,6 +220,47 @@ def pytest_policies(repo: Path, files: dict[str, str], extra_files: tuple[str, .
             canonical = json.dumps(policy_sections, sort_keys=True)
         policies[path] = canonical
     return policies
+
+
+def command_line_plugins(policies: dict[str, str]) -> set[str]:
+    """Modules that ``-p NAME`` in an ``addopts`` setting loads into every session.
+
+    ``-p no:NAME`` disables a plugin and loads nothing. Plugins given only on the command line or
+    in ``PYTEST_ADDOPTS`` are invisible here; configure those as ``global_modules``.
+    """
+    names: set[str] = set()
+    for canonical in policies.values():
+        policy = json.loads(canonical)
+        if isinstance(policy, str):
+            # A -c file is kept verbatim; read it as ini when it parses as one.
+            parser = configparser.ConfigParser(interpolation=None)
+            try:
+                parser.read_string(policy)
+            except configparser.Error:
+                continue
+            policy = {section: dict(parser[section]) for section in parser.sections()}
+        for value in _setting_values(policy, "addopts"):
+            arguments = shlex.split(value) if isinstance(value, str) else [str(item) for item in value]
+            for index, argument in enumerate(arguments):
+                if argument == "-p" and index + 1 < len(arguments):
+                    name = arguments[index + 1]
+                elif argument.startswith("-p") and len(argument) > 2:
+                    name = argument[2:].removeprefix("=")
+                else:
+                    continue
+                if not name.startswith("no:"):
+                    names.add(name)
+    return names
+
+
+def _setting_values(policy: object, key: str) -> list[str | list[object]]:
+    """Every value of ``key`` in a parsed configuration, at any depth."""
+    if isinstance(policy, dict):
+        found: list[str | list[object]] = [value for name, value in policy.items() if name == key]
+        for value in policy.values():
+            found += _setting_values(value, key)
+        return found
+    return []
 
 
 def policy_fingerprints(repo: Path, tree: GitTree, extra_files: tuple[str, ...] = ()) -> dict[str, str]:
@@ -500,7 +542,12 @@ class GraphCache:
                 pass
         parsed = self.parse_python(repo, files)
         deferred = deferred_routes(repo, tree, files, config, self)
-        snapshot = resolve_graph(tree, files, parsed, config, git_tree.links, deferred)
+        try:
+            policies = pytest_policies(repo, files, tuple(config.pytest_config_files))
+        except ValueError:
+            # The collection-policy check below reports an unreadable configuration.
+            policies = {}
+        snapshot = resolve_graph(tree, files, parsed, config, git_tree.links, deferred, command_line_plugins(policies))
         add_sidecar_edges(repo, tree, files, snapshot)
         # Declaration errors are actionable authoring failures, even when the
         # same tree also needs a collection-policy review/full-suite fallback.
@@ -694,6 +741,38 @@ class ModuleIndex:
         return result
 
 
+def test_files(python_files: set[str], config: ImpactConfig) -> list[str]:
+    """The Python files the configuration collects as tests."""
+    return sorted(
+        path
+        for path in python_files
+        if any(within(path, root) for root in config.test_roots)
+        and matches(PurePosixPath(path).name, config.test_patterns)
+    )
+
+
+def prepend_roots(python_files: set[str], config: ImpactConfig) -> list[str]:
+    """Directories pytest's default import mode puts on sys.path, beyond the configured module roots.
+
+    In the default ``prepend`` mode (and in ``append``), pytest inserts the first directory above each
+    test module and conftest that has no ``__init__.py``, so a bare ``import helpers`` beside a test
+    loads that directory's ``helpers.py``. The insertion lasts the whole session, so any import may
+    resolve against any such directory. Callers use these roots only to resolve imports, never to name
+    files, so same-named test modules and conftests in different directories stay unrelated. Under
+    ``--import-mode=importlib`` they can only over-select.
+    """
+    bases: set[str] = set()
+    for path in [
+        *test_files(python_files, config),
+        *(p for p in python_files if PurePosixPath(p).name == "conftest.py"),
+    ]:
+        directory = PurePosixPath(path).parent
+        while directory.as_posix() != "." and (directory / "__init__.py").as_posix() in python_files:
+            directory = directory.parent
+        bases.add(directory.as_posix())
+    return sorted(bases - set(config.module_roots))
+
+
 def resolve_graph(
     tree: str,
     files: dict[str, str],
@@ -701,20 +780,17 @@ def resolve_graph(
     config: ImpactConfig,
     links: list[str],
     deferred: list[DeferredRoute] | None = None,
+    plugins_from_options: set[str] | None = None,
 ) -> Snapshot:
     python_files = {path for path in files if path.endswith(".py")}
     index = ModuleIndex(python_files, config.module_roots, links)
+    prepended = ModuleIndex(python_files, prepend_roots(python_files, config), links)
 
     edges: dict[str, set[str]] = {path: set() for path in files}
     unresolved: dict[str, list[str]] = {}
     opaque: dict[str, list[str]] = {}
     plugins: set[str] = set()
-    tests = sorted(
-        path
-        for path in python_files
-        if any(within(path, root) for root in config.test_roots)
-        and matches(PurePosixPath(path).name, config.test_patterns)
-    )
+    tests = test_files(python_files, config)
     deferred = deferred or []
     # Several rules may defer different assignments of one file; each file holds the union.
     held: dict[str, set[str]] = {}
@@ -735,9 +811,9 @@ def resolve_graph(
             edges[path].update(index.resolve(name))
         missing: list[str] = []
         for candidate in sorted(candidates):
-            resolved = index.resolve(candidate)
+            resolved = index.resolve(candidate) | prepended.resolve(candidate)
             edges[path].update(resolved)
-            if candidate not in index.modules:
+            if candidate not in index.modules and candidate not in prepended.modules:
                 missing.append(candidate)
         if missing:
             unresolved[path] = missing
@@ -784,6 +860,9 @@ def resolve_graph(
 
     conftests = {path for path in python_files if PurePosixPath(path).name == "conftest.py"}
     globals_set = plugins | global_module_files(index, config)
+    # `-p NAME` in addopts loads the plugin into every session, as a global module does.
+    for name in plugins_from_options or ():
+        globals_set |= index.resolve(name)
     # Registration affects the whole session, including when a test module
     # loads the plugin. Follow nested declarations and retain the owner so
     # removing/changing its registration also invalidates every test.
@@ -909,12 +988,16 @@ class EdgeEvidence:
         self.repo = repo
         self.snapshot = snapshot
         python_files = {path for path in snapshot.files if path.endswith(".py")}
-        self.index = ModuleIndex(python_files, config.module_roots, inventory(repo, snapshot.tree).links)
+        links = inventory(repo, snapshot.tree).links
+        self.index = ModuleIndex(python_files, config.module_roots, links)
+        self.prepended = ModuleIndex(python_files, prepend_roots(python_files, config), links)
         self.globals = global_module_files(self.index, config)
         self.tests = set(snapshot.tests)
 
     def _names(self, candidates: set[str], dependency: str) -> bool:
-        return any(dependency in self.index.resolve(candidate) for candidate in candidates)
+        return any(
+            dependency in self.index.resolve(candidate) | self.prepended.resolve(candidate) for candidate in candidates
+        )
 
     def _line(self, reader: str, dependency: str) -> PathStep | None:
         oid = self.snapshot.files.get(reader)

@@ -152,6 +152,24 @@ def test_package_initializer_change_reaches_submodule_importers(
     assert affected(repo, base, head, config, cache).selected == ["tests/left/test_one.py"]
 
 
+@pytest.mark.parametrize("importer", ["tests/left/test_one.py", "tests/left/conftest.py"])
+@pytest.mark.parametrize("shadowed", [False, True])
+def test_bare_import_resolves_from_the_importers_prepend_mode_base_directory(
+    repo: Path, config: ImpactConfig, cache: GraphCache, importer: str, shadowed: bool
+) -> None:
+    # pytest's default import mode puts each test file's and conftest's first directory without an
+    # __init__.py on sys.path, so `import helpers` there loads tests/left/helpers.py.
+    write(repo, "tests/left/helpers.py", "VALUE = 1")
+    write(repo, importer, "import helpers\ndef test_one(): assert helpers.VALUE == 1")
+    if shadowed:
+        # A same-named module under a configured root does not hide the one pytest loads.
+        write(repo, "src/helpers.py", "VALUE = 1")
+    base = commit(repo)
+    write(repo, "tests/left/helpers.py", "VALUE = 2")
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == ["tests/left/test_one.py"]
+
+
 @pytest.mark.parametrize(
     "exports, star_import",
     [
@@ -183,6 +201,20 @@ def test_star_import_without_all_follows_only_the_package(repo: Path, config: Im
     write(repo, "src/pkg/leaf.py", "VALUE = 2")
     head = commit(repo)
     assert affected(repo, base, head, config, cache).selected == ["tests/left/test_one.py"]
+
+
+def test_bare_import_does_not_resolve_inside_a_test_package(
+    repo: Path, config: ImpactConfig, cache: GraphCache
+) -> None:
+    # With tests/left/__init__.py the base directory is tests/, so `helpers` is not tests/left/helpers.py.
+    write(repo, "tests/__init__.py")
+    write(repo, "tests/left/__init__.py")
+    write(repo, "tests/left/helpers.py", "VALUE = 1")
+    write(repo, "tests/right/test_two.py", "import helpers\ndef test_two(): pass")
+    base = commit(repo)
+    write(repo, "tests/left/helpers.py", "VALUE = 2")
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == []
 
 
 def test_declared_dynamic_import_reaches_reader_and_its_importers(
@@ -1119,6 +1151,42 @@ def test_pytest_policy_change_requires_review_but_dependency_pin_change_does_not
     changed = commit(repo)
     with pytest.raises(ValueError, match="pytest configuration changed"):
         cache.snapshot(repo, changed, config)
+
+
+@pytest.mark.parametrize(
+    "config_file, text",
+    [
+        ("pytest.ini", "[pytest]\naddopts = -q -p plug.fixtures\n"),
+        ("pytest.ini", "[pytest]\naddopts = -pplug.fixtures\n"),
+        ("pyproject.toml", '[tool.pytest.ini_options]\naddopts = "-p plug.fixtures"\n'),
+        ("pyproject.toml", '[tool.pytest.ini_options]\naddopts = ["-p", "plug.fixtures"]\n'),
+        ("tox.ini", "[pytest]\naddopts =\n    -p plug.fixtures\n    -p no:cacheprovider\n"),
+    ],
+)
+def test_command_line_plugin_in_addopts_reaches_every_test(
+    repo: Path, config: ImpactConfig, cache: GraphCache, config_file: str, text: str
+) -> None:
+    # `-p NAME` loads a plugin into every session; no test or conftest imports it.
+    write(repo, "plug/__init__.py")
+    write(repo, "plug/fixtures.py", "import pytest\n@pytest.fixture\ndef answer(): return 1\n")
+    write(repo, config_file, text)
+    base = commit(repo)
+    config.pytest_policy = policy_fingerprints(repo, inventory(repo, base))
+    write(repo, "plug/fixtures.py", "import pytest\n@pytest.fixture\ndef answer(): return 2\n")
+    head = commit(repo)
+    report = affected(repo, base, head, config, cache)
+    assert report.selected == ["tests/left/test_one.py", "tests/right/test_two.py"]
+
+
+def test_disabled_plugins_in_addopts_add_no_edges(repo: Path, config: ImpactConfig, cache: GraphCache) -> None:
+    write(repo, "plug/__init__.py")
+    write(repo, "plug/fixtures.py", "VALUE = 1\n")
+    write(repo, "pytest.ini", "[pytest]\naddopts = -p no:plug.fixtures\n")
+    base = commit(repo)
+    config.pytest_policy = policy_fingerprints(repo, inventory(repo, base))
+    write(repo, "plug/fixtures.py", "VALUE = 2\n")
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == []
 
 
 def test_cli_fingerprints_ini_policy_without_requiring_an_existing_review(
