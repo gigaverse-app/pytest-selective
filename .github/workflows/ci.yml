@@ -119,8 +119,10 @@ jobs:
           CI_TEST_FILES: ${{ needs.select-tests.outputs.files }}
   distributions:
     needs: select-tests
-    # README changes still need build/metadata checks; planner failure must not skip them.
-    if: ${{ !cancelled() }}
+    # The package lane includes the embedded README and LICENSE; planner failure must not skip it.
+    if: >-
+      ${{ always() && !cancelled() && (needs.select-tests.result != 'success' ||
+          fromJSON(needs.select-tests.outputs.lanes).package) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -179,4 +181,4 @@ jobs:
         with:
           needs: ${{ toJSON(needs) }}
           lanes: ${{ needs.select-tests.outputs.lanes || '{}' }}
-          lane-jobs: '{"tests":["tests"],"pytest-minimum":["tests"],"selection-contract":["contracts"]}'
+          lane-jobs: '{"tests":["tests"],"pytest-minimum":["tests"],"distributions":["package"],"selection-contract":["contracts"]}'

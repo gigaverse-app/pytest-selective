@@ -7,6 +7,11 @@
     "test_roots": [
       "tests"
     ],
+    "global_inputs": [
+      "pyproject.toml",
+      "uv.lock",
+      ".python-version"
+    ],
     "pytest_policy": {
       "pyproject.toml": "7a78d68735c0e3b091962244620d3a17557951123c645970638f15d3a737d987"
     }
@@ -30,6 +35,17 @@
         "contracts/**",
         "tests/testing/git_repo.py"
       ]
+    },
+    "package": {
+      "inputs": [
+        "src/**",
+        "pyproject.toml",
+        "uv.lock",
+        "README.md",
+        "LICENSE",
+        "scripts/check_metadata.py",
+        "scripts/smoke_distribution.py"
+      ]
     }
   },
   "global_inputs": [
@@ -43,9 +59,8 @@
     ".github/test-lanes.json",
     ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
-    "actions/**",
+    "actions/*/*",
     "action.yml",
-    "examples/**",
     ".github/workflows/public-actions.yml"
   ]
 }
