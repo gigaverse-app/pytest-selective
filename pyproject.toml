@@ -46,11 +46,7 @@ Changelog = "https://github.com/gigaverse-app/pytest-selective/blob/main/CHANGEL
 [dependency-groups]
 dev = ["pytest>=8", "pytest-xdist>=3.6", "pytest-timeout>=2.3", "pytest-cov>=6", "ruff>=0.14", "build>=1.2", "pre-commit>=4", "twine>=6"]
 # The Quint contract in contracts/selection runs as pytest cases, outside the xdist suite.
-quint = ["pytest-quint-connect"]
-
-[tool.uv.sources]
-# Not on PyPI yet; move to a version constraint once it is.
-pytest-quint-connect = { git = "https://github.com/gigaverse-app/pytest-quint-connect", rev = "2daa87b17bbe78e1d40fcb36aa9b0368cccc47fe" }
+quint = ["pytest-quint-connect>=0.3.0,<0.4"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pytest_selective"]
