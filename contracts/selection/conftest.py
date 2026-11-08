@@ -115,7 +115,7 @@ class RepositoryDriver(SelectionDriver):
         self._write(file)
         self._commit()
 
-    def touchGlobal(self) -> None:
+    def touch_global(self) -> None:
         self.versions["requirements"] += 1
         self._write_requirements()
         self._commit()
