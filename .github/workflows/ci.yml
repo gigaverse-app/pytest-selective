@@ -6,6 +6,8 @@ on:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
   workflow_call:
+  schedule:
+    - cron: '13 3 * * 1'
 permissions:
   contents: read
 concurrency:
@@ -92,13 +94,12 @@ jobs:
         with:
           junit-pattern: test-timings.xml
           artifact-name: test-timings-${{ matrix.python }}-${{ matrix.os }}
-      - run: uv run --locked python scripts/tutorial.py --output tutorial-report.json
+      # tests/test_tutorial.py owns the end-to-end tutorial and follows the file plan.
       - uses: actions/upload-artifact@v7
+        if: ${{ hashFiles('coverage.xml') != '' }}
         with:
           name: evidence-${{ matrix.os }}-${{ matrix.python }}
-          path: |
-            coverage.xml
-            tutorial-report.json
+          path: coverage.xml
   pytest-minimum:
     needs: select-tests
     if: >-

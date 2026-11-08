@@ -48,8 +48,30 @@ version: publishing Python `0.x.y` does not prevent updating Actions `v1`.
 Consumers deliberately use `actions/NAME@v1` as a moving target. Change the
 Actions major only when deliberately establishing a new Actions API line.
 Package requirements use their own compatible ranges, such as
-`pytest-selective>=0.2,<0.3`; lockfiles retain resolved versions and artifact
+`pytest-selective>=1.0,<2`; lockfiles retain resolved versions and artifact
 hashes. Prereleases do not advance the Actions tag.
+
+## Transition to Python 1.x
+
+Request the first stable release with a one-time `Release-As: 1.0.0` footer in
+the merged commit. Preserve that footer in the squash message. Release Please
+then updates `pyproject.toml`, `uv.lock`, the manifest and changelog together in
+its normal release PR. Do not keep a permanent `release-as` override, which
+would interfere with subsequent automatic version bumps.
+
+The package's stable-version transition keeps the current CLI, imports and
+Actions inputs. `v1.0.0` is the immutable package tag; `v1` remains the moving
+Actions compatibility tag and advances only after successful PyPI publication.
+Existing `0.4.x` pins remain installable. Consumers that want the new package
+must allow 1.x in their dependency range; CI-esta accepts both the existing
+published 0.4.2 and 1.x while retaining its tested lockfile.
+
+Before merging the 1.0 release PR, verify the Publish caller grants all
+permissions requested by reusable CI. In particular, the Quint report requests
+`pull-requests: write`; GitHub checks that grant even on release tags. Keep
+OIDC permission confined to the separate `pypi` upload job. The 0.4.3 GitHub
+release failed at workflow startup, before PyPI upload or movement of `v1`;
+leave that immutable tag intact and publish the corrected pipeline as 1.0.0.
 
 For an Actions-only publication, advance `v1` to the exact reviewed main commit
 after its complete CI passes. This updates the Git tag without creating a GitHub
