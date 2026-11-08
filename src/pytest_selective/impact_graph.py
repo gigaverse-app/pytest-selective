@@ -55,7 +55,7 @@ from pytest_selective.impact_models import (
 from pytest_selective.parse_batch import parse_records
 from pytest_selective.pytest_plugins import declared_plugins
 
-VERSION = "21"
+VERSION = "22"
 OPAQUE_CALLS = {
     "__import__",
     "import_module",
@@ -299,6 +299,7 @@ def parse_source(source: bytes) -> ParsedSource:
         isinstance(node, ast.Name) and node.id == "ROOT_URLCONF" and isinstance(node.ctx, ast.Store) for node in nodes
     )
     registration = registrations[0].value if len(registrations) == writes == 1 else None
+    exports = sorted(_literal_exports(tree))
     imports = [
         ImportSpec(module="", names=[alias.name for alias in node.names])
         if isinstance(node, ast.Import)
@@ -385,7 +386,27 @@ def parse_source(source: bytes) -> ParsedSource:
         opaque=sorted(opaque),
         pytest_plugin=plugin,
         dependencies=dependencies,
+        exports=exports,
     )
+
+
+def _literal_exports(tree: ast.Module) -> set[str]:
+    """Names a module-level ``__all__`` lists as string literals, across assignments and ``+=``."""
+    names: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            targets, value = node.targets, node.value
+        elif isinstance(node, (ast.AnnAssign, ast.AugAssign)):
+            targets, value = [node.target], node.value
+        else:
+            continue
+        if not any(isinstance(target, ast.Name) and target.id == "__all__" for target in targets):
+            continue
+        if isinstance(value, (ast.List, ast.Tuple)):
+            names.update(
+                item.value for item in value.elts if isinstance(item, ast.Constant) and isinstance(item.value, str)
+            )
+    return names
 
 
 def _cache_prefix() -> str:
@@ -618,6 +639,22 @@ def source_candidates(source: ParsedSource, package: str) -> set[str]:
     return candidates
 
 
+def star_import_candidates(
+    source: ParsedSource, package: str, index: "ModuleIndex", parsed: dict[str, ParsedSource], files: dict[str, str]
+) -> set[str]:
+    """Submodules ``from X import *`` loads because package X lists them in its ``__all__``."""
+    candidates: set[str] = set()
+    for spec in source.imports:
+        if "*" not in spec.names:
+            continue
+        node = ast.ImportFrom(module=spec.module, names=[ast.alias(name="*")], level=spec.level)
+        for base in import_candidates(node, package):
+            for initializer in index.modules.get(normalized_name(base), ()):
+                if PurePosixPath(initializer).name == "__init__.py":
+                    candidates.update(f"{base}.{name}" for name in parsed[files[initializer]].exports)
+    return candidates
+
+
 class ModuleIndex:
     """Resolve against a complete Git inventory without filesystem probes."""
 
@@ -693,6 +730,7 @@ def resolve_graph(
             candidates.add(source.django_urlconf)
         for package in index.packages.get(path, {""}):
             candidates.update(source_candidates(source, package))
+            candidates.update(star_import_candidates(source, package, index, parsed, files))
         for name in index.names.get(path, ()):
             edges[path].update(index.resolve(name))
         missing: list[str] = []

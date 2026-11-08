@@ -152,6 +152,39 @@ def test_package_initializer_change_reaches_submodule_importers(
     assert affected(repo, base, head, config, cache).selected == ["tests/left/test_one.py"]
 
 
+@pytest.mark.parametrize(
+    "exports, star_import",
+    [
+        ('__all__ = ["leaf"]', "from pkg import *"),
+        ('__all__ = ("leaf", "helper")', "from pkg import *"),
+        ('__all__: list[str] = ["leaf"]', "from pkg import *"),
+        ('__all__ = ["leaf"]', "from pkg import *  # inside a function below"),
+    ],
+)
+def test_star_import_reaches_the_submodules_its_package_lists_in_all(
+    repo: Path, config: ImpactConfig, cache: GraphCache, exports: str, star_import: str
+) -> None:
+    # `from pkg import *` imports every submodule named in pkg.__all__, though no import names it.
+    write(repo, "src/pkg/__init__.py", exports)
+    if "function" in star_import:
+        write(repo, "tests/right/test_two.py", "def test_value():\n    from pkg import *\n    assert leaf.VALUE\n")
+    else:
+        write(repo, "tests/right/test_two.py", f"{star_import}\ndef test_value(): assert leaf.VALUE == 1")
+    base = commit(repo)
+    write(repo, "src/pkg/leaf.py", "VALUE = 2")
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == ["tests/left/test_one.py", "tests/right/test_two.py"]
+
+
+def test_star_import_without_all_follows_only_the_package(repo: Path, config: ImpactConfig, cache: GraphCache) -> None:
+    # Without __all__, a star import binds the package's existing names and imports no submodule.
+    write(repo, "tests/right/test_two.py", "from pkg import *\ndef test_two(): pass")
+    base = commit(repo)
+    write(repo, "src/pkg/leaf.py", "VALUE = 2")
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == ["tests/left/test_one.py"]
+
+
 def test_declared_dynamic_import_reaches_reader_and_its_importers(
     repo: Path, config: ImpactConfig, cache: GraphCache
 ) -> None:
