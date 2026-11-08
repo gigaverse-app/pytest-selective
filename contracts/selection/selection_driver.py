@@ -30,7 +30,7 @@ class SelectionDriver(ActionDriver):
         "unlink": ("unlink", (("file", "file"), ("target", "target"))),
         "remove": ("remove", (("file", "file"),)),
         "restore": ("restore", (("file", "file"),)),
-        "touchGlobal": ("touchGlobal", ()),
+        "touchGlobal": ("touch_global", ()),
         "inspect": ("inspect", ()),
     }
 
@@ -59,7 +59,7 @@ class SelectionDriver(ActionDriver):
         """add a deleted file back without imports, commit, then select"""
 
     @abstractmethod
-    def touchGlobal(self) -> None:
+    def touch_global(self) -> None:
         """edit requirements.txt, a default global input, commit, then select"""
 
     @abstractmethod

@@ -50,7 +50,7 @@ quint = ["pytest-quint-connect"]
 
 [tool.uv.sources]
 # Not on PyPI yet; move to a version constraint once it is.
-pytest-quint-connect = { git = "https://github.com/gigaverse-app/pytest-quint-connect", rev = "e36d0db8630f684291e2bbc16557f98417a06997" }
+pytest-quint-connect = { git = "https://github.com/gigaverse-app/pytest-quint-connect", rev = "2daa87b17bbe78e1d40fcb36aa9b0368cccc47fe" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pytest_selective"]
