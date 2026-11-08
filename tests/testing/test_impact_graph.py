@@ -1088,6 +1088,42 @@ def test_pytest_policy_change_requires_review_but_dependency_pin_change_does_not
         cache.snapshot(repo, changed, config)
 
 
+@pytest.mark.parametrize(
+    "config_file, text",
+    [
+        ("pytest.ini", "[pytest]\naddopts = -q -p plug.fixtures\n"),
+        ("pytest.ini", "[pytest]\naddopts = -pplug.fixtures\n"),
+        ("pyproject.toml", '[tool.pytest.ini_options]\naddopts = "-p plug.fixtures"\n'),
+        ("pyproject.toml", '[tool.pytest.ini_options]\naddopts = ["-p", "plug.fixtures"]\n'),
+        ("tox.ini", "[pytest]\naddopts =\n    -p plug.fixtures\n    -p no:cacheprovider\n"),
+    ],
+)
+def test_command_line_plugin_in_addopts_reaches_every_test(
+    repo: Path, config: ImpactConfig, cache: GraphCache, config_file: str, text: str
+) -> None:
+    # `-p NAME` loads a plugin into every session; no test or conftest imports it.
+    write(repo, "plug/__init__.py")
+    write(repo, "plug/fixtures.py", "import pytest\n@pytest.fixture\ndef answer(): return 1\n")
+    write(repo, config_file, text)
+    base = commit(repo)
+    config.pytest_policy = policy_fingerprints(repo, inventory(repo, base))
+    write(repo, "plug/fixtures.py", "import pytest\n@pytest.fixture\ndef answer(): return 2\n")
+    head = commit(repo)
+    report = affected(repo, base, head, config, cache)
+    assert report.selected == ["tests/left/test_one.py", "tests/right/test_two.py"]
+
+
+def test_disabled_plugins_in_addopts_add_no_edges(repo: Path, config: ImpactConfig, cache: GraphCache) -> None:
+    write(repo, "plug/__init__.py")
+    write(repo, "plug/fixtures.py", "VALUE = 1\n")
+    write(repo, "pytest.ini", "[pytest]\naddopts = -p no:plug.fixtures\n")
+    base = commit(repo)
+    config.pytest_policy = policy_fingerprints(repo, inventory(repo, base))
+    write(repo, "plug/fixtures.py", "VALUE = 2\n")
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == []
+
+
 def test_cli_fingerprints_ini_policy_without_requiring_an_existing_review(
     repo: Path, config: ImpactConfig, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
