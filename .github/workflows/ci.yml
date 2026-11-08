@@ -17,14 +17,36 @@ concurrency:
 jobs:
   select-tests:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # Receipts are completed steps of earlier runs' jobs.
+      checks: read
+      pull-requests: read
+    env:
+      # The jobs whose passing first attempts can prove the tests lane, by exact job name.
+      TEST_LANE_JOBS: >-
+        {"py311-ubuntu":"tests (3.11, ubuntu-latest)","py311-windows":"tests (3.11, windows-latest)",
+        "py311-macos":"tests (3.11, macos-latest)","py314-ubuntu":"tests (3.14, ubuntu-latest)",
+        "py314-windows":"tests (3.14, windows-latest)","py314-macos":"tests (3.14, macos-latest)",
+        "minimum":"pytest-minimum"}
     outputs:
-      lanes: ${{ steps.plan.outputs.lanes }}
+      # Planned lanes after reuse: the tests lane is false only when every one of its jobs is proven by a receipt.
+      lanes: ${{ steps.admit.outputs.lanes }}
+      # The plan before reuse, for steps that follow changed runtime inputs rather than test execution.
+      planned: ${{ steps.plan.outputs.lanes }}
       mode: ${{ steps.files.outputs.mode }}
       files: ${{ steps.files.outputs.test_roots_json }}
+      receipt: ${{ steps.evidence.outputs.receipt }}
+      reused: ${{ steps.evidence.outputs.reused }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      # GitHub often omits a run's pull_requests link. This marker binds the run to its PR and head, so the push
+      # after a squash merge can use this run's receipts. CI-esta matches the exact name.
+      - name: "PR evidence #${{ github.event.pull_request.number }} head ${{ github.event.pull_request.head.sha }}"
+        if: github.event_name == 'pull_request'
+        run: 'true'
       - id: plan
         uses: ./actions/plan-lanes
         with:
@@ -40,6 +62,32 @@ jobs:
         with:
           config: ${{ runner.temp }}/test-impact.json
           full-roots: tests
+      # Everything the tests lane executes or reads, bound into each receipt.
+      - id: inputs
+        run: echo "paths=$(jq -c . .github/validation-inputs.json)" >> "$GITHUB_OUTPUT"
+      # CI-esta reuses a passing first attempt of the same job when its inputs and selected files are identical:
+      # after a squash merge, on a version-only release PR, and on a PR push that changes nothing the tests read.
+      # Release (workflow_call), schedules, manual runs and the test:full label always execute.
+      - id: evidence
+        if: >-
+          ${{ (github.event_name == 'pull_request' || github.event_name == 'push') &&
+              !contains(github.event.pull_request.labels.*.name, 'test:full') }}
+        uses: gigaverse-app/ci-esta/actions/resolve-lane-evidence@v1
+        with:
+          lanes: ${{ env.TEST_LANE_JOBS }}
+          execution-context: ${{ steps.files.outputs.mode }} ${{ steps.files.outputs.test_roots_json }}
+          input-paths: ${{ steps.inputs.outputs.paths }}
+          reuse-after-merge: 'true'
+          reuse-version-only-release: 'true'
+      - id: admit
+        name: Admit the tests lane unless every job is proven
+        env:
+          LANES: ${{ steps.plan.outputs.lanes }}
+          REUSED: ${{ steps.evidence.outputs.reused || '{}' }}
+        run: |
+          lanes=$(jq -c --argjson jobs "$TEST_LANE_JOBS" --argjson reused "$REUSED" 'if [$jobs | keys[] | $reused[.] == true] | all then .tests = false else . end' <<<"$LANES")
+          echo "reused=$REUSED"
+          echo "lanes=$lanes" | tee -a "$GITHUB_OUTPUT"
   quality:
     runs-on: ubuntu-latest
     steps:
@@ -100,6 +148,9 @@ jobs:
         with:
           name: evidence-${{ matrix.os }}-${{ matrix.python }}
           path: coverage.xml
+      - name: ${{ needs.select-tests.outputs.receipt || 'No execution receipt' }}
+        if: ${{ needs.select-tests.result == 'success' && needs.select-tests.outputs.receipt != '' }}
+        run: echo 'Recording a completed execution of this job for this tested tree and selection.'
   pytest-minimum:
     needs: select-tests
     if: >-
@@ -118,6 +169,9 @@ jobs:
           CI_PLANNER_RESULT: ${{ needs.select-tests.result }}
           CI_TEST_MODE: ${{ needs.select-tests.outputs.mode }}
           CI_TEST_FILES: ${{ needs.select-tests.outputs.files }}
+      - name: ${{ needs.select-tests.outputs.receipt || 'No execution receipt' }}
+        if: ${{ needs.select-tests.result == 'success' && needs.select-tests.outputs.receipt != '' }}
+        run: echo 'Recording a completed execution of this job for this tested tree and selection.'
   distributions:
     needs: select-tests
     # The package lane includes the embedded README and LICENSE; planner failure must not skip it.
@@ -136,7 +190,7 @@ jobs:
       - name: Smoke installed distributions when runtime inputs change
         if: >-
           ${{ needs.select-tests.result != 'success' ||
-              fromJSON(needs.select-tests.outputs.lanes).tests }}
+              fromJSON(needs.select-tests.outputs.planned).tests }}
         run: uv run --locked python scripts/smoke_distribution.py
       - uses: actions/upload-artifact@v7
         with:

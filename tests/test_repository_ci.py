@@ -87,10 +87,13 @@ def test_distributions_follow_the_package_lane_and_smoke_follows_runtime_selecti
     )
     steps = {step["run"]: step for step in distributions["steps"] if "run" in step}
     smoke = steps["uv run --locked python scripts/smoke_distribution.py"]
-    # Step admission preserves the default success() check for preceding build steps.
+    # Step admission preserves the default success() check for preceding build steps. It follows the plan before
+    # lane reuse: reused test proof does not stand in for smoking the distributions built in this run.
     assert (
         smoke["if"].split()
-        == ("${{ needs.select-tests.result != 'success' || fromJSON(needs.select-tests.outputs.lanes).tests }}").split()
+        == (
+            "${{ needs.select-tests.result != 'success' || fromJSON(needs.select-tests.outputs.planned).tests }}"
+        ).split()
     )
     for command in (
         "uv build",
