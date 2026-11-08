@@ -254,6 +254,9 @@ class ParsedSource(ImpactModel):
     opaque: list[str]
     pytest_plugin: bool
     dependencies: list[DependencyComment] = Field(default_factory=list)
+    #: Names in a module-level literal ``__all__``. For a package initializer, ``from pkg import *``
+    #: imports each submodule named here.
+    exports: list[str] = Field(default_factory=list)
 
 
 class DeferredAssignments(ImpactModel):
