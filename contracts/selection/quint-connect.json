@@ -1,14 +1,14 @@
 {
   "version": 1,
   "name": "selection",
-  "description": "File-level selection across a history of real commits: import, conftest, declaration and content-read closure over the base and head trees, global inputs, deleted files, unparseable source, selection against the history's first commit, and a graph cache that never changes an answer across configuration edits, restarts and damaged entries.",
+  "description": "File-level selection across a history of real commits, checked two ways: against a Quint model of import, conftest, declaration, content-read, package-initializer and command-line-plugin closure, and against pytest itself, which must never load a changed file in a test the planner skipped.",
   "module": "selection",
   "model": "selection.qnt",
   "invariant": "selectsOnlyExistingTests",
   "actions": {
     "init": "create a fixture repository and commit it",
     "edit": "rewrite one file's body, commit, then select",
-    "link": "add an import to one file, commit, then select",
+    "link": "add an import to one file (import pkg.x, import tests.helpers, from pkg import *, or a bare import helpers), commit, then select",
     "unlink": "remove an import from one file, commit, then select",
     "remove": "delete a file, commit, then select",
     "restore": "add a deleted file back without imports or declarations, commit, then select",
@@ -42,6 +42,10 @@
     "tableAsGlobalInputSelectsEveryTestTest",
     "damagedCacheIsRebuiltTest",
     "restartedCacheKeepsAnswersTest",
+    "starImportFollowsAllTest",
+    "commandLinePluginSelectsEveryTestTest",
+    "bareTestImportFollowsPrependModeTest",
+    "packageInitEditSelectsItsImportersTest",
     "sinceStartSpansCommitsTest"
   ],
   "mutants": [
@@ -99,9 +103,10 @@
     "source": "src/pytest_selective"
   },
   "limits": [
-    "One repository: three modules, a test-root helper, a root and a nested conftest, three tests, one data file and one content-kind sidecar; at most 8 operations per sampled history.",
-    "Covers import, ancestor-conftest, import-kind comment and content-kind sidecar edges, file deletion, unparseable source, the default global inputs plus one optional one, two test_roots settings, and selection against both the previous commit and the history's first commit. First-party pins, name-scoped modules, deferred strings, Django URLconf policy and plugin-registering test modules are outside the model.",
-    "The graph cache is exercised through configuration edits, restarts (close prunes the cache) and damaged graph entries. Cache misses and pruning are performance, not correctness, so only answers are compared; the analyzer-version and Python-version parts of the cache key are not varied.",
+    "One repository: three modules and their package initializer (with __all__), a test-root helper, a command-line plugin loaded by addopts -p, a root and a nested conftest, three tests, one data file and one content-kind sidecar; at most 8 operations per sampled history.",
+    "Import spellings are import pkg.x, import tests.helpers, from pkg import * and a prepend-mode bare import helpers. Other forms (relative and dynamic imports, module strings, undeclared file reads, symlinks) are not generated.",
+    "The runtime check records imports and opened files during pytest's collection of each test file, with plugin autoloading off and the default prepend import mode. It is a lower bound: a test that loads a changed file must be selected, but selecting more is not a failure. It is skipped for mutant cases, which the model comparison judges.",
+    "First-party pins, name-scoped modules, deferred strings and Django URLconf policy are outside the model. The graph cache is exercised through configuration edits, restarts and damaged entries; only answers are compared.",
     "Each step is a real Git commit or a re-plan of the last one, selected by affected() through one GraphCache per history; the driver's mapping of paths to file names is trusted."
   ]
 }
