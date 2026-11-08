@@ -1,7 +1,5 @@
 name: Matched Windows performance
 on:
-  pull_request:
-    paths: ['.github/workflows/windows-performance.yml']
   workflow_dispatch:
     inputs:
       baseline:
@@ -10,12 +8,9 @@ on:
       candidate-workers:
         description: Windows xdist worker count to compare with the existing four workers
         type: number
-        default: 8
+        default: 4
 permissions:
   contents: read
-concurrency:
-  group: windows-performance-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   compare:
     runs-on: windows-latest
@@ -27,13 +22,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.baseline || github.event.pull_request.base.sha }}
+          ref: ${{ inputs.baseline }}
           path: baseline
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           path: candidate
-      - uses: astral-sh/setup-uv@v10.3.3
+      - uses: astral-sh/setup-uv@v10
         with:
           python-version: ${{ matrix.python }}
           cache-suffix: matched-windows-${{ matrix.python }}
@@ -43,7 +38,7 @@ jobs:
       - name: Run complete suites in both orders on the same worker
         shell: pwsh
         env:
-          CANDIDATE_WORKERS: ${{ inputs.candidate-workers || 8 }}
+          CANDIDATE_WORKERS: ${{ inputs.candidate-workers }}
           TMP: ${{ runner.temp }}
           TEMP: ${{ runner.temp }}
           TMPDIR: ${{ runner.temp }}

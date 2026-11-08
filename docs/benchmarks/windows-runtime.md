@@ -38,6 +38,37 @@ interval or a guarantee for different machines. Use the **Matched Windows
 performance** workflow with an immutable baseline and the desired candidate ref
 to repeat the measurement.
 
+## Worker-count controls
+
+The manual **Matched Windows performance** workflow also accepts
+`candidate-workers`. It defaults to four, matching ordinary CI. Both arms now
+use native Git and the runner work disk for temporary repositories; worker-count
+experiments must not accidentally compare different Git executables. Each arm
+loads its own checkout through `PYTHONPATH` and explicitly disables selective
+execution, preserving the full suite, coverage and JUnit evidence.
+
+For a worker-count comparison, set `baseline` to the exact SHA of the selected
+workflow ref. The workflow runs four-worker baseline, candidate, candidate,
+four-worker baseline on each Python version. It runs only on manual dispatch,
+so editing the benchmark does not automatically consume four complete suites
+per Python version.
+
+[Run 42505855403, attempt 1](https://github.com/gigaverse-app/pytest-selective/actions/runs/42505855403)
+compared four and eight workers on the same revision,
+`1535d35b17e242219550f4534e1c059bc4abbc59`:
+
+| Python | Four-worker samples | Eight-worker samples | Mean before | Mean after | Reduction (higher is better) |
+| --- | --- | --- | --- | --- | --- |
+| 3.11 | 100.88s, 90.08s | 98.72s, 93.56s | 95.48s | 96.14s | -0.7% |
+| 3.14 | 127.28s, 128.69s | 123.15s, 124.00s | 127.98s | 123.58s | 3.4% |
+
+All samples retained the same 830 test identities and outcomes per interpreter:
+819 passed/11 skipped on Python 3.11 and 828 passed/2 skipped on Python 3.14.
+Covered line and branch totals were identical within each interpreter. The
+`matched-windows-3.11` and `matched-windows-3.14` artifacts hold the raw evidence.
+These two samples per arm do not establish a consistent benefit from eight
+workers, so ordinary CI retains four.
+
 ## Coverage preservation
 
 On Python 3.11, both candidates retain all 540 original outcomes: 529 passed and
