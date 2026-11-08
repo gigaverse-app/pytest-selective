@@ -20,32 +20,36 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.parametrize(
-    "path, expected",
+    "path, tests, contracts",
     [
-        ("action.yml", True),
-        ("actions/plan-lanes/action.yml", True),
-        ("actions/plan-lanes/helper.py", True),
-        ("README.md", False),
-        ("docs/ci.md", False),
-        ("docs/benchmarks/data.json", False),
-        (".github/dependabot.yml", False),
-        (".github/pull_request_template.md", False),
-        (".github/workflows/observe-ci.yml", False),
-        ("actions/plan-lanes/action.yml", True),
-        (".github/test-lanes.json", True),
-        (".github/workflows/release.yml", True),
-        ("src/sample.py", True),
-        ("scripts/tutorial.py", True),
-        ("scripts/smoke_distribution.py", True),
-        ("pyproject.toml", True),
-        ("tests/test_sample.py", True),
-        (".github/workflows/ci.yml", True),
-        ("uv.lock", True),
-        (".pre-commit-config.yaml", True),
-        (".python-version", True),
+        ("action.yml", True, True),
+        ("actions/plan-lanes/action.yml", True, True),
+        ("actions/plan-lanes/helper.py", True, True),
+        ("README.md", False, False),
+        ("docs/ci.md", False, False),
+        ("docs/benchmarks/data.json", False, False),
+        (".github/dependabot.yml", False, False),
+        (".github/pull_request_template.md", False, False),
+        (".github/workflows/observe-ci.yml", False, False),
+        ("actions/plan-lanes/action.yml", True, True),
+        (".github/test-lanes.json", True, True),
+        (".github/workflows/release.yml", True, True),
+        ("src/sample.py", True, True),
+        ("scripts/tutorial.py", True, True),
+        ("scripts/smoke_distribution.py", True, True),
+        ("pyproject.toml", True, True),
+        # The fixture's only test: selecting every graph test file admits every lane.
+        ("tests/test_sample.py", True, True),
+        ("tests/testing/git_repo.py", True, True),
+        ("contracts/selection/selection.qnt", False, True),
+        ("contracts/selection/conftest.py", False, True),
+        (".github/workflows/ci.yml", True, True),
+        ("uv.lock", True, True),
+        (".pre-commit-config.yaml", True, True),
+        (".python-version", True, True),
     ],
 )
-def test_repository_routes_prose_but_preserves_executable_inputs(tmp_path, path, expected):
+def test_repository_routes_prose_but_preserves_executable_inputs(tmp_path, path, tests, contracts):
     init(tmp_path)
     write(tmp_path, "pyproject.toml", (ROOT / "pyproject.toml").read_text())
     write(tmp_path, "src/sample.py", "VALUE = 1")
@@ -55,9 +59,10 @@ def test_repository_routes_prose_but_preserves_executable_inputs(tmp_path, path,
     head = commit(tmp_path)
     config = LaneConfig.model_validate_json((ROOT / ".github/test-lanes.json").read_text())
     result = plan(tmp_path, config, base, head)
-    assert result.lanes == {"tests": expected}, result.reason
-    assert plan(tmp_path, config, base, head, full=True).lanes == {"tests": True}
-    assert plan(tmp_path, config, "missing-base", head).lanes == {"tests": True}
+    assert result.lanes == {"tests": tests, "contracts": contracts}, result.reason
+    every_lane = {"tests": True, "contracts": True}
+    assert plan(tmp_path, config, base, head, full=True).lanes == every_lane
+    assert plan(tmp_path, config, "missing-base", head).lanes == every_lane
 
 
 def test_distribution_smoke_follows_runtime_selection_but_metadata_always_runs():

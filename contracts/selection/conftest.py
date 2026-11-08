@@ -2,13 +2,12 @@
 
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack
-from pathlib import Path
 from unittest import mock
 
 import pytest
+from pytest_quint_connect import HistoryContext
 from selection_driver import SelectionDriver, View
 
-from pytest_quint_connect import HistoryContext
 from pytest_selective.impact_graph import GraphCache, union_edges
 from pytest_selective.impact_models import ImpactConfig
 from pytest_selective.impact_selection import affected
