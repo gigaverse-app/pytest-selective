@@ -142,7 +142,7 @@ repositories had at least one:
 | Build or smoke job outside any lane | `uv build`, `twine check` and an install smoke ran on a root README edit that is not the package README | Gate it on a `package` lane whose inputs are the package sources, metadata and lockfile, plus the README only when the build embeds it |
 | Routing regressions in an always-run quality job | The lane-routing tests ran on every docs PR | Give them their own lane: lane config, workflows, CI helpers and the routing tests |
 | Directory inputs that also hold prose | `examples/**` selected the test lane when an example's README changed | Name execution files: `examples/*.py` **and** `examples/**/*.py`, and so on |
-| `dir/**/*.ext` alone | `examples/**/*.toml` missed `examples/gold.toml`, so a data change skipped its tests | Inputs match with `fnmatch`, where `**/` needs at least one directory: list `dir/*.ext` too |
+| `dir/**/*.ext` alone (until 0.4.3) | `examples/**/*.toml` missed `examples/gold.toml`, so a data change skipped its tests | Fixed: `**/` now also matches no directory, as in gitignore |
 | Docs-site requirements | Bumping `documentation/requirements.txt` ran every lane, because the built-in environment policy matches `*requirements*.txt` anywhere | Set `graph.global_inputs` to your real environment files |
 | A whole workflow file as a global input | Adding a file to a lint job's list ran every test | Use `<workflow>#<job>` lane inputs for the jobs that run each lane |
 

@@ -336,3 +336,56 @@ def test_job_inputs_that_cannot_narrow_are_rejected(inputs, global_inputs, messa
             lanes={"unit": {"roots": ["tests"], "inputs": inputs}},
             **settings,
         )
+
+
+@pytest.mark.parametrize(
+    ("path", "content", "expected"),
+    [
+        # Files beside the tests select their lane only through the graph, like any other file.
+        ("tests/live/README.md", "How to run the live checks", {"unit": False, "live": False}),
+        (
+            "tests/live/notes.txt",
+            "undeclared: the read audit is what catches an undeclared read",
+            {"unit": False, "live": False},
+        ),
+        ("tests/live/conftest.py", "import pytest", {"unit": False, "live": True}),
+        ("tests/live/helpers.py", "HELP = 1", {"unit": False, "live": False}),
+    ],
+)
+def test_files_under_a_lane_root_select_it_only_through_the_graph(repository, path, content, expected):
+    repo, config, base = repository
+    write(repo, path, content)
+    result = plan(repo, config, base, commit(repo))
+    assert result.lanes == expected
+    if not expected["live"]:
+        assert result.lane_reasons["live"] == [f"unreferenced under root: {path}"]
+
+
+def test_a_helper_under_a_lane_root_selects_its_lane_through_its_importers(repository):
+    repo, config, _ = repository
+    write(repo, "tests/live/helpers.py", "HELP = 1")
+    write(repo, "tests/live/test_other.py", "from tests.live.helpers import HELP\ndef test_other(): assert HELP")
+    base = commit(repo)
+    write(repo, "tests/live/helpers.py", "HELP = 2")
+    assert plan(repo, config, base, commit(repo)).lanes == {"unit": False, "live": True}
+
+
+def test_declared_data_under_a_lane_root_selects_its_readers_lane(repository):
+    repo, config, _ = repository
+    write(repo, "tests/live/expected.json", "{}")
+    write(
+        repo,
+        "tests/live/test_other.py.gv-dependency.yaml",
+        "dependencies:\n  - inputs: ['expected.json']\n    kind: content\n",
+    )
+    base = commit(repo)
+    write(repo, "tests/live/expected.json", '{"changed": true}')
+    assert plan(repo, config, base, commit(repo)).lanes == {"unit": False, "live": True}
+
+
+@pytest.mark.parametrize("path", ["external/contract.json", "external/nested/contract.json"])
+def test_double_star_inputs_match_direct_children_as_in_gitignore(repository, path):
+    repo, config, base = repository
+    config.lanes["live"].inputs = ["external/**/*.json"]
+    write(repo, path, "{}")
+    assert plan(repo, config, base, commit(repo)).lanes == {"unit": False, "live": True}
