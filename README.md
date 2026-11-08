@@ -295,3 +295,5 @@ records progress against the accepted backlog. [Setup and cleanup workflow](CONT
 
 [Accepted backlog](.dry-lint/baseline.json) · [Weekly audit](https://github.com/gigaverse-app/pytest-selective/actions/workflows/dry-lint-audit.yml)
 <!-- dry-lint-progress:end -->
+
+<!-- probe: README routing -->
