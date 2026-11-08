@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
         ("action.yml", True, True, True),
         ("actions/plan-lanes/action.yml", True, True, True),
         ("actions/plan-lanes/helper.py", True, True, True),
+        ("actions/helper.py", True, True, True),
         ("actions/README.md", False, False, False),
         # The distributions embed README.md and LICENSE, so only the package lane rebuilds them.
         ("README.md", False, False, True),

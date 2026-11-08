@@ -60,6 +60,7 @@
     ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
     "actions/*/*",
+    "actions/*.py",
     "action.yml",
     ".github/workflows/public-actions.yml"
   ]
