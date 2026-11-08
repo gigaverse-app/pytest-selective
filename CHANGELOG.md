@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.3](https://github.com/gigaverse-app/pytest-selective/compare/v0.4.2...v0.4.3) (2026-11-08)
+
+
+### Bug fixes
+
+* **lanes:** select lanes through the graph and match ** like gitignore ([#90](https://github.com/gigaverse-app/pytest-selective/issues/90)) ([107b021](https://github.com/gigaverse-app/pytest-selective/commit/107b0212ed741ac72c36a39cc864906eca75d1ab))
+
 ## [0.4.2](https://github.com/gigaverse-app/pytest-selective/compare/v0.4.1...v0.4.2) (2026-11-07)
 
 
