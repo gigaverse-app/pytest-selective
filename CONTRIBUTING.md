@@ -89,8 +89,9 @@ limitations. The pull request template provides a short checklist. See
 ## CI lane selection
 
 This repository uses its own `plan-lanes` action. Documentation-only PRs keep
-quality checks (including Markdown links) and distribution build/metadata checks,
-while skipping the six-platform pytest matrix and minimum-pytest lane. Within an
+quality checks (including Markdown links) and the documentation build, while
+skipping every test lane and the distribution build. A README or LICENSE change
+also runs the `package` lane, because both distributions embed them. Within an
 admitted lane, the repository's public file-selection action selects affected
 test files once; the platform matrix and minimum-pytest job execute that same
 plan. CI-esta receives both lane and file explanations, learns JUnit timings,

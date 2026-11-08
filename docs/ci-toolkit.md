@@ -1,7 +1,11 @@
 # CI selection, caching and critical paths
 
 This repository uses pytest-selective to decide which complete validation lanes
-are affected. Routing regressions and metadata checks always run. An aggregate
+are affected. Routing regressions run in the `tests` lane, and package build and
+metadata checks run in the `package` lane, whose inputs include the README and
+LICENSE embedded in the distributions. Documentation pages and the Read the
+Docs requirements are not test-environment inputs: `graph.global_inputs` names
+the real environment files, so a documentation-only change runs no lane. An aggregate
 `Validation gate` checks every prerequisite and accepts a skipped runtime lane
 only when the planner explicitly returned boolean `false` for its inputs.
 
