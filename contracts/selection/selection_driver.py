@@ -21,13 +21,14 @@ class View(TypedDict):
     mode: str
     selected: AbstractSet[str]
     sinceStart: Selection
+    missed: AbstractSet[str]
 
 
 class SelectionDriver(ActionDriver):
     """Subclass this, implement each action against the real code, and read state back in observe()."""
 
     __quint_contract__ = "selection"
-    __quint_fingerprint__ = "9b94b348596ffc1e1b681762acef392fd9cd8fe3a96d7c7a06af512cc434eab1"
+    __quint_fingerprint__ = "85c02aff975baca4fd485a40a46b4b0d540998166173c5afb04a810ed92c5788"
     __quint_codegen_command__ = "pytest-quint-connect codegen quint-connect.json -o selection_driver.py"
     __quint_actions__ = {
         "init": ("init", ()),
@@ -57,7 +58,7 @@ class SelectionDriver(ActionDriver):
 
     @abstractmethod
     def link(self, file: str, target: str) -> None:
-        """add an import to one file, commit, then select"""
+        """add an import to one file (import pkg.x, import tests.helpers, from pkg import *, or a bare import helpers), commit, then select"""
 
     @abstractmethod
     def unlink(self, file: str, target: str) -> None:
