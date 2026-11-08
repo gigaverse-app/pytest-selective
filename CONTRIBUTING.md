@@ -197,6 +197,12 @@ history or failed planning must execute the full affected lanes and fail the
 required planning gate. Ordinary PRs and pushes use selection; manual/release/scheduled/full overrides
 remain complete checkpoints.
 
+CI and public-action smoke run full checkpoints every Monday. Ordinary runs keep
+the shared affected-file plan across all six OS/Python combinations and minimum
+pytest. `tests/test_tutorial.py` owns the end-to-end tutorial execution and follows
+that plan; there is no second tutorial invocation in each matrix job. JUnit retains
+its test result and timing, and full plans also upload whole-suite coverage.
+
 ## Duplication
 
 `uv run pre-commit install` installs both the staged dry-lint check and the
