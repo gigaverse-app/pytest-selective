@@ -82,12 +82,12 @@ jobs:
       - id: admit
         name: Admit the tests lane unless every job is proven
         env:
-          LANES: ${{ steps.plan.outputs.lanes }}
+          PLANNED_LANES: ${{ steps.plan.outputs.lanes }}
           REUSED: ${{ steps.evidence.outputs.reused || '{}' }}
         run: |
-          lanes=$(jq -c --argjson jobs "$TEST_LANE_JOBS" --argjson reused "$REUSED" 'if [$jobs | keys[] | $reused[.] == true] | all then .tests = false else . end' <<<"$LANES")
+          admitted=$(jq -c --argjson jobs "$TEST_LANE_JOBS" --argjson reused "$REUSED" 'if [$jobs | keys[] | $reused[.] == true] | all then .tests = false else . end' <<<"$PLANNED_LANES")
           echo "reused=$REUSED"
-          echo "lanes=$lanes" | tee -a "$GITHUB_OUTPUT"
+          echo "lanes=$admitted" | tee -a "$GITHUB_OUTPUT"
   quality:
     runs-on: ubuntu-latest
     steps:
