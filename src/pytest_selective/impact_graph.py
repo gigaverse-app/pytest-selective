@@ -56,7 +56,7 @@ from pytest_selective.impact_models import (
 from pytest_selective.parse_batch import parse_records
 from pytest_selective.pytest_plugins import declared_plugins
 
-VERSION = "23"
+VERSION = "24"
 OPAQUE_CALLS = {
     "__import__",
     "import_module",
@@ -741,6 +741,38 @@ class ModuleIndex:
         return result
 
 
+def test_files(python_files: set[str], config: ImpactConfig) -> list[str]:
+    """The Python files the configuration collects as tests."""
+    return sorted(
+        path
+        for path in python_files
+        if any(within(path, root) for root in config.test_roots)
+        and matches(PurePosixPath(path).name, config.test_patterns)
+    )
+
+
+def prepend_roots(python_files: set[str], config: ImpactConfig) -> list[str]:
+    """Directories pytest's default import mode puts on sys.path, beyond the configured module roots.
+
+    In the default ``prepend`` mode (and in ``append``), pytest inserts the first directory above each
+    test module and conftest that has no ``__init__.py``, so a bare ``import helpers`` beside a test
+    loads that directory's ``helpers.py``. The insertion lasts the whole session, so any import may
+    resolve against any such directory. Callers use these roots only to resolve imports, never to name
+    files, so same-named test modules and conftests in different directories stay unrelated. Under
+    ``--import-mode=importlib`` they can only over-select.
+    """
+    bases: set[str] = set()
+    for path in [
+        *test_files(python_files, config),
+        *(p for p in python_files if PurePosixPath(p).name == "conftest.py"),
+    ]:
+        directory = PurePosixPath(path).parent
+        while directory.as_posix() != "." and (directory / "__init__.py").as_posix() in python_files:
+            directory = directory.parent
+        bases.add(directory.as_posix())
+    return sorted(bases - set(config.module_roots))
+
+
 def resolve_graph(
     tree: str,
     files: dict[str, str],
@@ -752,17 +784,13 @@ def resolve_graph(
 ) -> Snapshot:
     python_files = {path for path in files if path.endswith(".py")}
     index = ModuleIndex(python_files, config.module_roots, links)
+    prepended = ModuleIndex(python_files, prepend_roots(python_files, config), links)
 
     edges: dict[str, set[str]] = {path: set() for path in files}
     unresolved: dict[str, list[str]] = {}
     opaque: dict[str, list[str]] = {}
     plugins: set[str] = set()
-    tests = sorted(
-        path
-        for path in python_files
-        if any(within(path, root) for root in config.test_roots)
-        and matches(PurePosixPath(path).name, config.test_patterns)
-    )
+    tests = test_files(python_files, config)
     deferred = deferred or []
     # Several rules may defer different assignments of one file; each file holds the union.
     held: dict[str, set[str]] = {}
@@ -783,9 +811,9 @@ def resolve_graph(
             edges[path].update(index.resolve(name))
         missing: list[str] = []
         for candidate in sorted(candidates):
-            resolved = index.resolve(candidate)
+            resolved = index.resolve(candidate) | prepended.resolve(candidate)
             edges[path].update(resolved)
-            if candidate not in index.modules:
+            if candidate not in index.modules and candidate not in prepended.modules:
                 missing.append(candidate)
         if missing:
             unresolved[path] = missing
@@ -960,12 +988,16 @@ class EdgeEvidence:
         self.repo = repo
         self.snapshot = snapshot
         python_files = {path for path in snapshot.files if path.endswith(".py")}
-        self.index = ModuleIndex(python_files, config.module_roots, inventory(repo, snapshot.tree).links)
+        links = inventory(repo, snapshot.tree).links
+        self.index = ModuleIndex(python_files, config.module_roots, links)
+        self.prepended = ModuleIndex(python_files, prepend_roots(python_files, config), links)
         self.globals = global_module_files(self.index, config)
         self.tests = set(snapshot.tests)
 
     def _names(self, candidates: set[str], dependency: str) -> bool:
-        return any(dependency in self.index.resolve(candidate) for candidate in candidates)
+        return any(
+            dependency in self.index.resolve(candidate) | self.prepended.resolve(candidate) for candidate in candidates
+        )
 
     def _line(self, reader: str, dependency: str) -> PathStep | None:
         oid = self.snapshot.files.get(reader)

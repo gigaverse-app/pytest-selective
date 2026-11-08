@@ -16,7 +16,8 @@ Create `.github/test-impact.json`:
 ```
 
 Paths are repository-relative, with forward slashes. Module roots are directories
-containing import packages. Test roots must include every suite you intend to
+containing import packages. Imports also resolve from every directory pytest's default import mode puts
+on `sys.path`: the first directory above each test module and conftest without an `__init__.py`. Test roots must include every suite you intend to
 select. The default filenames are `test_*.py`, `*_test.py`, `*_tests.py`, and
 `tests.py`; configure
 `test_patterns` for a different collection policy.
