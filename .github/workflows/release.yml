@@ -21,6 +21,10 @@ jobs:
           uv run --no-project python -c 'import os, pathlib, tomllib; version = tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"]; assert os.environ["RELEASE_REF"] == f"refs/tags/v{version}", "Run publishing from the version-matching v tag"'
   checks:
     needs: validate-tag
+    # Reusable CI's Quint report requests this grant, even on a tag with no PR.
+    permissions:
+      contents: read
+      pull-requests: write
     uses: ./.github/workflows/ci.yml
   publish:
     needs: checks
