@@ -16,6 +16,7 @@ import pytest
 from pytest_quint_connect import HistoryContext
 from selection_driver import Selection, SelectionDriver, View
 
+from pytest_selective.git_operations import git, git_text
 from pytest_selective.impact_graph import (
     DependencyDeclarationError,
     GraphCache,
@@ -186,6 +187,12 @@ MUTANTS: dict[str, Callable[[], list[tuple[str, object]]]] = {
     "parse-cache-keyed-by-path": lambda: [("pytest_selective.impact_graph.GraphCache.parse_python", _parse_by_path)],
     # Return stored entries without checking their checksum.
     "cache-checksum-ignored": lambda: [("pytest_selective.impact_graph.GraphCache.get", _unchecked_get)],
+    # The three bugs the runtime check found, each put back exactly as it was before its fix.
+    "star-exports-ignored": lambda: [
+        ("pytest_selective.impact_graph.star_import_candidates", lambda *arguments, **options: set())
+    ],
+    "addopts-plugins-ignored": lambda: [("pytest_selective.impact_graph.command_line_plugins", lambda policies: set())],
+    "prepend-roots-ignored": lambda: [("pytest_selective.impact_graph.prepend_roots", lambda python_files, config: [])],
 }
 
 
@@ -252,19 +259,14 @@ class RepositoryDriver(SelectionDriver):
         missed = self._missed(self.previous, latest) | self._missed(self.start, since_start)
         self.view = {**latest, "sinceStart": since_start, "missed": frozenset(missed)}
 
-    def _git(self, *args: str) -> str:
-        return subprocess.run(["git", "-C", str(self.root), *args], check=True, capture_output=True, text=True).stdout
-
     def _runtime(self, revision: str, tests: list[str]) -> dict[str, frozenset[str]]:
         """What pytest's collection of each test file imports or opens in the tree at ``revision``."""
-        tree = self._git("rev-parse", f"{revision}^{{tree}}").strip()
+        tree = git_text(self.root, "rev-parse", f"{revision}^{{tree}}").strip()
         missing = [test for test in tests if (tree, test) not in _RUNTIME]
         if missing:
             directory = self.trees / tree
             if not directory.exists():
-                archive = subprocess.run(
-                    ["git", "-C", str(self.root), "archive", "--format=tar", revision], check=True, capture_output=True
-                ).stdout
+                archive = git(self.root, "archive", "--format=tar", revision)
                 with tarfile.open(fileobj=io.BytesIO(archive)) as members:
                     members.extractall(directory, filter="data")
             environment = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
@@ -282,7 +284,7 @@ class RepositoryDriver(SelectionDriver):
         return {test: _RUNTIME[(tree, test)] for test in tests}
 
     def _tests(self, revision: str) -> list[str]:
-        files = self._git("ls-tree", "-r", "--name-only", revision).splitlines()
+        files = git_text(self.root, "ls-tree", "-r", "--name-only", revision).splitlines()
         return [
             path
             for path in files
@@ -294,7 +296,7 @@ class RepositoryDriver(SelectionDriver):
         """Tests whose runtime dependencies at base or head include a changed file, but were not selected."""
         if not self.check_runtime or selection["mode"] == "error" or base == self.head:
             return set()
-        changed = set(self._git("diff", "--name-only", "--no-renames", base, self.head).splitlines())
+        changed = set(git_text(self.root, "diff", "--name-only", "--no-renames", base, self.head).splitlines())
         tests = self._tests(self.head)
         at_head = self._runtime(self.head, tests)
         at_base = self._runtime(base, [test for test in tests if test in set(self._tests(base))])

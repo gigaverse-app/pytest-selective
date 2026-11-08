@@ -88,6 +88,18 @@
     {
       "name": "cache-checksum-ignored",
       "description": "Trusts a stored graph without checking its checksum, so a damaged entry is used as if it were valid."
+    },
+    {
+      "name": "star-exports-ignored",
+      "description": "Reintroduces the star-import bug: from pkg import * no longer reaches the submodules pkg lists in __all__."
+    },
+    {
+      "name": "addopts-plugins-ignored",
+      "description": "Reintroduces the plugin bug: a plugin named by -p in addopts is no longer a dependency of every test."
+    },
+    {
+      "name": "prepend-roots-ignored",
+      "description": "Reintroduces the import-mode bug: imports no longer resolve from the directories pytest prepends to sys.path."
     }
   ],
   "bounds": {"seed": 11, "max_samples": 800, "max_steps": 8, "n_traces": 24},
@@ -108,5 +120,28 @@
     "The runtime check records imports and opened files during pytest's collection of each test file, with plugin autoloading off and the default prepend import mode. It is a lower bound: a test that loads a changed file must be selected, but selecting more is not a failure. It is skipped for mutant cases, which the model comparison judges.",
     "First-party pins, name-scoped modules, deferred strings and Django URLconf policy are outside the model. The graph cache is exercised through configuration edits, restarts and damaged entries; only answers are compared.",
     "Each step is a real Git commit or a re-plan of the last one, selected by affected() through one GraphCache per history; the driver's mapping of paths to file names is trusted."
+  ],
+  "bugs_found": [
+    {
+      "summary": "A test that does `from pkg import *` was not selected when a submodule pkg lists in __all__ changed.",
+      "fixed_in": "#94",
+      "found_by": "the runtime check (pytest loaded the changed file, the planner skipped the test), after an adversarial review reported it; witness starImportFollowsAllTest",
+      "regression_test": "tests/testing/test_impact_graph.py::test_star_import_reaches_the_submodules_its_package_lists_in_all",
+      "mutant": "star-exports-ignored"
+    },
+    {
+      "summary": "Editing a plugin loaded by `addopts = -p NAME` selected no test, though it is loaded into every session.",
+      "fixed_in": "#95",
+      "found_by": "the runtime check (pytest loaded the changed file, the planner skipped the test), after an adversarial review reported it; witness commandLinePluginSelectsEveryTestTest and random histories",
+      "regression_test": "tests/testing/test_impact_graph.py::test_command_line_plugin_in_addopts_reaches_every_test",
+      "mutant": "addopts-plugins-ignored"
+    },
+    {
+      "summary": "A bare `import helpers` resolved by pytest's default import mode was not followed, so editing tests/helpers.py selected nothing.",
+      "fixed_in": "#96",
+      "found_by": "the runtime check (pytest loaded the changed file, the planner skipped the test), after an adversarial review reported it; witness bareTestImportFollowsPrependModeTest",
+      "regression_test": "tests/testing/test_impact_graph.py::test_bare_import_resolves_from_the_importers_prepend_mode_base_directory",
+      "mutant": "prepend-roots-ignored"
+    }
   ]
 }
