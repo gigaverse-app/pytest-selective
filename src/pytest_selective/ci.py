@@ -15,7 +15,6 @@ from pytest_selective.checkpoint import full_checkpoint_reason
 from pytest_selective.impact_graph import DependencyDeclarationError, GraphCache, git, matches, within
 from pytest_selective.impact_models import ImpactConfig, ImpactModel
 from pytest_selective.impact_selection import affected
-from pytest_selective.input_policy import DEFAULT_GLOBAL_INPUTS
 
 JOB_INPUT = re.compile(r"(?P<path>[^#*?\[\]]+)#(?P<job>[A-Za-z_][A-Za-z0-9_-]*)")
 
@@ -63,7 +62,9 @@ class LaneConfig(ImpactModel):
             # Markdown is documentation unless a reader or adopter declares it.
             # Retain unknown/extensionless CI inputs rather than an extension allowlist.
             return Path(path).suffix.lower() not in {".md", ".markdown"}
-        return matches(path, list(DEFAULT_GLOBAL_INPUTS))
+        # The graph's list is the one environment-file authority: narrowing it (for
+        # example, dropping a docs site's requirements.txt) must not be re-widened here.
+        return matches(path, self.graph.global_inputs)
 
     @field_validator("lanes")
     @classmethod
