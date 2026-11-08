@@ -911,14 +911,14 @@ wheels = [
 
 [[package]]
 name = "pytest-quint-connect"
-version = "0.3.0"
+version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pytest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1f/5d/874d364a79d1f0f4107fd6eb7c8e319c5655a61804ce288eb39a0f0f4cf2/pytest_quint_connect-0.3.0.tar.gz", hash = "sha256:5dbe2be84f468752061eb55fa05b23ce1d585645a604e7e1f9347987fa95e28e", size = 260300, upload-time = "2026-11-08T13:18:17.524Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/72/ce/2f227e8dbb4ef5d8eae7439e5bafc57f1c7be388489aac419d0e51a3036b/pytest_quint_connect-1.0.0.tar.gz", hash = "sha256:420b249c1b119a7c790bf29b8a06449dce300fa21b433aba9543ce68e0bcf2d5", size = 6911811, upload-time = "2026-11-08T14:56:49.605Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6e/01/79dbeb78c06a2113d49c88ddf980df65d7604c1270d319f39a5c3d8a7321/pytest_quint_connect-0.3.0-py3-none-any.whl", hash = "sha256:0dbf7ad6818d48132a183bc4735d4b70baec762e4aa48b9ad5a3c554e7e7e9ad", size = 60968, upload-time = "2026-11-08T13:18:16.012Z" },
+    { url = "https://files.pythonhosted.org/packages/a3/b6/8fcb0ee780a213156bde9209e6f14019705468105aa52d4ba93103e3bff3/pytest_quint_connect-1.0.0-py3-none-any.whl", hash = "sha256:6b1c55b2d7c13d8bbdd9aad8087157e2f5f21d1f5494008de296489e7a7120a7", size = 70034, upload-time = "2026-11-08T14:56:47.769Z" },
 ]
 
 [[package]]
@@ -971,7 +971,7 @@ dev = [
     { name = "ruff", specifier = ">=0.14" },
     { name = "twine", specifier = ">=6" },
 ]
-quint = [{ name = "pytest-quint-connect", specifier = ">=0.3.0,<0.4" }]
+quint = [{ name = "pytest-quint-connect", specifier = ">=1.0.0,<2" }]
 
 [[package]]
 name = "pytest-timeout"
