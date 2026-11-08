@@ -6,6 +6,10 @@
 // global input selects every test. Unparseable Python in either tree is an error, never a
 // narrower or a full selection. `observed` holds the selection between the last two commits and
 // between the history's first commit and the last one, as a pull request's base and head.
+//
+// The planner keeps a graph cache across plans. It is never part of the specification: every
+// answer below depends only on the trees and the configuration, so a configuration change, a
+// restarted cache or a damaged cache entry must leave each answer exactly what a cold plan gives.
 module selection {
   type Event = { op: str, file: str, target: str }
   type Selection = { mode: str, selected: Set[str] }
@@ -19,6 +23,8 @@ module selection {
     requirements: int,
   }
   type Content = { present: bool, imports: Set[(str, str)], declared: Set[(str, str)], version: int, broken: bool }
+  // narrow: test_roots is tests/sub instead of tests. tableGlobal: data/table.json is a global input.
+  type Config = { narrow: bool, tableGlobal: bool }
 
   pure val MODULES = Set("alpha", "beta", "gamma")
   // tests/helpers.py: a module inside the test root that is not a test.
@@ -38,10 +44,14 @@ module selection {
   pure val CONTENT_READS = Set(("test_sub", "gamma"))
   // Files a commit may delete and add back.
   pure val REMOVABLE = Set("alpha", "beta", HELPER, "test_one", "test_two")
+  pure val OPTIONS = Set("narrow", "tableGlobal")
 
   var tree: Tree
+  // The tree before the last commit, the base a rerun of the last plan compares against.
+  var previous: Tree
   // The history's first tree, compared with every later one as a pull request's base.
   var start: Tree
+  var config: Config
   var event: Event
   var observed: View
 
@@ -57,11 +67,14 @@ module selection {
       }
     else { present: false, imports: Set(), declared: Set(), version: 0, broken: false }
 
+  // The files collected as tests under a configuration.
+  pure def testsOf(c: Config): Set[str] = if (c.narrow) Set("test_sub") else TESTS
+
   // The dependency edges of one tree: imports and import-kind declarations between files that
   // exist, and each test's ancestor conftests.
-  pure def edges(t: Tree): Set[(str, str)] = {
+  pure def edges(t: Tree, c: Config): Set[(str, str)] = {
     val linked = t.imports.union(t.declared).filter(e => t.present.contains(e._1) and t.present.contains(e._2))
-    val root = TESTS.intersect(t.present).map(test => (test, "conftest"))
+    val root = testsOf(c).intersect(t.present).map(test => (test, "conftest"))
     linked.union(root).union(Set(("test_sub", "subconftest")))
   }
 
@@ -70,15 +83,15 @@ module selection {
   pure def reaching(e: Set[(str, str)], changed: Set[str]): Set[str] =
     FILES.fold(changed, (found, _) => found.union(e.filter(x => found.contains(x._2)).map(x => x._1)))
 
-  pure def selection(before: Tree, after: Tree): Selection =
+  pure def selection(before: Tree, after: Tree, c: Config): Selection =
     if (before.broken.size() > 0 or after.broken.size() > 0) { mode: "error", selected: Set() }
     else {
       val changed = FILES.filter(f => content(before, f) != content(after, f))
-      val global = before.requirements != after.requirements
-      val tests = TESTS.intersect(after.present)
+      val global = before.requirements != after.requirements or (c.tableGlobal and changed.contains("table"))
+      val tests = testsOf(c).intersect(after.present)
       val readers = CONTENT_READS.filter(r => changed.contains(r._2)).map(r => r._1)
       val chosen = if (global) tests
-        else reaching(edges(before).union(edges(after)), changed).union(readers).intersect(tests)
+        else reaching(edges(before, c).union(edges(after, c)), changed).union(readers).intersect(tests)
       {
         mode: if (global or (chosen.size() > 0 and chosen == tests)) "full" else if (chosen.size() > 0) "scoped" else "none",
         selected: chosen,
@@ -87,12 +100,27 @@ module selection {
 
   // One commit from the current tree to `following`, and the selections it produces.
   action commit(op: str, file: str, target: str, following: Tree): bool = {
-    val latest = selection(tree, following)
+    val latest = selection(tree, following, config)
     all {
       tree' = following,
+      previous' = tree,
       start' = start,
+      config' = config,
       event' = { op: op, file: file, target: target },
-      observed' = { mode: latest.mode, selected: latest.selected, sinceStart: selection(start, following) },
+      observed' = { mode: latest.mode, selected: latest.selected, sinceStart: selection(start, following, config) },
+    }
+  }
+
+  // Plan the last commit again, against the previous and the first commit, with `nextConfig` as the
+  // configuration and the cache as the preceding operation left it. Each caller assigns `event`.
+  action replan(nextConfig: Config): bool = {
+    val latest = selection(previous, tree, nextConfig)
+    all {
+      tree' = tree,
+      previous' = previous,
+      start' = start,
+      config' = nextConfig,
+      observed' = { mode: latest.mode, selected: latest.selected, sinceStart: selection(start, tree, nextConfig) },
     }
   }
 
@@ -107,7 +135,9 @@ module selection {
 
   action init = all {
     tree' = INITIAL,
+    previous' = INITIAL,
     start' = INITIAL,
+    config' = { narrow: false, tableGlobal: false },
     event' = { op: "init", file: "", target: "" },
     observed' = { mode: "none", selected: Set(), sinceStart: { mode: "none", selected: Set() } },
   }
@@ -182,10 +212,26 @@ module selection {
 
   action touchGlobal = commit("touchGlobal", "", "", { ...tree, requirements: tree.requirements + 1 })
 
+  // Flip one configuration option, then plan the last commit again.
+  action toggleConfig(option: str): bool = all {
+    OPTIONS.contains(option),
+    replan(if (option == "narrow") { ...config, narrow: not(config.narrow) }
+      else { ...config, tableGlobal: not(config.tableGlobal) }),
+    event' = { op: "toggleConfig", file: option, target: "" },
+  }
+
+  // Close the cache (which prunes it) and open it again, then plan the last commit again.
+  action restart = all { replan(config), event' = { op: "restart", file: "", target: "" } }
+
+  // Damage every stored graph without updating its checksum, then plan the last commit again.
+  action corrupt = all { replan(config), event' = { op: "corrupt", file: "", target: "" } }
+
   // A step that commits nothing, so that a witness can end in an assertion.
   action inspect = all {
     tree' = tree,
+    previous' = previous,
     start' = start,
+    config' = config,
     event' = { op: "inspect", file: "", target: "" },
     observed' = observed,
   }
@@ -193,6 +239,7 @@ module selection {
   action step = {
     nondet file = FILES.oneOf()
     nondet target = TARGETS.union(DECLARABLE).oneOf()
+    nondet option = OPTIONS.oneOf()
     any {
       edit(file),
       link(file, target),
@@ -204,11 +251,14 @@ module selection {
       breakSyntax(file),
       repair(file),
       touchGlobal,
+      toggleConfig(option),
+      restart,
+      corrupt,
     }
   }
 
-  val selectsOnlyExistingTests = observed.selected.subseteq(TESTS.intersect(tree.present))
-    and observed.sinceStart.selected.subseteq(TESTS.intersect(tree.present))
+  val selectsOnlyExistingTests = observed.selected.subseteq(testsOf(config).intersect(tree.present))
+    and observed.sinceStart.selected.subseteq(testsOf(config).intersect(tree.present))
 
   pure def view(mode: str, selected: Set[str]): View =
     { mode: mode, selected: selected, sinceStart: { mode: mode, selected: selected } }
@@ -265,6 +315,18 @@ module selection {
       assert(observed == { mode: "scoped", selected: Set("test_two", "test_sub"), sinceStart: { mode: "none", selected: Set() } }),
       inspect,
     })
+
+  run narrowedTestRootsReplanFromScratchTest = init.then(edit("beta")).then(toggleConfig("narrow"))
+    .then(all { assert(observed == view("none", Set())), inspect })
+
+  run tableAsGlobalInputSelectsEveryTestTest = init.then(toggleConfig("tableGlobal")).then(edit("table"))
+    .then(all { assert(observed == view("full", TESTS)), inspect })
+
+  run damagedCacheIsRebuiltTest = init.then(edit("beta")).then(corrupt)
+    .then(all { assert(observed == view("scoped", Set("test_one"))), inspect })
+
+  run restartedCacheKeepsAnswersTest = init.then(link("test_two", "alpha")).then(restart).then(edit("beta"))
+    .then(all { assert(observed.selected == Set("test_one", "test_two")), inspect })
 
   run sinceStartSpansCommitsTest = init.then(edit("beta")).then(edit("table"))
     .then(all {

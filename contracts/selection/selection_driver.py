@@ -27,7 +27,7 @@ class SelectionDriver(ActionDriver):
     """Subclass this, implement each action against the real code, and read state back in observe()."""
 
     __quint_contract__ = "selection"
-    __quint_fingerprint__ = "cf000bfbde0b51771cbdd6ce33c49cb50a7fc562f21f1bef6a16062186c8add2"
+    __quint_fingerprint__ = "9b94b348596ffc1e1b681762acef392fd9cd8fe3a96d7c7a06af512cc434eab1"
     __quint_codegen_command__ = "pytest-quint-connect codegen quint-connect.json -o selection_driver.py"
     __quint_actions__ = {
         "init": ("init", ()),
@@ -41,6 +41,9 @@ class SelectionDriver(ActionDriver):
         "breakSyntax": ("break_syntax", (("file", "file"),)),
         "repair": ("repair", (("file", "file"),)),
         "touchGlobal": ("touch_global", ()),
+        "toggleConfig": ("toggle_config", (("option", "file"),)),
+        "restart": ("restart", ()),
+        "corrupt": ("corrupt", ()),
         "inspect": ("inspect", ()),
     }
 
@@ -87,6 +90,18 @@ class SelectionDriver(ActionDriver):
     @abstractmethod
     def touch_global(self) -> None:
         """edit requirements.txt, a default global input, commit, then select"""
+
+    @abstractmethod
+    def toggle_config(self, option: str) -> None:
+        """flip test_roots between tests and tests/sub, or add/remove data/table.json as a global input, then plan the last commit again"""
+
+    @abstractmethod
+    def restart(self) -> None:
+        """close the graph cache (it prunes on close), reopen it, then plan the last commit again"""
+
+    @abstractmethod
+    def corrupt(self) -> None:
+        """empty every stored graph's edges without updating its checksum, then plan the last commit again"""
 
     @abstractmethod
     def inspect(self) -> None:

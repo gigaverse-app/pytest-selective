@@ -1,5 +1,6 @@
 """Drives pytest-selective's planner through the model's commits. No selection logic lives here."""
 
+import json
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack
 from unittest import mock
@@ -39,6 +40,9 @@ CONTENT_SIDECAR = (
     "    reason: The test reads gamma's source as text.\n",
 )
 CONFIG = ImpactConfig(module_roots=["src", "."], test_roots=["tests"])
+# The model's two configuration options, as edits of CONFIG.
+NARROW_ROOTS = ["tests/sub"]
+TABLE_GLOBAL = [*CONFIG.global_inputs, PATHS["table"]]
 NO_SELECTION: Selection = {"mode": "none", "selected": frozenset()}
 
 
@@ -85,6 +89,32 @@ class _AssumesConsecutiveBase:
         ]
 
 
+_dump = ImpactConfig.model_dump_json
+_get = GraphCache.get
+_parse_python = GraphCache.parse_python
+
+
+def _key_without_test_roots(self: ImpactConfig, **options) -> str:
+    # The graph key hashes the configuration with these fields excluded; leave test_roots out too.
+    exclude = options.get("exclude")
+    if isinstance(exclude, set) and "audit_exemptions" in exclude:
+        options["exclude"] = exclude | {"test_roots"}
+    return _dump(self, **options)
+
+
+def _unchecked_get(self: GraphCache, key: str) -> str | None:
+    row = self.connection.execute("SELECT value FROM cache WHERE key=?", (key,)).fetchone()
+    return None if row is None else row[0]
+
+
+def _parse_by_path(self: GraphCache, repo, files: dict[str, str]):
+    # Remember the first blob seen at each path and parse that one forever after.
+    first = self.__dict__.setdefault("_first_blob_at_path", {})
+    stale = {path: first.setdefault(path, oid) for path, oid in files.items()}
+    parsed = _parse_python(self, repo, stale)
+    return {files[path]: parsed[oid] for path, oid in stale.items() if oid in parsed}
+
+
 # Deliberate faults in the planner, each a list of (target, replacement) patches, built once per
 # history. A mutant's case passes only when some history's selection differs from the model's.
 MUTANTS: dict[str, Callable[[], list[tuple[str, object]]]] = {
@@ -109,6 +139,14 @@ MUTANTS: dict[str, Callable[[], list[tuple[str, object]]]] = {
     "parse-errors-ignored": lambda: [("pytest_selective.impact_graph.GraphCache.snapshot", _parseable_snapshot)],
     # Plan every run against the head of the run before it, as an incremental cache might.
     "assumes-consecutive-base": lambda: _AssumesConsecutiveBase().patches(),
+    # Leave test_roots out of the cached graph's key.
+    "cache-key-omits-test-roots": lambda: [
+        ("pytest_selective.impact_models.ImpactConfig.model_dump_json", _key_without_test_roots)
+    ],
+    # Cache parsed files by path, not by content.
+    "parse-cache-keyed-by-path": lambda: [("pytest_selective.impact_graph.GraphCache.parse_python", _parse_by_path)],
+    # Return stored entries without checking their checksum.
+    "cache-checksum-ignored": lambda: [("pytest_selective.impact_graph.GraphCache.get", _unchecked_get)],
 }
 
 
@@ -118,8 +156,9 @@ class RepositoryDriver(SelectionDriver):
     def __init__(self, context: HistoryContext) -> None:
         self.root = context.work_dir / "repo"
         self._resources = ExitStack()
-        self.cache = GraphCache(context.work_dir / "graph.sqlite3")
-        self._resources.callback(self.cache.close)
+        self.cache_path = context.work_dir / "graph.sqlite3"
+        self.cache = GraphCache(self.cache_path)
+        self._resources.callback(lambda: self.cache.close())
         for target, replacement in MUTANTS[context.mutant]() if context.mutant else ():
             self._resources.enter_context(mock.patch(target, replacement))
         self.imports: dict[str, set[str]] = {}
@@ -127,7 +166,8 @@ class RepositoryDriver(SelectionDriver):
         self.broken: set[str] = set()
         self.versions = dict.fromkeys(PATHS, 0)
         self.requirements = 0
-        self.start = self.head = ""
+        self.config = CONFIG
+        self.start = self.previous = self.head = ""
         self.view: View = {**NO_SELECTION, "sinceStart": NO_SELECTION}
 
     def close(self) -> None:
@@ -150,7 +190,7 @@ class RepositoryDriver(SelectionDriver):
 
     def _select(self, base: str) -> Selection:
         try:
-            report = affected(self.root, base, self.head, CONFIG, self.cache)
+            report = affected(self.root, base, self.head, self.config, self.cache)
         except DependencyDeclarationError as error:
             # Only the hard error the model describes; any other declaration error is a failure.
             if not str(error).startswith("Unparseable Python dependency"):
@@ -161,8 +201,11 @@ class RepositoryDriver(SelectionDriver):
     def _commit(self, *names: str) -> None:
         for name in names:
             self._write(name)
-        base, self.head = self.head, commit(self.root)
-        self.view = {**self._select(base), "sinceStart": self._select(self.start)}
+        self.previous, self.head = self.head, commit(self.root)
+        self._replan()
+
+    def _replan(self) -> None:
+        self.view = {**self._select(self.previous), "sinceStart": self._select(self.start)}
 
     def init(self) -> None:
         init(self.root)
@@ -173,7 +216,7 @@ class RepositoryDriver(SelectionDriver):
         for name in PATHS:
             self._write(name)
         self._write_requirements()
-        self.start = self.head = commit(self.root)
+        self.start = self.previous = self.head = commit(self.root)
 
     def edit(self, file: str) -> None:
         self.versions[file] += 1
@@ -217,6 +260,30 @@ class RepositoryDriver(SelectionDriver):
         self.requirements += 1
         self._write_requirements()
         self._commit()
+
+    def toggle_config(self, option: str) -> None:
+        if option == "narrow":
+            roots = CONFIG.test_roots if self.config.test_roots == NARROW_ROOTS else NARROW_ROOTS
+            self.config = self.config.model_copy(update={"test_roots": roots})
+        else:
+            inputs = CONFIG.global_inputs if self.config.global_inputs == TABLE_GLOBAL else TABLE_GLOBAL
+            self.config = self.config.model_copy(update={"global_inputs": inputs})
+        self._replan()
+
+    def restart(self) -> None:
+        self.cache.close()
+        self.cache = GraphCache(self.cache_path)
+        self._replan()
+
+    def corrupt(self) -> None:
+        rows = self.cache.connection.execute("SELECT key, value FROM cache WHERE key LIKE '%:graph:%'").fetchall()
+        for key, value in rows:
+            graph = json.loads(value)
+            graph["edges"] = {}
+            # The stored checksum still describes the original value.
+            self.cache.connection.execute("UPDATE cache SET value=? WHERE key=?", (json.dumps(graph), key))
+        self.cache.connection.commit()
+        self._replan()
 
     def inspect(self) -> None:
         pass
