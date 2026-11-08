@@ -9,6 +9,9 @@ on:
         description: Windows xdist worker count to compare with the existing four workers
         type: number
         default: 4
+      ci-esta-ref:
+        description: CI-esta ref containing the candidate native-Git action
+        default: v1
 permissions:
   contents: read
 jobs:
@@ -34,7 +37,15 @@ jobs:
           cache-suffix: matched-windows-${{ matrix.python }}
       - run: uv sync --directory baseline --locked
       - run: uv sync --directory candidate --locked
-      - uses: gigaverse-app/ci-esta/actions/native-windows-git@v1
+      - uses: actions/checkout@v7
+        with:
+          repository: gigaverse-app/ci-esta
+          ref: ${{ inputs.ci-esta-ref }}
+          path: ci-esta-tools
+      - name: Preserve the launcher path for the control
+        shell: pwsh
+        run: '"BASELINE_GIT_PATH=$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'
+      - uses: ./ci-esta-tools/actions/native-windows-git
       - name: Run complete suites in both orders on the same worker
         shell: pwsh
         env:
@@ -46,12 +57,16 @@ jobs:
           $results = Join-Path $env:GITHUB_WORKSPACE 'measurements'
           New-Item -ItemType Directory -Path $results | Out-Null
           $measurements = @()
+          $nativeGitPath = $env:PATH
           foreach ($sample in @('baseline-1', 'candidate-1', 'candidate-2', 'baseline-2')) {
             $arm = $sample.Split('-')[0]
             Push-Location (Join-Path $env:GITHUB_WORKSPACE $arm)
             try {
-              # Both arms use native Git and the work disk, exactly as ordinary CI does.
+              # Keep the suite, coverage and disk identical; record the actual executable.
+              $env:PATH = if ($arm -eq 'candidate') { $nativeGitPath } else { $env:BASELINE_GIT_PATH }
               $env:PYTHONPATH = Join-Path (Get-Location) 'src'
+              $git = (Get-Command git -CommandType Application | Select-Object -First 1).Source
+              Write-Host "$sample uses $git"
               $workers = if ($arm -eq 'candidate') { [int]$env:CANDIDATE_WORKERS } else { 4 }
               $sha = git rev-parse HEAD
               # Keep repeated arms from timing cleanup of an earlier arm's Git fixtures.
@@ -62,7 +77,7 @@ jobs:
               $result = $LASTEXITCODE
               $clock.Stop()
               Get-Content "$results/$sample.log" | Select-Object -Last 25
-              $measurements += [pscustomobject]@{ sample=$sample; sha=$sha; workers=$workers; seconds=$clock.Elapsed.TotalSeconds; exit_code=$result }
+              $measurements += [pscustomobject]@{ sample=$sample; sha=$sha; git=$git; workers=$workers; seconds=$clock.Elapsed.TotalSeconds; exit_code=$result }
               $measurements | ConvertTo-Json | Set-Content "$results/timings.json"
               if ($result -ne 0) { throw "${sample} failed: $result" }
             } finally { Pop-Location }
