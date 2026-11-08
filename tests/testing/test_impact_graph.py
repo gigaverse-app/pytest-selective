@@ -185,6 +185,38 @@ def test_star_import_without_all_follows_only_the_package(repo: Path, config: Im
     assert affected(repo, base, head, config, cache).selected == ["tests/left/test_one.py"]
 
 
+@pytest.mark.parametrize("importer", ["tests/left/test_one.py", "tests/left/conftest.py"])
+@pytest.mark.parametrize("shadowed", [False, True])
+def test_bare_import_resolves_from_the_importers_prepend_mode_base_directory(
+    repo: Path, config: ImpactConfig, cache: GraphCache, importer: str, shadowed: bool
+) -> None:
+    # pytest's default import mode puts each test file's and conftest's first directory without an
+    # __init__.py on sys.path, so `import helpers` there loads tests/left/helpers.py.
+    write(repo, "tests/left/helpers.py", "VALUE = 1")
+    write(repo, importer, "import helpers\ndef test_one(): assert helpers.VALUE == 1")
+    if shadowed:
+        # A same-named module under a configured root does not hide the one pytest loads.
+        write(repo, "src/helpers.py", "VALUE = 1")
+    base = commit(repo)
+    write(repo, "tests/left/helpers.py", "VALUE = 2")
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == ["tests/left/test_one.py"]
+
+
+def test_bare_import_does_not_resolve_inside_a_test_package(
+    repo: Path, config: ImpactConfig, cache: GraphCache
+) -> None:
+    # With tests/left/__init__.py the base directory is tests/, so `helpers` is not tests/left/helpers.py.
+    write(repo, "tests/__init__.py")
+    write(repo, "tests/left/__init__.py")
+    write(repo, "tests/left/helpers.py", "VALUE = 1")
+    write(repo, "tests/right/test_two.py", "import helpers\ndef test_two(): pass")
+    base = commit(repo)
+    write(repo, "tests/left/helpers.py", "VALUE = 2")
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == []
+
+
 def test_declared_dynamic_import_reaches_reader_and_its_importers(
     repo: Path, config: ImpactConfig, cache: GraphCache
 ) -> None:
