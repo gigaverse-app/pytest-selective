@@ -6,6 +6,8 @@ on:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
   workflow_call:
+  schedule:
+    - cron: '13 3 * * 1'
 permissions:
   contents: read
 concurrency:
@@ -92,13 +94,12 @@ jobs:
         with:
           junit-pattern: test-timings.xml
           artifact-name: test-timings-${{ matrix.python }}-${{ matrix.os }}
-      - run: uv run --locked python scripts/tutorial.py --output tutorial-report.json
+      # tests/test_tutorial.py owns the end-to-end tutorial and follows the file plan.
       - uses: actions/upload-artifact@v7
+        if: ${{ hashFiles('coverage.xml') != '' }}
         with:
           name: evidence-${{ matrix.os }}-${{ matrix.python }}
-          path: |
-            coverage.xml
-            tutorial-report.json
+          path: coverage.xml
   pytest-minimum:
     needs: select-tests
     if: >-
@@ -167,10 +168,15 @@ jobs:
         run: uv run --locked --group quint pytest-quint-connect codegen --check contracts/selection/quint-connect.json
       - name: Generate histories from the model and replay them against the planner
         run: uv run --locked --group quint pytest -c contracts/selection/quint.ini contracts/selection --quint-require-complete -q
-      # One updated PR comment, an artifact of every receipt and mismatch, and a check that the
-      # README's contract block still matches the run.
+      # Match the README with the same locked renderer that produced these receipts.
+      # A presentation update to the floating report action must not break an immutable release.
+      - name: Check the README against the locked contract renderer
+        run: uv run --locked --group quint pytest-quint-connect report '**/.artifacts/quint-connect/results.json' --readme README.md --check
+      # The current action owns the sticky and artifacts, independently of README formatting.
       - uses: gigaverse-app/pytest-quint-connect/report@v1
         if: ${{ always() }}
+        with:
+          readme-mode: 'off'
 
   validation-gate:
     name: Validation gate
