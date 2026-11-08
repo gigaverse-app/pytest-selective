@@ -911,10 +911,14 @@ wheels = [
 
 [[package]]
 name = "pytest-quint-connect"
-version = "0.1.0"
-source = { git = "https://github.com/gigaverse-app/pytest-quint-connect?rev=2daa87b17bbe78e1d40fcb36aa9b0368cccc47fe#2daa87b17bbe78e1d40fcb36aa9b0368cccc47fe" }
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/72/ce/2f227e8dbb4ef5d8eae7439e5bafc57f1c7be388489aac419d0e51a3036b/pytest_quint_connect-1.0.0.tar.gz", hash = "sha256:420b249c1b119a7c790bf29b8a06449dce300fa21b433aba9543ce68e0bcf2d5", size = 6911811, upload-time = "2026-11-08T14:56:49.605Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a3/b6/8fcb0ee780a213156bde9209e6f14019705468105aa52d4ba93103e3bff3/pytest_quint_connect-1.0.0-py3-none-any.whl", hash = "sha256:6b1c55b2d7c13d8bbdd9aad8087157e2f5f21d1f5494008de296489e7a7120a7", size = 70034, upload-time = "2026-11-08T14:56:47.769Z" },
 ]
 
 [[package]]
@@ -967,7 +971,7 @@ dev = [
     { name = "ruff", specifier = ">=0.14" },
     { name = "twine", specifier = ">=6" },
 ]
-quint = [{ name = "pytest-quint-connect", git = "https://github.com/gigaverse-app/pytest-quint-connect?rev=2daa87b17bbe78e1d40fcb36aa9b0368cccc47fe" }]
+quint = [{ name = "pytest-quint-connect", specifier = ">=1.0.0,<2" }]
 
 [[package]]
 name = "pytest-timeout"

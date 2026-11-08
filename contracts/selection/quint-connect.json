@@ -1,31 +1,73 @@
 {
   "version": 1,
   "name": "selection",
-  "description": "File-level selection across a history of real commits: import, conftest and declared-read closure over the base and head trees, global inputs, deleted files.",
+  "description": "File-level selection across a history of real commits: import, conftest, declaration and content-read closure over the base and head trees, global inputs, deleted files, unparseable source, and selection against the history's first commit.",
   "module": "selection",
   "model": "selection.qnt",
   "invariant": "selectsOnlyExistingTests",
   "actions": {
     "init": "create a fixture repository and commit it",
-    "edit": "rewrite one file's body, commit, then select between the two commits",
+    "edit": "rewrite one file's body, commit, then select",
     "link": "add an import to one file, commit, then select",
     "unlink": "remove an import from one file, commit, then select",
-    "remove": "delete a module or test file, commit, then select",
-    "restore": "add a deleted file back without imports, commit, then select",
+    "remove": "delete a file, commit, then select",
+    "restore": "add a deleted file back without imports or declarations, commit, then select",
+    "declare": "add a # gv:test-dependency: comment to a test, commit, then select",
+    "undeclare": "remove a # gv:test-dependency: comment, commit, then select",
+    "breakSyntax": "make a Python file unparseable, commit, then select",
+    "repair": "make an unparseable file parse again, commit, then select",
     "touchGlobal": "edit requirements.txt, a default global input, commit, then select",
-    "inspect": "read the last selection without committing"
+    "inspect": "read the last selections without committing"
   },
   "witnesses": [
     "transitiveEditTest",
     "deletedModuleSelectsFormerImportersTest",
     "declaredReadTest",
     "conftestSelectsEveryTestTest",
+    "nestedConftestSelectsItsSubtreeTest",
     "globalInputSelectsEveryTestTest",
     "newImportWidensSelectionTest",
-    "deletedTestIsNotSelectedTest"
+    "deletedTestIsNotSelectedTest",
+    "removedDeclarationStopsSelectingTest",
+    "helperModuleSelectsItsImportersTest",
+    "contentReadIsNotTransitiveTest",
+    "contentReadSelectsOnItsFileTest",
+    "importDeclarationFollowsImportsTest",
+    "unparseableSourceIsAnErrorTest",
+    "revertedImportIsNoChangeSinceStartTest",
+    "sinceStartSpansCommitsTest"
   ],
-  "mutants": ["head-edges-only", "direct-importers-only", "global-inputs-ignored"],
-  "bounds": {"seed": 11, "max_samples": 400, "max_steps": 6, "n_traces": 12},
+  "mutants": [
+    {
+      "name": "head-edges-only",
+      "description": "Plans with the head tree's edges only, so a deleted module's former importers are not selected."
+    },
+    {
+      "name": "direct-importers-only",
+      "description": "Follows only files that import a changed file directly, not their importers."
+    },
+    {
+      "name": "global-inputs-ignored",
+      "description": "Treats requirements.txt like any unreferenced file instead of selecting every test."
+    },
+    {
+      "name": "content-follows-imports",
+      "description": "Reads a kind: content declaration as an import, so it also follows the read file's imports."
+    },
+    {
+      "name": "conftest-scope-collapsed",
+      "description": "Scopes every conftest to the top test directory, so tests/sub/conftest.py reaches every test."
+    },
+    {
+      "name": "parse-errors-ignored",
+      "description": "Treats an unparseable file as importing nothing instead of stopping with an error."
+    },
+    {
+      "name": "assumes-consecutive-base",
+      "description": "Plans every run against the head it planned last, which is right only between neighbouring commits."
+    }
+  ],
+  "bounds": {"seed": 11, "max_samples": 600, "max_steps": 8, "n_traces": 20},
   "root": "../..",
   "sources": [
     "src/pytest_selective/impact_selection.py",
@@ -33,10 +75,13 @@
     "src/pytest_selective/impact_declarations.py",
     "src/pytest_selective/ast_imports.py"
   ],
-  "attest": {"package": "pytest_selective", "source": "src/pytest_selective"},
+  "attest": {
+    "package": "pytest_selective",
+    "source": "src/pytest_selective"
+  },
   "limits": [
-    "One repository: three modules, a conftest, two tests and one declared data file; at most 6 commits per sampled history.",
-    "Covers import, ancestor-conftest and declared-read edges, file deletion and the default global inputs. First-party pins, name-scoped modules, deferred strings, Django URLconf policy and plugin-registering test modules are outside the model.",
+    "One repository: three modules, a test-root helper, a root and a nested conftest, three tests, one data file and one content-kind sidecar; at most 8 commits per sampled history.",
+    "Covers import, ancestor-conftest, import-kind comment and content-kind sidecar edges, file deletion, unparseable source, the default global inputs, and selection against both the previous commit and the history's first commit. First-party pins, name-scoped modules, deferred strings, Django URLconf policy and plugin-registering test modules are outside the model.",
     "Each step is a real Git commit selected by affected() through one GraphCache per history; the driver's mapping of paths to file names is trusted."
   ]
 }

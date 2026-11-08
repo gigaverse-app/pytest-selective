@@ -11,7 +11,8 @@ on pytest-selective itself.
 - Reproduce selection bugs using real temporary Git repositories and existing
   `tests/testing/git_repo.py` helpers. Cover base and head trees, deleted inputs,
   explicit declarations and the relevant fallback. Do not mock away selection.
-- The planner's import, conftest and declared-read closure is also a Quint contract in
+- The planner's import, conftest, declaration and content-read closure, its parse-error
+  stop and its selection against older bases are also a Quint contract in
   `contracts/selection`. After changing selection, run it (CONTRIBUTING.md, *The selection
   contract*); extend the model rather than weakening it when the promise changes.
 - Planning supports committed revisions and explicit working-tree snapshots. Preserve full execution on

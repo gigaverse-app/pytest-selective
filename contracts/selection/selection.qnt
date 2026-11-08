@@ -1,35 +1,68 @@
 // What pytest-selective promises about one small repository, commit after commit.
 //
-// After each commit, the selected tests are exactly the tests that reach a changed file
-// through imports, an ancestor conftest or a declared read, in the base or the head tree.
-// A change to a global input selects every test. `event` names each commit for the driver;
-// `observed` is the selection the driver must read back from the real planner.
+// The selected tests are exactly the tests that reach a changed file, in the base or the head
+// tree, through imports, ancestor conftests or import-kind declarations, plus the readers of a
+// changed file's contents. A content read does not follow the read file's imports. A change to a
+// global input selects every test. Unparseable Python in either tree is an error, never a
+// narrower or a full selection. `observed` holds the selection between the last two commits and
+// between the history's first commit and the last one, as a pull request's base and head.
 module selection {
   type Event = { op: str, file: str, target: str }
-  type View = { mode: str, selected: Set[str] }
+  type Selection = { mode: str, selected: Set[str] }
+  type View = { mode: str, selected: Set[str], sinceStart: Selection }
+  type Tree = {
+    imports: Set[(str, str)],
+    present: Set[str],
+    declared: Set[(str, str)],
+    versions: str -> int,
+    broken: Set[str],
+    requirements: int,
+  }
+  type Content = { present: bool, imports: Set[(str, str)], declared: Set[(str, str)], version: int, broken: bool }
 
   pure val MODULES = Set("alpha", "beta", "gamma")
-  pure val TESTS = Set("test_one", "test_two")
-  // Files that can import a module.
-  pure val IMPORTERS = MODULES.union(TESTS).union(Set("conftest"))
-  // Every file in the graph: the importers and a data table that test_two declares it reads.
-  pure val FILES = IMPORTERS.union(Set("table"))
+  // tests/helpers.py: a module inside the test root that is not a test.
+  pure val HELPER = "helper"
+  // tests/conftest.py and tests/sub/conftest.py.
+  pure val CONFTESTS = Set("conftest", "subconftest")
+  // tests/test_one.py, tests/test_two.py and tests/sub/test_sub.py.
+  pure val TESTS = Set("test_one", "test_two", "test_sub")
+  pure val PYTHON = MODULES.union(Set(HELPER)).union(CONFTESTS).union(TESTS)
+  // Every file in the graph: the Python files and a data table.
+  pure val FILES = PYTHON.union(Set("table"))
+  // Files that can be imported.
+  pure val TARGETS = MODULES.union(Set(HELPER))
+  // Files a test can declare it reads with a `# gv:test-dependency:` comment (import kind).
+  pure val DECLARABLE = Set("table", "gamma")
+  // A sidecar declares that test_sub reads gamma's contents (content kind). It never changes.
+  pure val CONTENT_READS = Set(("test_sub", "gamma"))
   // Files a commit may delete and add back.
-  pure val REMOVABLE = MODULES.union(TESTS)
+  pure val REMOVABLE = Set("alpha", "beta", HELPER, "test_one", "test_two")
 
-  // Imports each file's source spells, including imports of a module that is currently deleted.
-  var imports: Set[(str, str)]
-  var present: Set[str]
+  var tree: Tree
+  // The history's first tree, compared with every later one as a pull request's base.
+  var start: Tree
   var event: Event
   var observed: View
 
-  // The dependency edges of one tree: imports between files that exist, each test's
-  // ancestor conftest, and test_two's declared read of the table.
-  pure def edges(spelled: Set[(str, str)], files: Set[str]): Set[(str, str)] = {
-    val resolved = spelled.filter(e => files.contains(e._1) and files.contains(e._2))
-    val conftest = if (files.contains("conftest")) TESTS.intersect(files).map(t => (t, "conftest")) else Set()
-    val declared = if (files.contains("test_two")) Set(("test_two", "table")) else Set()
-    resolved.union(conftest).union(declared)
+  // What one file's bytes are made of, so that equal contents compare equal.
+  pure def content(t: Tree, f: str): Content =
+    if (t.present.contains(f))
+      {
+        present: true,
+        imports: t.imports.filter(e => e._1 == f),
+        declared: t.declared.filter(d => d._1 == f),
+        version: t.versions.get(f),
+        broken: t.broken.contains(f),
+      }
+    else { present: false, imports: Set(), declared: Set(), version: 0, broken: false }
+
+  // The dependency edges of one tree: imports and import-kind declarations between files that
+  // exist, and each test's ancestor conftests.
+  pure def edges(t: Tree): Set[(str, str)] = {
+    val linked = t.imports.union(t.declared).filter(e => t.present.contains(e._1) and t.present.contains(e._2))
+    val root = TESTS.intersect(t.present).map(test => (test, "conftest"))
+    linked.union(root).union(Set(("test_sub", "subconftest")))
   }
 
   // The files that reach `changed` along `e`, the changed files included. Folding once per file
@@ -37,110 +70,205 @@ module selection {
   pure def reaching(e: Set[(str, str)], changed: Set[str]): Set[str] =
     FILES.fold(changed, (found, _) => found.union(e.filter(x => found.contains(x._2)).map(x => x._1)))
 
-  pure def selection(
-    beforeImports: Set[(str, str)], beforeFiles: Set[str],
-    afterImports: Set[(str, str)], afterFiles: Set[str],
-    changed: Set[str], global: bool,
-  ): View = {
-    val tests = TESTS.intersect(afterFiles)
-    val both = edges(beforeImports, beforeFiles).union(edges(afterImports, afterFiles))
-    val chosen = if (global) tests else reaching(both, changed).intersect(tests)
-    {
-      mode: if (global or (chosen.size() > 0 and chosen == tests)) "full" else if (chosen.size() > 0) "scoped" else "none",
-      selected: chosen,
+  pure def selection(before: Tree, after: Tree): Selection =
+    if (before.broken.size() > 0 or after.broken.size() > 0) { mode: "error", selected: Set() }
+    else {
+      val changed = FILES.filter(f => content(before, f) != content(after, f))
+      val global = before.requirements != after.requirements
+      val tests = TESTS.intersect(after.present)
+      val readers = CONTENT_READS.filter(r => changed.contains(r._2)).map(r => r._1)
+      val chosen = if (global) tests
+        else reaching(edges(before).union(edges(after)), changed).union(readers).intersect(tests)
+      {
+        mode: if (global or (chosen.size() > 0 and chosen == tests)) "full" else if (chosen.size() > 0) "scoped" else "none",
+        selected: chosen,
+      }
+    }
+
+  // One commit from the current tree to `following`, and the selections it produces.
+  action commit(op: str, file: str, target: str, following: Tree): bool = {
+    val latest = selection(tree, following)
+    all {
+      tree' = following,
+      start' = start,
+      event' = { op: op, file: file, target: target },
+      observed' = { mode: latest.mode, selected: latest.selected, sinceStart: selection(start, following) },
     }
   }
 
-  // One commit from the current tree to the given one, and the selection between them.
-  action commit(
-    op: str, file: str, target: str,
-    nextImports: Set[(str, str)], nextFiles: Set[str], changed: Set[str], global: bool,
-  ): bool = all {
-    imports' = nextImports,
-    present' = nextFiles,
-    event' = { op: op, file: file, target: target },
-    observed' = selection(imports, present, nextImports, nextFiles, changed, global),
+  pure val INITIAL: Tree = {
+    imports: Set(("test_one", "alpha"), ("alpha", "beta"), ("test_two", "gamma"), ("test_sub", HELPER)),
+    present: FILES,
+    declared: Set(("test_two", "table")),
+    versions: FILES.mapBy(_ => 0),
+    broken: Set(),
+    requirements: 0,
   }
 
   action init = all {
-    imports' = Set(("test_one", "alpha"), ("alpha", "beta"), ("test_two", "gamma")),
-    present' = FILES,
+    tree' = INITIAL,
+    start' = INITIAL,
     event' = { op: "init", file: "", target: "" },
-    observed' = { mode: "none", selected: Set() },
+    observed' = { mode: "none", selected: Set(), sinceStart: { mode: "none", selected: Set() } },
   }
 
-  // Change a file's body without changing what it imports.
+  // Change a file's body without changing what it imports or declares.
   action edit(file: str): bool = all {
-    present.contains(file),
-    commit("edit", file, "", imports, present, Set(file), false),
+    tree.present.contains(file),
+    commit("edit", file, "", { ...tree, versions: tree.versions.set(file, tree.versions.get(file) + 1) }),
   }
 
   action link(file: str, target: str): bool = all {
-    IMPORTERS.contains(file),
-    MODULES.contains(target),
+    PYTHON.contains(file),
+    TARGETS.contains(target),
     file != target,
-    present.contains(file),
-    present.contains(target),
-    not(imports.contains((file, target))),
-    commit("link", file, target, imports.union(Set((file, target))), present, Set(file), false),
+    tree.present.contains(file),
+    tree.present.contains(target),
+    not(tree.imports.contains((file, target))),
+    commit("link", file, target, { ...tree, imports: tree.imports.union(Set((file, target))) }),
   }
 
   action unlink(file: str, target: str): bool = all {
-    present.contains(file),
-    imports.contains((file, target)),
-    commit("unlink", file, target, imports.exclude(Set((file, target))), present, Set(file), false),
+    tree.present.contains(file),
+    tree.imports.contains((file, target)),
+    commit("unlink", file, target, { ...tree, imports: tree.imports.exclude(Set((file, target))) }),
   }
 
   // Delete a file. Its importers keep spelling the import, which no longer resolves.
   action remove(file: str): bool = all {
     REMOVABLE.contains(file),
-    present.contains(file),
-    commit("remove", file, "", imports.filter(e => e._1 != file), present.exclude(Set(file)), Set(file), false),
+    tree.present.contains(file),
+    commit("remove", file, "", {
+      ...tree,
+      imports: tree.imports.filter(e => e._1 != file),
+      present: tree.present.exclude(Set(file)),
+      declared: tree.declared.filter(d => d._1 != file),
+      broken: tree.broken.exclude(Set(file)),
+    }),
   }
 
-  // Add a deleted file back, importing nothing.
+  // Add a deleted file back, importing and declaring nothing.
   action restore(file: str): bool = all {
     REMOVABLE.contains(file),
-    not(present.contains(file)),
-    commit("restore", file, "", imports, present.union(Set(file)), Set(file), false),
+    not(tree.present.contains(file)),
+    commit("restore", file, "", { ...tree, present: tree.present.union(Set(file)) }),
   }
 
-  action touchGlobal = commit("touchGlobal", "", "", imports, present, Set(), true)
+  action declare(file: str, target: str): bool = all {
+    TESTS.contains(file),
+    tree.present.contains(file),
+    DECLARABLE.contains(target),
+    not(tree.declared.contains((file, target))),
+    commit("declare", file, target, { ...tree, declared: tree.declared.union(Set((file, target))) }),
+  }
+
+  action undeclare(file: str, target: str): bool = all {
+    tree.declared.contains((file, target)),
+    commit("undeclare", file, target, { ...tree, declared: tree.declared.exclude(Set((file, target))) }),
+  }
+
+  // Make a Python file unparseable, keeping everything else it spells.
+  action breakSyntax(file: str): bool = all {
+    PYTHON.contains(file),
+    tree.present.contains(file),
+    not(tree.broken.contains(file)),
+    commit("breakSyntax", file, "", { ...tree, broken: tree.broken.union(Set(file)) }),
+  }
+
+  action repair(file: str): bool = all {
+    tree.broken.contains(file),
+    commit("repair", file, "", { ...tree, broken: tree.broken.exclude(Set(file)) }),
+  }
+
+  action touchGlobal = commit("touchGlobal", "", "", { ...tree, requirements: tree.requirements + 1 })
 
   // A step that commits nothing, so that a witness can end in an assertion.
   action inspect = all {
-    imports' = imports,
-    present' = present,
+    tree' = tree,
+    start' = start,
     event' = { op: "inspect", file: "", target: "" },
     observed' = observed,
   }
 
   action step = {
     nondet file = FILES.oneOf()
-    nondet target = MODULES.oneOf()
-    any { edit(file), link(file, target), unlink(file, target), remove(file), restore(file), touchGlobal }
+    nondet target = TARGETS.union(DECLARABLE).oneOf()
+    any {
+      edit(file),
+      link(file, target),
+      unlink(file, target),
+      remove(file),
+      restore(file),
+      declare(file, target),
+      undeclare(file, target),
+      breakSyntax(file),
+      repair(file),
+      touchGlobal,
+    }
   }
 
-  val selectsOnlyExistingTests = observed.selected.subseteq(TESTS.intersect(present))
+  val selectsOnlyExistingTests = observed.selected.subseteq(TESTS.intersect(tree.present))
+    and observed.sinceStart.selected.subseteq(TESTS.intersect(tree.present))
+
+  pure def view(mode: str, selected: Set[str]): View =
+    { mode: mode, selected: selected, sinceStart: { mode: mode, selected: selected } }
 
   run transitiveEditTest = init.then(edit("beta"))
-    .then(all { assert(observed == { mode: "scoped", selected: Set("test_one") }), inspect })
+    .then(all { assert(observed == view("scoped", Set("test_one"))), inspect })
 
   run deletedModuleSelectsFormerImportersTest = init.then(remove("beta"))
-    .then(all { assert(observed == { mode: "scoped", selected: Set("test_one") }), inspect })
+    .then(all { assert(observed == view("scoped", Set("test_one"))), inspect })
 
   run declaredReadTest = init.then(edit("table"))
-    .then(all { assert(observed == { mode: "scoped", selected: Set("test_two") }), inspect })
+    .then(all { assert(observed == view("scoped", Set("test_two"))), inspect })
 
   run conftestSelectsEveryTestTest = init.then(edit("conftest"))
-    .then(all { assert(observed == { mode: "full", selected: TESTS }), inspect })
+    .then(all { assert(observed == view("full", TESTS)), inspect })
+
+  run nestedConftestSelectsItsSubtreeTest = init.then(edit("subconftest"))
+    .then(all { assert(observed == view("scoped", Set("test_sub"))), inspect })
 
   run globalInputSelectsEveryTestTest = init.then(touchGlobal)
-    .then(all { assert(observed == { mode: "full", selected: TESTS }), inspect })
+    .then(all { assert(observed == view("full", TESTS)), inspect })
 
   run newImportWidensSelectionTest = init.then(link("test_two", "alpha")).then(edit("beta"))
-    .then(all { assert(observed == { mode: "full", selected: TESTS }), inspect })
+    .then(all { assert(observed.selected == Set("test_one", "test_two")), inspect })
 
   run deletedTestIsNotSelectedTest = init.then(remove("test_one")).then(edit("beta"))
-    .then(all { assert(observed == { mode: "none", selected: Set() }), inspect })
+    .then(all { assert(observed.mode == "none" and observed.sinceStart.selected == Set()), inspect })
+
+  run removedDeclarationStopsSelectingTest = init.then(undeclare("test_two", "table")).then(edit("table"))
+    .then(all { assert(observed.mode == "none" and observed.sinceStart.selected == Set("test_two")), inspect })
+
+  run helperModuleSelectsItsImportersTest = init.then(link(HELPER, "beta")).then(edit("beta"))
+    .then(all { assert(observed == view("scoped", Set("test_one", "test_sub"))), inspect })
+
+  run contentReadIsNotTransitiveTest = init.then(link("gamma", "beta")).then(edit("beta"))
+    .then(all { assert(observed.selected == Set("test_one", "test_two")), inspect })
+
+  run contentReadSelectsOnItsFileTest = init.then(edit("gamma"))
+    .then(all { assert(observed == view("scoped", Set("test_two", "test_sub"))), inspect })
+
+  run importDeclarationFollowsImportsTest = init.then(link("gamma", "beta")).then(declare("test_sub", "gamma"))
+    .then(edit("beta"))
+    .then(all { assert(observed.selected == TESTS), inspect })
+
+  run unparseableSourceIsAnErrorTest = init.then(breakSyntax("beta")).then(repair("beta"))
+    .then(all {
+      // The base is still unparseable; against the first commit nothing changed.
+      assert(observed == { mode: "error", selected: Set(), sinceStart: { mode: "none", selected: Set() } }),
+      inspect,
+    })
+
+  run revertedImportIsNoChangeSinceStartTest = init.then(link("gamma", "alpha")).then(unlink("gamma", "alpha"))
+    .then(all {
+      assert(observed == { mode: "scoped", selected: Set("test_two", "test_sub"), sinceStart: { mode: "none", selected: Set() } }),
+      inspect,
+    })
+
+  run sinceStartSpansCommitsTest = init.then(edit("beta")).then(edit("table"))
+    .then(all {
+      assert(observed == { mode: "scoped", selected: Set("test_two"), sinceStart: { mode: "scoped", selected: Set("test_one", "test_two") } }),
+      inspect,
+    })
 }

@@ -49,6 +49,14 @@ When selection semantics change on purpose, change `selection.qnt` with them and
 regenerate the driver (`pytest-quint-connect codegen contracts/selection/quint-connect.json`).
 Never drop a witness, mutant or observed field to make it pass.
 
+CI reports each run in one pull-request comment and checks the README's contract block
+against it. After a change to the contract's cases, refresh the block from a complete
+local run and commit it:
+
+```bash
+uv run --group quint pytest-quint-connect report '**/.artifacts/quint-connect/results.json' --readme README.md
+```
+
 ### Shared implementation owners
 
 | Contract | Owner |

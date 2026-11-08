@@ -146,6 +146,10 @@ jobs:
   selection-contract:
     name: Selection contract (Quint)
     needs: select-tests
+    permissions:
+      contents: read
+      # The contract report's pull-request comment.
+      pull-requests: write
     if: >-
       ${{ always() && !cancelled() && (needs.select-tests.result != 'success' ||
           fromJSON(needs.select-tests.outputs.lanes).contracts) }}
@@ -163,13 +167,10 @@ jobs:
         run: uv run --locked --group quint pytest-quint-connect codegen --check contracts/selection/quint-connect.json
       - name: Generate histories from the model and replay them against the planner
         run: uv run --locked --group quint pytest -c contracts/selection/quint.ini contracts/selection --quint-require-complete -q
-      - uses: actions/upload-artifact@v7
+      # One updated PR comment, an artifact of every receipt and mismatch, and a check that the
+      # README's contract block still matches the run.
+      - uses: gigaverse-app/pytest-quint-connect/report@v1
         if: ${{ always() }}
-        with:
-          name: quint-selection-contract
-          path: contracts/selection/.artifacts/quint-connect/
-          include-hidden-files: true
-          if-no-files-found: warn
 
   validation-gate:
     name: Validation gate

@@ -12,16 +12,22 @@ from typing import TypedDict
 from pytest_quint_connect.typed import ActionDriver
 
 
+class Selection(TypedDict):
+    mode: str
+    selected: AbstractSet[str]
+
+
 class View(TypedDict):
     mode: str
     selected: AbstractSet[str]
+    sinceStart: Selection
 
 
 class SelectionDriver(ActionDriver):
     """Subclass this, implement each action against the real code, and read state back in observe()."""
 
     __quint_contract__ = "selection"
-    __quint_fingerprint__ = "87a6bb9a3e0b0380014f4827161647568b9b2029262256072175b9cb3316b39f"
+    __quint_fingerprint__ = "cf000bfbde0b51771cbdd6ce33c49cb50a7fc562f21f1bef6a16062186c8add2"
     __quint_codegen_command__ = "pytest-quint-connect codegen quint-connect.json -o selection_driver.py"
     __quint_actions__ = {
         "init": ("init", ()),
@@ -30,6 +36,10 @@ class SelectionDriver(ActionDriver):
         "unlink": ("unlink", (("file", "file"), ("target", "target"))),
         "remove": ("remove", (("file", "file"),)),
         "restore": ("restore", (("file", "file"),)),
+        "declare": ("declare", (("file", "file"), ("target", "target"))),
+        "undeclare": ("undeclare", (("file", "file"), ("target", "target"))),
+        "breakSyntax": ("break_syntax", (("file", "file"),)),
+        "repair": ("repair", (("file", "file"),)),
         "touchGlobal": ("touch_global", ()),
         "inspect": ("inspect", ()),
     }
@@ -40,7 +50,7 @@ class SelectionDriver(ActionDriver):
 
     @abstractmethod
     def edit(self, file: str) -> None:
-        """rewrite one file's body, commit, then select between the two commits"""
+        """rewrite one file's body, commit, then select"""
 
     @abstractmethod
     def link(self, file: str, target: str) -> None:
@@ -52,11 +62,27 @@ class SelectionDriver(ActionDriver):
 
     @abstractmethod
     def remove(self, file: str) -> None:
-        """delete a module or test file, commit, then select"""
+        """delete a file, commit, then select"""
 
     @abstractmethod
     def restore(self, file: str) -> None:
-        """add a deleted file back without imports, commit, then select"""
+        """add a deleted file back without imports or declarations, commit, then select"""
+
+    @abstractmethod
+    def declare(self, file: str, target: str) -> None:
+        """add a # gv:test-dependency: comment to a test, commit, then select"""
+
+    @abstractmethod
+    def undeclare(self, file: str, target: str) -> None:
+        """remove a # gv:test-dependency: comment, commit, then select"""
+
+    @abstractmethod
+    def break_syntax(self, file: str) -> None:
+        """make a Python file unparseable, commit, then select"""
+
+    @abstractmethod
+    def repair(self, file: str) -> None:
+        """make an unparseable file parse again, commit, then select"""
 
     @abstractmethod
     def touch_global(self) -> None:
@@ -64,7 +90,7 @@ class SelectionDriver(ActionDriver):
 
     @abstractmethod
     def inspect(self) -> None:
-        """read the last selection without committing"""
+        """read the last selections without committing"""
 
     @abstractmethod
     def observe(self) -> View:
