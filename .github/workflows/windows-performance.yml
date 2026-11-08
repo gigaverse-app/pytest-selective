@@ -31,7 +31,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           path: candidate
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: ${{ matrix.python }}
           cache-suffix: matched-windows-${{ matrix.python }}
