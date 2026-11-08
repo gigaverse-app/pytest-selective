@@ -69,6 +69,19 @@ Covered line and branch totals were identical within each interpreter. The
 These two samples per arm do not establish a consistent benefit from eight
 workers, so ordinary CI retains four.
 
+[Run 42506661099, attempt 1](https://github.com/gigaverse-app/pytest-selective/actions/runs/42506661099)
+tested two workers against four on the same revision, in 4/2/2/4 order:
+
+| Python | Four-worker samples | Two-worker samples | Mean before | Mean after | Reduction (higher is better) |
+| --- | --- | --- | --- | --- | --- |
+| 3.11 | 174.68s, 164.44s | 232.35s, 235.57s | 169.56s | 233.96s | -38.0% |
+| 3.14 | 115.78s, 118.46s | 163.77s, 158.67s | 117.12s | 161.22s | -37.7% |
+
+Every sample passed with the same test identities, outcomes and covered
+line/branch totals as its four-worker controls. Two workers were consistently
+slower. Compare arms within each run: the different absolute baseline times
+across runs demonstrate runner variation and are not evidence of a code change.
+
 ## Coverage preservation
 
 On Python 3.11, both candidates retain all 540 original outcomes: 529 passed and
