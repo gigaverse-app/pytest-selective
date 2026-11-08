@@ -164,6 +164,7 @@ def plan(repo: Path, config: LaneConfig, base: str, head: str, *, full: bool = F
         # completeness checks. Consult the cached base inventory, not filename guesses.
         before = cache.snapshot(repo, base, config.graph)
         affected_tests = set(report.selected) | (set(report.changed) & set(before.tests))
+        graph_tests = set(before.tests) | set(cache.snapshot(repo, head, config.graph).tests)
         unmapped = sorted(
             test
             for test in affected_tests
@@ -183,7 +184,9 @@ def plan(repo: Path, config: LaneConfig, base: str, head: str, *, full: bool = F
         # Select whole lanes: validators may require complete conformance evidence.
         for name, lane in config.lanes.items():
             reasons = [f"global input: {path}" for path in global_paths]
-            if report.mode == "full":
+            # Every graph test being affected says nothing about a lane that holds none (a Bun or
+            # Node lane, a build or smoke job), which other evidence selects.
+            if report.mode == "full" and any(within(test, root) for test in graph_tests for root in lane.roots):
                 reasons.append("all graph test files affected")
             reasons.extend(
                 f"affected test: {test}" for test in report.selected if any(within(test, root) for root in lane.roots)
