@@ -1,17 +1,16 @@
 name: Matched Windows performance
 on:
-  pull_request:
-    paths: ['.github/workflows/windows-performance.yml']
   workflow_dispatch:
     inputs:
       baseline:
         description: Immutable baseline commit to compare with the selected ref
         required: true
+      candidate-workers:
+        description: Windows xdist worker count to compare with the existing four workers
+        type: number
+        default: 4
 permissions:
   contents: read
-concurrency:
-  group: windows-performance-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   compare:
     runs-on: windows-latest
@@ -23,46 +22,47 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.baseline || github.event.pull_request.base.sha }}
+          ref: ${{ inputs.baseline }}
           path: baseline
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           path: candidate
-      - uses: astral-sh/setup-uv@v10.3.3
+      - uses: astral-sh/setup-uv@v10
         with:
           python-version: ${{ matrix.python }}
           cache-suffix: matched-windows-${{ matrix.python }}
       - run: uv sync --directory baseline --locked
       - run: uv sync --directory candidate --locked
-      - name: Preserve the baseline Git search path
-        shell: pwsh
-        run: '"BASELINE_GIT_PATH=$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'
       - uses: gigaverse-app/ci-esta/actions/native-windows-git@v1
       - name: Run complete suites in both orders on the same worker
         shell: pwsh
+        env:
+          CANDIDATE_WORKERS: ${{ inputs.candidate-workers }}
+          TMP: ${{ runner.temp }}
+          TEMP: ${{ runner.temp }}
+          TMPDIR: ${{ runner.temp }}
         run: |
           $results = Join-Path $env:GITHUB_WORKSPACE 'measurements'
           New-Item -ItemType Directory -Path $results | Out-Null
           $measurements = @()
-          $originalPath = $env:BASELINE_GIT_PATH
-          $nativeGitPath = $env:PATH
           foreach ($sample in @('baseline-1', 'candidate-1', 'candidate-2', 'baseline-2')) {
             $arm = $sample.Split('-')[0]
             Push-Location (Join-Path $env:GITHUB_WORKSPACE $arm)
             try {
-              # Start every arm with the same PATH; only the candidate opts in.
-              $env:PATH = if ($arm -eq 'candidate') { $nativeGitPath } else { $originalPath }
+              # Both arms use native Git and the work disk, exactly as ordinary CI does.
+              $env:PYTHONPATH = Join-Path (Get-Location) 'src'
+              $workers = if ($arm -eq 'candidate') { [int]$env:CANDIDATE_WORKERS } else { 4 }
               $sha = git rev-parse HEAD
               # Keep repeated arms from timing cleanup of an earlier arm's Git fixtures.
               $temp = Join-Path $env:RUNNER_TEMP "matched-pytest-$sample"
               if (Test-Path -LiteralPath $temp) { throw "Temporary path already exists: $temp" }
               $clock = [System.Diagnostics.Stopwatch]::StartNew()
-              uv run --locked pytest -q -n 4 --basetemp="$temp" --durations=20 --cov --cov-report="xml:$results/$sample-coverage.xml" --junitxml="$results/$sample-tests.xml" *> "$results/$sample.log"
+              uv run --locked pytest -q -p no:selective -n $workers --basetemp="$temp" --durations=20 --cov --cov-report="xml:$results/$sample-coverage.xml" --junitxml="$results/$sample-tests.xml" *> "$results/$sample.log"
               $result = $LASTEXITCODE
               $clock.Stop()
               Get-Content "$results/$sample.log" | Select-Object -Last 25
-              $measurements += [pscustomobject]@{ sample=$sample; sha=$sha; seconds=$clock.Elapsed.TotalSeconds; exit_code=$result }
+              $measurements += [pscustomobject]@{ sample=$sample; sha=$sha; workers=$workers; seconds=$clock.Elapsed.TotalSeconds; exit_code=$result }
               $measurements | ConvertTo-Json | Set-Content "$results/timings.json"
               if ($result -ne 0) { throw "${sample} failed: $result" }
             } finally { Pop-Location }
