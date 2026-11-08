@@ -72,3 +72,5 @@ Unreferenced documentation runs zero tests; explicit full checkpoints and
 failed-planning fallbacks retain complete coverage and required gates.
 The Python graph remains owned by pytest-selective; Bun reporting requires no
 Python selector and does not belong in this repository's runtime.
+
+<!-- probe: docs-only routing -->

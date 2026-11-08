@@ -560,3 +560,4 @@ watchdog==6.0.0 \
     --hash=sha256:e7631a77ffb1f7d2eefa4445ebbee491c720a5661ddf6df3498ebecae5ed375c \
     --hash=sha256:ef810fbf7b781a5a593894e4f439773830bdecb885e6880d957d5b9382a960d2
     # via mkdocs
+# probe: docs-only routing
