@@ -46,8 +46,9 @@ ROOT = Path(__file__).resolve().parents[1]
         ("scripts/tutorial.py", True, True, True),
         ("scripts/smoke_distribution.py", True, True, True),
         ("pyproject.toml", True, True, True),
-        # The fixture's only test: selecting every graph test file admits every lane.
-        ("tests/test_sample.py", True, True, True),
+        # The fixture's only test: every graph test is affected by imports, which admits only the
+        # lanes holding graph tests; the package and contract lanes hold none here.
+        ("tests/test_sample.py", True, False, False),
         ("tests/testing/git_repo.py", True, True, False),
         ("contracts/selection/selection.qnt", False, True, False),
         ("contracts/selection/conftest.py", False, True, False),
