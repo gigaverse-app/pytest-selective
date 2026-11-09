@@ -24,9 +24,10 @@ select. The default filenames are `test_*.py`, `*_test.py`, `*_tests.py`, and
 
 ## Review and record collection policy
 
-If your repository has `pyproject.toml`, `pytest.ini`, `tox.ini`, or `setup.cfg`,
-record its committed pytest-policy fingerprints. Even a discovered configuration
-file with no pytest settings can have a fingerprint. This review prevents a new
+If your repository has `pyproject.toml`, `pytest.ini`, a `tox.ini` with a `[pytest]`
+section, or a `setup.cfg` with a `[tool:pytest]` section, record its committed
+pytest-policy fingerprints. A `pyproject.toml` or `pytest.ini` with no pytest settings
+still has a fingerprint, because pytest can still choose it. This review prevents a new
 collection rule from silently invalidating the inventory.
 
 ```bash
@@ -135,7 +136,11 @@ Unsupported checker patterns retain the full-check fallback.
 
 The policy fingerprints cover conventional pytest configuration names, including
 `pytest.toml`, `.pytest.toml`, `.pytest.ini` and nested candidates. Empty candidates
-are included because their presence can change pytest's root and precedence.
+are included because their presence can change pytest's root and precedence. A
+`tox.ini` without `[pytest]` and a `setup.cfg` without `[tool:pytest]` are not: pytest
+skips them. Adding that section later changes the fingerprints and needs a review.
+Releases up to 1.1.0 recorded such a file as the hash of an empty policy; that entry
+is still accepted and needs no refresh.
 Changes require reviewing and refreshing `pytest_policy`; until then planning
 fails safely and the CI action runs the complete configured roots.
 

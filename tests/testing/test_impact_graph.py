@@ -1,4 +1,5 @@
 # gv:test-dependency: actions/test-impact/action.yml
+import hashlib
 import json
 import os
 import shlex
@@ -2469,6 +2470,36 @@ def test_collection_config_add_edit_delete_requires_review(
     deleted = commit(repo)
     with pytest.raises(ValueError, match="pytest configuration changed"):
         affected(repo, added, deleted, config, cache)
+
+
+@pytest.mark.parametrize("path, section", [("tox.ini", "[pytest]"), ("setup.cfg", "[tool:pytest]")])
+def test_a_config_file_pytest_skips_has_no_policy_until_it_gains_a_pytest_section(
+    repo: Path, config: ImpactConfig, cache: GraphCache, path: str, section: str
+) -> None:
+    """pytest ignores a tox.ini or setup.cfg without its section, so editing one needs no review."""
+    write(repo, path, "[flake8]\nmax-line-length = 120\n")
+    base = commit(repo)
+    config.pytest_policy = policy_fingerprints(repo, inventory(repo, base))
+    assert path not in config.pytest_policy
+    write(repo, path, "[flake8]\nmax-line-length = 100\n")
+    edited = commit(repo)
+    affected(repo, base, edited, config, cache)
+    write(repo, path, f"[flake8]\nmax-line-length = 100\n{section}\naddopts = -q\n")
+    sectioned = commit(repo)
+    with pytest.raises(ValueError, match="pytest configuration changed"):
+        affected(repo, edited, sectioned, config, cache)
+
+
+def test_a_sectionless_fingerprint_recorded_by_an_older_release_still_matches(
+    repo: Path, config: ImpactConfig, cache: GraphCache
+) -> None:
+    write(repo, "tox.ini", "[tox]\nenvlist = py\n")
+    base = commit(repo)
+    # Up to 1.1.0, `fingerprints` recorded this file as the hash of its empty pytest policy.
+    recorded = {**policy_fingerprints(repo, inventory(repo, base)), "tox.ini": hashlib.sha256(b"{}").hexdigest()}
+    config = ImpactConfig.model_validate({**config.model_dump(), "pytest_policy": recorded})
+    write(repo, "tox.ini", "[tox]\nenvlist = py311\n")
+    affected(repo, base, commit(repo), config, cache)
 
 
 def test_explicit_pytest_config_is_fingerprinted_and_cannot_skip_collection_changes(
