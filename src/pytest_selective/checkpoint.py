@@ -1,4 +1,4 @@
-"""One full-checkpoint policy shared by file and lane action entrypoints."""
+"""One full-checkpoint policy, shared by the file and lane action entrypoints."""
 
 import argparse
 import os
