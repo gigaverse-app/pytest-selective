@@ -112,3 +112,13 @@ def test_a_sidecar_the_rules_cannot_be_appended_to_is_left_untouched(repo: Path,
     with pytest.raises(DependencyDeclarationError, match="add these rules by hand"):
         write_sidecar(repo, sidecar)
     assert path.read_bytes().decode() == existing
+
+
+def test_each_sidecar_says_how_many_tests_its_inputs_select(repo: Path, tmp_path: Path) -> None:
+    # Another test module imports the reader, so a declared input reaches both.
+    write(repo, "tests/test_other.py", "from tests.test_reader import test_read\n")
+    write(repo, "tests/test_alone.py", "def test_alone(): pass\n")
+    commit(repo)
+    result = plan(repo, tmp_path, "data/other.json")
+    assert result.total_tests == 3
+    assert [(sidecar.test, sidecar.selects) for sidecar in result.sidecars] == [(TEST, 2)]

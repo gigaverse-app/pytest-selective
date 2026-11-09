@@ -8,6 +8,10 @@ input becomes an ``import`` rule, because a test that loads or runs a script out
 ``content`` rule. Reads under one directory collapse into ``<directory>/**`` only when the test read
 every tracked file under it, so the glob claims no input the run did not see. Every pattern is
 checked against the analysed tree before anything is written.
+
+A declaration selects every test that depends on its reader, not only the reader. Each sidecar
+records how many tests that is, so a reader that every test reaches (a test module another test
+imports, or one that registers session plugins) is visible before the declaration is committed.
 """
 
 import json
@@ -21,6 +25,7 @@ from pytest_selective.impact_declarations import (
     match_inputs,
     parse_manifest,
 )
+from pytest_selective.impact_explanation import dependent_tests
 from pytest_selective.impact_models import (
     AuditRecord,
     AuditReport,
@@ -40,6 +45,8 @@ class SidecarDeclarations(ImpactModel):
     rules: list[ManifestDependencyRule]
     #: Pattern (as written, ``//``-rooted) to the undeclared reads it declares.
     covers: dict[str, list[str]]
+    #: Test files a change to any declared input selects: the reader and every test depending on it.
+    selects: int
 
     @property
     def sidecar(self) -> str:
@@ -48,6 +55,8 @@ class SidecarDeclarations(ImpactModel):
 
 class DeclarationPlan(ImpactModel):
     sidecars: list[SidecarDeclarations]
+    #: Test files in the analysed tree, the scale ``SidecarDeclarations.selects`` is read against.
+    total_tests: int
     #: Reads no valid pattern can name (the path itself is not a valid declaration), with the reason.
     skipped: list[str]
 
@@ -82,6 +91,7 @@ def plan_declarations(report: AuditReport, snapshot: Snapshot, records: list[Aud
     """The sidecar rules that would declare every undeclared read in ``report``."""
     files = set(snapshot.files)
     reads = tracked_reads(snapshot, records)
+    reach = dependent_tests(snapshot)
     undeclared: dict[str, set[str]] = {}
     for read in report.undeclared:
         undeclared.setdefault(read.test, set()).add(read.input)
@@ -106,8 +116,9 @@ def plan_declarations(report: AuditReport, snapshot: Snapshot, records: list[Aud
             if (patterns := inputs[kind])
         ]
         if rules:
-            sidecars.append(SidecarDeclarations(test=test, rules=rules, covers=covers))
-    return DeclarationPlan(sidecars=sidecars, skipped=skipped)
+            selects = max(reach.get(test, 0).bit_count(), 1)
+            sidecars.append(SidecarDeclarations(test=test, rules=rules, covers=covers, selects=selects))
+    return DeclarationPlan(sidecars=sidecars, skipped=skipped, total_tests=len(snapshot.tests))
 
 
 def render_rules(rules: list[ManifestDependencyRule]) -> str:
