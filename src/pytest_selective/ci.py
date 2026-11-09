@@ -35,8 +35,18 @@ class Lane(ImpactModel):
 
     roots: list[str] = Field(default_factory=list)
     inputs: list[str] = Field(default_factory=list)
+    test_patterns: list[str] = Field(default_factory=lambda: ["*"])
+    exclude_patterns: list[str] = Field(default_factory=list)
 
-    @field_validator("roots", "inputs")
+    def contains_test(self, path: str) -> bool:
+        """Match a test by repository-relative path, after limiting it to this lane's roots."""
+        return (
+            any(within(path, root) for root in self.roots)
+            and matches(path, self.test_patterns)
+            and not matches(path, self.exclude_patterns)
+        )
+
+    @field_validator("roots", "inputs", "test_patterns", "exclude_patterns")
     @classmethod
     def relative_paths(cls, values: list[str]) -> list[str]:
         return ImpactConfig.relative_paths(values)
@@ -193,9 +203,7 @@ def plan(repo: Path, config: LaneConfig, base: str, head: str, *, full: bool = F
         # closure that happens to cover every graph test reaches only lanes holding graph tests.
         environment = any(reason.startswith("global input: ") for reason in report.reasons)
         unmapped = sorted(
-            test
-            for test in affected_tests
-            if not any(within(test, root) for lane in config.lanes.values() for root in lane.roots)
+            test for test in affected_tests if not any(lane.contains_test(test) for lane in config.lanes.values())
         )
         if unmapped:
             return all_lanes(
@@ -213,13 +221,9 @@ def plan(repo: Path, config: LaneConfig, base: str, head: str, *, full: bool = F
             reasons = [f"global input: {path}" for path in global_paths]
             # Every graph test being affected by imports says nothing about a lane that holds none
             # (a Bun or Node lane, a build or smoke job), which other evidence selects.
-            if report.mode == "full" and (
-                environment or any(within(test, root) for test in graph_tests for root in lane.roots)
-            ):
+            if report.mode == "full" and (environment or any(lane.contains_test(test) for test in graph_tests)):
                 reasons.append("all graph test files affected")
-            reasons.extend(
-                f"affected test: {test}" for test in report.selected if any(within(test, root) for root in lane.roots)
-            )
+            reasons.extend(f"affected test: {test}" for test in report.selected if lane.contains_test(test))
             # A lane's roots hold its tests, not its inputs: a changed file there selects the lane
             # as a test (a deleted one still needs its lane's completeness checks) or through the
             # graph, like any other file. A README beside the tests reaches nothing.
@@ -227,7 +231,7 @@ def plan(repo: Path, config: LaneConfig, base: str, head: str, *, full: bool = F
             reasons.extend(
                 f"deleted test: {path}"
                 for path in under_roots
-                if path in affected_tests and path not in report.selected
+                if path in affected_tests and path not in report.selected and lane.contains_test(path)
             )
             unreferenced = [f"unreferenced under root: {path}" for path in under_roots if path not in affected_tests]
             globs = [value for value in lane.inputs if job_input(value) is None]

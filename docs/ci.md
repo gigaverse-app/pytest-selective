@@ -285,3 +285,27 @@ The action also uploads the report as the `test-lane-selection` artifact; set
 pull-request sticky's lane section: which lanes ran and why, and the runner time
 the skipped jobs took on the default branch's last full run. See
 [how the two fit together in a Python project](https://github.com/gigaverse-app/ci-esta/blob/main/docs/integrations.md#getting-the-most-from-both-in-a-python-project).
+
+## Split whole lanes by test filename
+
+Lanes sharing a directory can partition its tests with `test_patterns` and
+`exclude_patterns`. Both match repository-relative POSIX paths using the same
+globs as lane inputs; `*` also matches path separators. Roots still limit the
+search. The defaults include every test under the roots and exclude none.
+
+```json
+{
+  "unit": {"roots": ["tests"], "exclude_patterns": ["*_integration.py"]},
+  "integration": {"roots": ["tests"], "test_patterns": ["*_integration.py"]}
+}
+```
+
+Put these entries under `lanes` in the lane configuration. A source dependency
+still selects every lane containing an affected test. Deleted tests use their
+base-revision membership; an affected test claimed by no lane causes a full
+fallback. Explicit inputs and full checkpoints are unaffected by these filters.
+
+Same-named modules in independent module roots are unrelated unless an import
+connects them. An actual ambiguous bare import conservatively retains every
+possible target. Use qualified imports to make independent demo modules
+unambiguous; selection does not guess a runtime import order.

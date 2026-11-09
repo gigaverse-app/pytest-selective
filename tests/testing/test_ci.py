@@ -430,3 +430,79 @@ def test_every_graph_test_affected_selects_only_lanes_holding_graph_tests(tmp_pa
     result = plan(tmp_path, config, base, commit(tmp_path))
     assert result.lanes == {"python": True, "web": False}
     assert "all graph test files affected" in result.lane_reasons["python"]
+
+
+@pytest.mark.parametrize(
+    "changed, expected",
+    [
+        ("tests/test_value.py", {"unit": True, "integration": False}),
+        ("tests/test_value_integration.py", {"unit": False, "integration": True}),
+        ("src/shared.py", {"unit": True, "integration": True}),
+        ("README.md", {"unit": False, "integration": False}),
+    ],
+)
+@pytest.mark.parametrize("delete", [False, True])
+def test_filename_patterns_partition_shared_roots_without_losing_dependencies(tmp_path, changed, expected, delete):
+    init(tmp_path)
+    for name in ("test_value.py", "test_value_integration.py"):
+        write(tmp_path, f"tests/{name}", "from shared import VALUE\ndef test_value(): assert VALUE\n")
+    write(tmp_path, "src/shared.py", "VALUE = 1\n")
+    write(tmp_path, "README.md", "docs\n")
+    config = LaneConfig(
+        graph=ImpactConfig(module_roots=["src", "."], test_roots=["tests"]),
+        lanes={
+            "unit": Lane(roots=["tests"], exclude_patterns=["*_integration.py"]),
+            "integration": Lane(roots=["tests"], test_patterns=["*_integration.py"]),
+        },
+    )
+    base = commit(tmp_path)
+    if delete:
+        (tmp_path / changed).unlink()
+    else:
+        write(tmp_path, changed, (tmp_path / changed).read_text() + "# changed\n")
+    head = commit(tmp_path)
+    config = LaneConfig.model_validate_json(config.model_dump_json())
+    result = plan(tmp_path, config, base, head)
+    assert result.lanes == expected, result.lane_reasons
+    assert all(plan(tmp_path, config, base, head, full=True).lanes.values())
+
+
+@pytest.mark.parametrize("bare_import", [False, True])
+def test_same_named_modules_need_an_actual_import_dependency(tmp_path, bare_import):
+    init(tmp_path)
+    for project in ("alpha", "beta"):
+        write(
+            tmp_path,
+            f"demos/{project}/test_app.py",
+            ("from value import VALUE" if bare_import else f"from demos.{project}.value import VALUE")
+            + "\ndef test_app(): assert VALUE\n",
+        )
+        write(tmp_path, f"demos/{project}/value.py", "VALUE = 1\n")
+    config = LaneConfig(
+        graph=ImpactConfig(module_roots=["demos/alpha", "demos/beta", "."], test_roots=["demos"]),
+        lanes={project: Lane(roots=[f"demos/{project}"]) for project in ("alpha", "beta")},
+    )
+    base = commit(tmp_path)
+    write(tmp_path, "demos/alpha/value.py", "VALUE = 2\n")
+    result = plan(tmp_path, config, base, commit(tmp_path))
+    assert result.lanes == {"alpha": True, "beta": bare_import}, result.lane_reasons
+
+
+@pytest.mark.parametrize("deleted", [False, True])
+def test_unclaimed_filtered_test_keeps_full_fallback(repository, deleted):
+    repo, config, base = repository
+    config.lanes["live"].exclude_patterns = ["*test_other.py"]
+    if deleted:
+        (repo / "tests/live/test_other.py").unlink()
+    else:
+        write(repo, "tests/live/test_other.py", "def test_other(): assert False")
+    result = plan(repo, config, base, commit(repo))
+    assert all(result.lanes.values())
+    assert "unmapped affected tests: tests/live/test_other.py" in result.reason
+
+
+def test_explicit_inputs_are_not_limited_by_test_patterns(repository):
+    repo, config, base = repository
+    config.lanes["live"].test_patterns = ["*_integration.py"]
+    write(repo, "external/contract.json", "{}")
+    assert plan(repo, config, base, commit(repo)).lanes == {"unit": False, "live": True}
