@@ -24,9 +24,22 @@ theme:
   custom_dir: documentation/overrides
   language: en
   font: false
+  # Follow the reader's system theme; the header toggle overrides it.
   palette:
+  - media: "(prefers-color-scheme: light)"
+    scheme: default
     primary: teal
     accent: cyan
+    toggle:
+      icon: material/weather-night
+      name: Switch to dark mode
+  - media: "(prefers-color-scheme: dark)"
+    scheme: slate
+    primary: teal
+    accent: cyan
+    toggle:
+      icon: material/weather-sunny
+      name: Switch to light mode
   features:
   - navigation.top
   - search.suggest
