@@ -14,6 +14,11 @@ inputs:
   head:
     description: Exact checked-out commit.
     default: HEAD
+  pr-head:
+    description: The pull request's head. When the checkout is GitHub's merge of it (refs/pull/N/merge), changes are measured
+      from that merge's base-branch parent, so commits that landed on the base branch after `base` are not counted as the
+      PR's. Empty (any other event) keeps `base`.
+    default: ${{ github.event.pull_request.head.sha }}
   full-roots:
     description: Space-separated complete test roots used if planning cannot prove a narrower scope.
     required: true
@@ -100,6 +105,7 @@ runs:
       config: ${{ inputs.config }}
       base: ${{ inputs.base }}
       head: ${{ inputs.head }}
+      pr-head: ${{ inputs.pr-head }}
       full-roots: ${{ inputs.full-roots }}
       full: ${{ inputs.full }}
       extra-files: ${{ inputs.extra-files }}

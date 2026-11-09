@@ -13,6 +13,12 @@ inputs:
   head:
     description: Exact checked-out commit.
     default: HEAD
+  pr-head:
+    description: >-
+      The pull request's head. When the checkout is GitHub's merge of it (refs/pull/N/merge), changes are measured from
+      that merge's base-branch parent, so commits that landed on the base branch after `base` are not counted as the PR's.
+      Empty (any other event) keeps `base`.
+    default: ${{ github.event.pull_request.head.sha }}
   full-roots:
     description: Space-separated complete test roots used if planning cannot prove a narrower scope.
     required: true
@@ -114,6 +120,7 @@ runs:
         IMPACT_CONFIG: ${{ inputs.config }}
         IMPACT_BASE: ${{ inputs.base }}
         IMPACT_HEAD: ${{ inputs.head }}
+        IMPACT_PR_HEAD: ${{ inputs.pr-head }}
         IMPACT_FULL: ${{ inputs.full }}
         IMPACT_EXTRA: ${{ inputs.extra-files }}
         IMPACT_ALTERNATE_BASE: ${{ inputs.alternate-base }}
@@ -147,6 +154,7 @@ runs:
         # A reused workspace must not upload a previous plan's explanation.
         rm -f test-impact-explanation.json
         args+=(--full "$IMPACT_FULL")
+        if [ -n "${IMPACT_PR_HEAD:-}" ]; then args+=(--pr-head "$IMPACT_PR_HEAD"); fi
         if [ -n "$IMPACT_EXTRA" ]; then args+=(--extra-files "$IMPACT_EXTRA"); fi
         if [ -n "${IMPACT_GRAPH_BASE:-}" ]; then args+=(--graph-base "$IMPACT_GRAPH_BASE"); fi
         # Optional: an unfetchable alternate only forgoes a smaller selection.
