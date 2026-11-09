@@ -232,7 +232,15 @@ def _write_declarations(repo: Path, report: AuditReport, snapshot: Snapshot, rec
     plan = plan_declarations(report, snapshot, records)
     for sidecar in plan.sidecars:
         write_sidecar(repo, sidecar)
-        print(f"wrote {sidecar.sidecar}")
+        print(
+            f"wrote {sidecar.sidecar} (a change to these inputs selects {sidecar.selects} of {plan.total_tests} tests)"
+        )
+        if plan.total_tests > 1 and sidecar.selects == plan.total_tests:
+            print(
+                f"warning: every test depends on {sidecar.test}, so these inputs run the whole suite; "
+                f"`pytest-selective explain` shows why (often another test module imports it)",
+                file=sys.stderr,
+            )
         for rule in sidecar.rules:
             for pattern in rule.inputs:
                 covered = sidecar.covers[pattern]

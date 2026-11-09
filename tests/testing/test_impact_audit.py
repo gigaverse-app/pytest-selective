@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -269,7 +270,12 @@ def test_written_declarations_leave_no_undeclared_read(
     )
     assert "kind: content" in (repo / "tests/test_helper.py.gv-dependency.yaml").read_text(encoding="utf-8")
     printed = capsys.readouterr().out
-    assert "wrote tests/test_subprocess.py.gv-dependency.yaml\n  import: //scripts/tool.py" in printed
+    # Each sidecar says how many tests its inputs select, before anyone commits it.
+    assert re.search(
+        r"wrote tests/test_subprocess\.py\.gv-dependency\.yaml \(a change to these inputs selects \d+ of \d+ tests\)\n"
+        r"  import: //scripts/tool\.py",
+        printed,
+    )
     assert f"Declared {len(UNDECLARED)} of {len(UNDECLARED)} undeclared reads" in printed
     assert audit_cli(run, tmp_path, repo_config(), "--working-tree") == 0
 
