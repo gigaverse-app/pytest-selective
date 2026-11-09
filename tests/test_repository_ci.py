@@ -141,9 +141,14 @@ def test_pytest_jobs_consume_the_public_actions_shared_file_plan():
     assert planner["outputs"]["mode"] == "${{ steps.files.outputs.mode }}"
     assert planner["outputs"]["files"] == "${{ steps.files.outputs.test_roots_json }}"
     for job in ("tests", "pytest-minimum"):
-        execution = next(step for step in jobs[job]["steps"] if any(
-            command in step.get("run", "") for command in ("scripts/run_ci_tests.py", "pytest-selective execute-plan")
-        ))
+        execution = next(
+            step
+            for step in jobs[job]["steps"]
+            if any(
+                command in step.get("run", "")
+                for command in ("scripts/run_ci_tests.py", "pytest-selective execute-plan")
+            )
+        )
         assert execution["env"]["CI_PLANNER_RESULT"] == "${{ needs.select-tests.result }}"
         assert execution["env"]["CI_TEST_MODE"] == "${{ needs.select-tests.outputs.mode }}"
         assert execution["env"]["CI_TEST_FILES"] == "${{ needs.select-tests.outputs.files }}"

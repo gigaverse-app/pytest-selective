@@ -1,4 +1,5 @@
 """Compatibility entry point for the public shared-plan executor."""
+
 import sys
 
 from pytest_selective.execution import main

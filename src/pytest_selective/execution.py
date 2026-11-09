@@ -37,9 +37,17 @@ def main(argv: list[str] | None = None) -> int:
     return subprocess.run(
         # Planning already happened. Integration tests load the plugin in their
         # subprocesses; do not make it an implicit dependency of every CI test.
-        [sys.executable, "-m", "pytest", "-p", "no:selective",
-         *(args.pytest_args[1:] if args.pytest_args[:1] == ["--"] else args.pytest_args),
-         *coverage, "--", *roots]
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-p",
+            "no:selective",
+            *(args.pytest_args[1:] if args.pytest_args[:1] == ["--"] else args.pytest_args),
+            *coverage,
+            "--",
+            *roots,
+        ]
     ).returncode
 
 
