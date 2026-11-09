@@ -278,4 +278,5 @@ def merge_duration_files(input_files: list[Path], output_file: Path) -> dict[str
     output_file.write_text(json.dumps(ordered, indent=4) + "\n")
     return ordered
 
+
 # Source-file selection measurement; behavior is unchanged.
