@@ -203,6 +203,10 @@ pytest. `tests/test_tutorial.py` owns the end-to-end tutorial execution and foll
 that plan; there is no second tutorial invocation in each matrix job. JUnit retains
 its test result and timing, and full plans also upload whole-suite coverage.
 
+To run a complete checkpoint after a CI change, select **CI** in GitHub Actions
+and choose **Run workflow**. Retrying an ordinary PR run preserves its selection;
+use the manual checkpoint when you need full-suite coverage evidence.
+
 ## Duplication
 
 `uv run pre-commit install` installs both the staged dry-lint check and the
