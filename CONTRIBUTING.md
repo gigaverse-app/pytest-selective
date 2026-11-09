@@ -119,7 +119,10 @@ changes, because `distributions` smokes only when that lane is planned. When a t
 or a script starts reading a file by path, declare it next to the reader (a
 `# gv:test-dependency: PATH` comment for simple inputs, or a directory
 `.gv-dependencies.yaml` with `relative_to: reader` for repeated local layouts).
-Keep per-reader sidecars for exceptions needing separate declarations. Review
+`tests/.gv-dependencies.yaml` groups this repository's workflow readers and source
+inspection checks. Its explicit readers preserve scope: source copied into a
+fixture stays `content`, so imports in the copied file do not become dependencies
+of the inspection test. Keep per-reader sidecars for exceptions needing separate declarations. Review
 `pytest-selective audit --write-declarations` output for shared conventions before
 retaining its individual sidecars; preserve `content` versus `import` semantics.
 `quality` runs [scripts/check_lane_routing.py](scripts/check_lane_routing.py),

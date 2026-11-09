@@ -1,4 +1,0 @@
-dependencies:
-  - inputs: ["//tests/**/*.py"]
-    kind: content
-    reason: The isolation check reads test source without executing its imports.
