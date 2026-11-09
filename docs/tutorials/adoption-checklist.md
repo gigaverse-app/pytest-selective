@@ -130,6 +130,7 @@ Use the [complete CI recipe](../ci.md), or the
 | `actions/test-impact@v1` | Use the direct action, including runners without root self-reference support | Shared `full: auto` checkpoints; consume `mode` and `test_roots_json` without reparsing reports |
 | `actions/plan-lanes@v1` | Skip complete unaffected jobs while preserving coverage/conformance | Shared `full: auto` checkpoints; `lanes` is a boolean JSON map |
 | `actions/pytest-expansion@v1` | Reject unexplained global conftest expansion before application setup | Configure roots/prefixes to your project; this does not itself run tests |
+| `actions/validation-gate@v1` | Make one aggregate job the required check behind lane-gated jobs | Accepts a skip only when the planner succeeded and every mapped lane is false |
 
 Specialized action paths above are relative to `gigaverse-app/pytest-selective/`.
 See every input and output in the [action reference](../actions.md). Python
@@ -216,13 +217,14 @@ the plugin while still being unsuitable as a complete-file timing observation.
 | `affected`, `explain`, `dependencies`, `conftest-impact` | Plan and inspect dependency routes; preserve structured explanations for review. |
 | `fingerprints`, `floor-budget`, `audit`, `warm` | Collection-policy review, breadth budgets, observed-read checks and cache preparation. A fingerprint refresh is a review step, not an automatic fix for every fallback. |
 | `typecheck-scope` | Scope type checking with its own checker/global-input contract; retain a full fallback. Inspect `pytest-selective typecheck-scope --help` and the [scope implementation](../../src/pytest_selective/typecheck_scope.py). |
+| `python -m pytest_selective.gate` | The aggregate gate outside the action: `--needs`, `--lane-jobs`, `--planner`, `--lanes`. Exit 1 on an unacceptable prerequisite, 2 on unusable inputs. |
 | `python -m pytest_selective.ci` | Whole-lane planning outside the GitHub action; the [CI recipe](../ci.md) documents its JSON and full override. There is no `pytest-selective lanes` command. |
 | `pytest-selective-expansion` | Standalone expansion guard; use the [hygiene recipe](../pytest-hygiene.md). |
 | [scripts/tutorial.py](../../scripts/tutorial.py) | Executable Git/selection/pytest example used in stage 1. |
 | [scripts/benchmark_graph.py](../../scripts/benchmark_graph.py) | Compare cold, warm and incremental graph construction on fixed revisions. Its in-memory fingerprint refresh is for measurement, not adoption approval. |
 | [scripts/benchmark_parsing.py](../../scripts/benchmark_parsing.py), [benchmark_rust.py](../../scripts/benchmark_rust.py) | Maintainer parser experiments; they do not enable a production alternate parser or establish hosted savings. |
 | [scripts/compare_impacted.py](../../scripts/compare_impacted.py) | Optional comparison experiment; needs a separately installed pytest-impacted revision. Not a runtime dependency. |
-| [scripts/measure_ci_runs.py](../../scripts/measure_ci_runs.py) | Compare recorded GitHub runs with explicit identities; inspect `--help` and the [measurement limits](../evidence.md). |
+| [scripts/measure_ci_runs.py](../../scripts/measure_ci_runs.py) | Compare recorded GitHub runs of one head: `--selected IDS --full IDS` adds every workflow run of a side, `--expected-failure JOB` accepts a deliberate probe failure. Inspect `--help` and the [measurement limits](../evidence.md). |
 | [scripts/ci_file_config.py](../../scripts/ci_file_config.py), [run_ci_tests.py](../../scripts/run_ci_tests.py) | This toolkit's CI adapters; consumers normally use the public action/runner, not copied wrappers. |
 | [scripts/public_actions.py](../../scripts/public_actions.py), [check_docs.py](../../scripts/check_docs.py), [check_metadata.py](../../scripts/check_metadata.py), [smoke_distribution.py](../../scripts/smoke_distribution.py), [render_brand.py](../../scripts/render_brand.py); `documentation/*.py` | Toolkit generation, documentation and release validation. These are maintainer tools, not extra adopter jobs. |
 
@@ -243,6 +245,7 @@ format in an application helper.
 - [ ] Route the adoption regression tests through their declared real inputs.
 - [ ] Link these results from the PR and update your installed
   [agent skill](../../skills/pytest-selective/SKILL.md) separately from package/action pins.
+  The same skill is the [one-prompt agent setup](https://pytest-selective.readthedocs.io/en/latest/agent-setup.md).
 
 Use [CI-esta's measurement recipe](https://github.com/gigaverse-app/ci-esta/blob/main/docs/measured-impact.md)
 to report the result. Installing a newer selector does not automatically configure

@@ -49,3 +49,44 @@ def test_environment_inputs_reach_lanes_without_python_test_files(tmp_path: Path
         graph=ImpactConfig(test_roots=[]), lanes={"external": Lane(inputs=["scripts/**"])}, global_inputs=[]
     )
     assert plan(tmp_path, config, base, head).lanes == {"external": True}
+
+
+def _docs_requirements_plan(tmp_path: Path, path: str, graph_inputs: list[str] | None, lane_inputs: list[str] | None):
+    init(tmp_path)
+    write(tmp_path, "src/pkg/a.py", "X = 1")
+    write(tmp_path, "tests/test_a.py", "from pkg.a import X\ndef test_a(): assert X")
+    base = commit(tmp_path)
+    write(tmp_path, path, "# changed\n")
+    head = commit(tmp_path)
+    graph = ImpactConfig(module_roots=["src", "."], test_roots=["tests"])
+    if graph_inputs is not None:
+        graph.global_inputs = graph_inputs
+    config = LaneConfig(graph=graph, lanes={"tests": Lane(roots=["tests"])}, global_inputs=lane_inputs)
+    return plan(tmp_path, config, base, head)
+
+
+@pytest.mark.parametrize(
+    ("graph_inputs", "lane_inputs", "admitted"),
+    [
+        # The built-in environment policy matches *requirements*.txt anywhere.
+        (None, None, True),
+        # The graph's list is the environment authority: narrowing it alone is enough.
+        (["pyproject.toml", "uv.lock"], None, False),
+        # An explicit CI-input list does not narrow the graph's environment files.
+        (None, ["pyproject.toml"], True),
+        (["pyproject.toml", "uv.lock"], ["pyproject.toml"], False),
+    ],
+)
+def test_graph_global_inputs_own_environment_files_for_lanes(
+    tmp_path: Path, graph_inputs: list[str] | None, lane_inputs: list[str] | None, admitted: bool
+) -> None:
+    result = _docs_requirements_plan(tmp_path, "documentation/requirements.txt", graph_inputs, lane_inputs)
+    assert result.lanes == {"tests": admitted}, result.reason
+    if admitted:
+        assert "documentation/requirements.txt" in " ".join([result.reason, *result.lane_reasons["tests"]])
+
+
+def test_narrowed_graph_inputs_keep_builtin_ci_execution_inputs(tmp_path: Path) -> None:
+    result = _docs_requirements_plan(tmp_path, ".github/workflows/ci.yml", ["pyproject.toml"], None)
+    assert result.lanes == {"tests": True}
+    assert result.lane_reasons["tests"] == ["global input: .github/workflows/ci.yml"]

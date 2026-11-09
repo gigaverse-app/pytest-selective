@@ -59,7 +59,13 @@ validation:
     unrecognized_links: warn
     anchors: warn
 extra:
+  # Copied verbatim into the built site for agents and crawlers (documentation/hooks.py on_post_build).
+  raw_files:
+    skills/pytest-selective/SKILL.md: agent-setup.md
+  llms_txt: documentation/llms.txt
   published_sources:
+  - source: skills/pytest-selective/SKILL.md
+    as: agent-setup.md
   - docs/tutorials/adoption-checklist.md
   - docs/tutorials/skip-unrelated-ci.md
   - docs/tutorials/sidecar-dependencies.md
@@ -83,12 +89,13 @@ extra:
 nav:
 - Home: index.md
 - Getting started:
+  - Set it up with a coding agent: agent-setup.md
   - Quickstart: docs/tutorial.md
   - Adoption tutorial and checklist: docs/tutorials/adoption-checklist.md
   - Run affected tests locally: docs/local-development.md
   - Declare file inputs with sidecars: docs/tutorials/sidecar-dependencies.md
   - Skip unrelated CI jobs safely: docs/tutorials/skip-unrelated-ci.md
-  - Let your agent set it up: docs/agents.md
+  - Agent prompt and skill installation: docs/agents.md
 - Configure and run:
   - Configuration reference: docs/configuration.md
   - Set up CI selection: docs/ci.md

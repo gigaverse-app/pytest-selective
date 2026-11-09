@@ -1,15 +1,30 @@
 """Drives pytest-selective's planner through the model's commits. No selection logic lives here."""
 
+import fnmatch
+import io
 import json
+import os
+import subprocess
+import sys
+import tarfile
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack
+from pathlib import Path, PurePosixPath
 from unittest import mock
 
 import pytest
 from pytest_quint_connect import HistoryContext
 from selection_driver import Selection, SelectionDriver, View
 
-from pytest_selective.impact_graph import DependencyDeclarationError, GraphCache, union_edges, within
+from pytest_selective.git_operations import git, git_text
+from pytest_selective.impact_graph import (
+    DependencyDeclarationError,
+    GraphCache,
+    inventory,
+    policy_fingerprints,
+    union_edges,
+    within,
+)
 from pytest_selective.impact_models import ImpactConfig, Snapshot
 from pytest_selective.impact_selection import affected, base_snapshot
 from tests.testing.git_repo import commit, init, write
@@ -26,19 +41,44 @@ PATHS = {
     "test_two": "tests/test_two.py",
     "test_sub": "tests/sub/test_sub.py",
     "table": "data/table.json",
+    "init": "src/pkg/__init__.py",
+    "plugin": "plug.py",
 }
 NAMES = {path: name for name, path in PATHS.items()}
-MODULE_NAMES = {"alpha": "pkg.alpha", "beta": "pkg.beta", "gamma": "pkg.gamma", "helper": "tests.helpers"}
+# How each model import target is spelled in source.
+IMPORT_LINES = {
+    "alpha": "import pkg.alpha",
+    "beta": "import pkg.beta",
+    "gamma": "import pkg.gamma",
+    "helper": "import tests.helpers",
+    "star": "from pkg import *",
+    "helperBare": "import helpers",
+}
+# The fixture's pytest configuration: src and the root on sys.path, and a command-line plugin.
+PYTEST_INI = "[pytest]\npythonpath = src .\naddopts = -p plug\n"
+RUNTIME_DEPS = Path(__file__).with_name("runtime_deps.py")
+# Repository files each test loads at runtime, by (Git tree id, test path). Trees repeat across
+# histories, so one pytest run per tree serves every history that reaches it.
+_RUNTIME: dict[tuple[str, str], frozenset[str]] = {}
 INITIAL_IMPORTS = {"test_one": {"alpha"}, "alpha": {"beta"}, "test_two": {"gamma"}, "test_sub": {"helper"}}
 INITIAL_DECLARATIONS = {"test_two": {"table"}}
-# The model's fixed content read: test_sub reads gamma's bytes without importing it.
-CONTENT_SIDECAR = (
-    "tests/sub/test_sub.py.gv-dependency.yaml",
-    "dependencies:\n"
-    '  - inputs: ["//src/pkg/gamma.py"]\n'
-    "    kind: content\n"
-    "    reason: The test reads gamma's source as text.\n",
-)
+# The model's fixed content reads: test_sub reads gamma's bytes, and the helper reads the table's.
+CONTENT_SIDECARS = {
+    "test_sub": (
+        "tests/sub/test_sub.py.gv-dependency.yaml",
+        "dependencies:\n"
+        '  - inputs: ["//src/pkg/gamma.py"]\n'
+        "    kind: content\n"
+        "    reason: The test reads gamma's source as text.\n",
+    ),
+    "helper": (
+        "tests/helpers.py.gv-dependency.yaml",
+        "dependencies:\n"
+        '  - inputs: ["//data/table.json"]\n'
+        "    kind: content\n"
+        "    reason: The helper loads the table.\n",
+    ),
+}
 CONFIG = ImpactConfig(module_roots=["src", "."], test_roots=["tests"])
 # The model's two configuration options, as edits of CONFIG.
 NARROW_ROOTS = ["tests/sub"]
@@ -147,6 +187,15 @@ MUTANTS: dict[str, Callable[[], list[tuple[str, object]]]] = {
     "parse-cache-keyed-by-path": lambda: [("pytest_selective.impact_graph.GraphCache.parse_python", _parse_by_path)],
     # Return stored entries without checking their checksum.
     "cache-checksum-ignored": lambda: [("pytest_selective.impact_graph.GraphCache.get", _unchecked_get)],
+    # The three bugs the runtime check found, each put back exactly as it was before its fix.
+    "star-exports-ignored": lambda: [
+        ("pytest_selective.impact_graph.star_import_candidates", lambda *arguments, **options: set())
+    ],
+    "addopts-plugins-ignored": lambda: [("pytest_selective.impact_graph.command_line_plugins", lambda policies: set())],
+    "prepend-roots-ignored": lambda: [("pytest_selective.impact_graph.prepend_roots", lambda python_files, config: [])],
+    "literal-reads-ignored": lambda: [
+        ("pytest_selective.impact_graph.literal_read_targets", lambda reader, literal, files: set())
+    ],
 }
 
 
@@ -164,11 +213,15 @@ class RepositoryDriver(SelectionDriver):
         self.imports: dict[str, set[str]] = {}
         self.declared: dict[str, set[str]] = {}
         self.broken: set[str] = set()
+        self.reads: set[str] = set()
         self.versions = dict.fromkeys(PATHS, 0)
         self.requirements = 0
         self.config = CONFIG
+        self.trees = context.work_dir / "trees"
+        # Mutants are judged by the model; the runtime check describes the real planner only.
+        self.check_runtime = context.mutant is None
         self.start = self.previous = self.head = ""
-        self.view: View = {**NO_SELECTION, "sinceStart": NO_SELECTION}
+        self.view: View = {**NO_SELECTION, "sinceStart": NO_SELECTION, "missed": frozenset()}
 
     def close(self) -> None:
         self._resources.close()
@@ -178,9 +231,12 @@ class RepositoryDriver(SelectionDriver):
         if name == "table":
             write(self.root, PATHS[name], f'{{"version": {version}}}\n')
             return
-        lines = [f"# gv:test-dependency: {PATHS[target]}" for target in sorted(self.declared.get(name, ()))]
-        lines += [f"import {MODULE_NAMES[target]}" for target in sorted(self.imports.get(name, ()))]
+        lines = ['__all__ = ["alpha"]'] if name == "init" else []
+        lines += [f"# gv:test-dependency: {PATHS[target]}" for target in sorted(self.declared.get(name, ()))]
+        lines += [IMPORT_LINES[target] for target in sorted(self.imports.get(name, ()))]
         lines.append(f"VERSION = {version}")
+        if name in self.reads:
+            lines.append(f'TABLE = open("{PATHS["table"]}", encoding="utf-8").read()')
         if name in self.broken:
             lines.append("def broken(:")
         write(self.root, PATHS[name], "\n".join(lines) + "\n")
@@ -205,18 +261,68 @@ class RepositoryDriver(SelectionDriver):
         self._replan()
 
     def _replan(self) -> None:
-        self.view = {**self._select(self.previous), "sinceStart": self._select(self.start)}
+        latest, since_start = self._select(self.previous), self._select(self.start)
+        missed = self._missed(self.previous, latest) | self._missed(self.start, since_start)
+        self.view = {**latest, "sinceStart": since_start, "missed": frozenset(missed)}
+
+    def _runtime(self, revision: str, tests: list[str]) -> dict[str, frozenset[str]]:
+        """What pytest's collection of each test file imports or opens in the tree at ``revision``."""
+        tree = git_text(self.root, "rev-parse", f"{revision}^{{tree}}").strip()
+        missing = [test for test in tests if (tree, test) not in _RUNTIME]
+        if missing:
+            directory = self.trees / tree
+            if not directory.exists():
+                archive = git(self.root, "archive", "--format=tar", revision)
+                with tarfile.open(fileobj=io.BytesIO(archive)) as members:
+                    members.extractall(directory, filter="data")
+            environment = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
+            environment["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
+            run = subprocess.run(
+                [sys.executable, "-I", "-B", str(RUNTIME_DEPS), str(directory), *missing],
+                capture_output=True,
+                text=True,
+                env=environment,
+            )
+            line = next((row for row in run.stdout.splitlines() if row.startswith("RUNTIME_DEPS ")), None)
+            assert line is not None, f"runtime dependency run failed:\n{run.stdout[-2000:]}\n{run.stderr[-2000:]}"
+            for test, files in json.loads(line.removeprefix("RUNTIME_DEPS ")).items():
+                _RUNTIME[(tree, test)] = frozenset(files)
+        return {test: _RUNTIME[(tree, test)] for test in tests}
+
+    def _tests(self, revision: str) -> list[str]:
+        files = git_text(self.root, "ls-tree", "-r", "--name-only", revision).splitlines()
+        return [
+            path
+            for path in files
+            if any(within(path, root) for root in self.config.test_roots)
+            and any(fnmatch.fnmatch(PurePosixPath(path).name, pattern) for pattern in self.config.test_patterns)
+        ]
+
+    def _missed(self, base: str, selection: Selection) -> set[str]:
+        """Tests whose runtime dependencies at base or head include a changed file, but were not selected."""
+        if not self.check_runtime or selection["mode"] == "error" or base == self.head:
+            return set()
+        changed = set(git_text(self.root, "diff", "--name-only", "--no-renames", base, self.head).splitlines())
+        tests = self._tests(self.head)
+        at_head = self._runtime(self.head, tests)
+        at_base = self._runtime(base, [test for test in tests if test in set(self._tests(base))])
+        needed = {test for test in tests if (at_head[test] | at_base.get(test, frozenset())) & changed}
+        return {NAMES[test] for test in needed} - set(selection["selected"])
 
     def init(self) -> None:
         init(self.root)
         self.imports = {name: set(targets) for name, targets in INITIAL_IMPORTS.items()}
         self.declared = {name: set(targets) for name, targets in INITIAL_DECLARATIONS.items()}
-        write(self.root, "src/pkg/__init__.py")
-        write(self.root, *CONTENT_SIDECAR)
+        write(self.root, "pytest.ini", PYTEST_INI)
+        for sidecar in CONTENT_SIDECARS.values():
+            write(self.root, *sidecar)
         for name in PATHS:
             self._write(name)
         self._write_requirements()
         self.start = self.previous = self.head = commit(self.root)
+        # The fixture's pytest.ini never changes; record its reviewed collection-policy fingerprint.
+        policy = policy_fingerprints(self.root, inventory(self.root, self.head))
+        self.config = self.config.model_copy(update={"pytest_policy": policy})
 
     def edit(self, file: str) -> None:
         self.versions[file] += 1
@@ -234,10 +340,15 @@ class RepositoryDriver(SelectionDriver):
         self.imports.pop(file, None)
         self.declared.pop(file, None)
         self.broken.discard(file)
+        self.reads.discard(file)
         (self.root / PATHS[file]).unlink()
+        if file in CONTENT_SIDECARS:
+            (self.root / CONTENT_SIDECARS[file][0]).unlink()
         self._commit()
 
     def restore(self, file: str) -> None:
+        if file in CONTENT_SIDECARS:
+            write(self.root, *CONTENT_SIDECARS[file])
         self._commit(file)
 
     def declare(self, file: str, target: str) -> None:
@@ -254,6 +365,10 @@ class RepositoryDriver(SelectionDriver):
 
     def repair(self, file: str) -> None:
         self.broken.discard(file)
+        self._commit(file)
+
+    def read_table(self, file: str) -> None:
+        self.reads.add(file)
         self._commit(file)
 
     def touch_global(self) -> None:

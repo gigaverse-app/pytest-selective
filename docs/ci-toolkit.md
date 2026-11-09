@@ -26,6 +26,18 @@ explicit reruns retain independent concurrency groups. Full main/manual and
 `test:full` validation remain available. Required conformance validators and
 package-only compatibility checks remain attached to their lanes.
 
+The tests lane reuses earlier proof. Each of its seven jobs (six Python × OS cells
+and `pytest-minimum`) ends with a CI-esta completion receipt bound to the inputs
+in [.github/validation-inputs.json](../.github/validation-inputs.json) and the
+selected test files. When every one of them already passed on a first attempt
+for identical inputs and selection, `select-tests` reports the lane as `false`
+and its jobs do not start. That happens after a squash merge of an up-to-date
+PR, on a version-only release PR, and on a PR push that changes nothing the
+tests read. A `PR evidence #N head SHA` step ties each PR run to its pull
+request, because GitHub often leaves that link out. The distribution smoke test
+still follows the plan before reuse (`planned`), and partial proof runs the
+whole lane.
+
 The unconditional CI job runs `ci-esta check-workflow` against this workflow and
 lane configuration, so renamed lanes or omitted metadata prerequisites cannot
 silently change what the aggregate gate means.

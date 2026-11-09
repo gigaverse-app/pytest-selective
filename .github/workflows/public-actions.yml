@@ -76,3 +76,15 @@ jobs:
       - name: Require successful planning after fallback execution
         if: ${{ !cancelled() && needs.select-tests.result != 'success' }}
         run: exit 1
+  gate:
+    name: Public action gate
+    needs: [select-tests, public-actions]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Dogfood the public gate: the smoke may be skipped only when the successful plan said so.
+      - uses: ./actions/validation-gate
+        with:
+          needs: ${{ toJSON(needs) }}
+          lane-jobs: '{"public-actions":["tests"]}'

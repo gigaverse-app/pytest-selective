@@ -68,8 +68,8 @@ Both file and lane actions default to `full: auto`:
 
 | Trigger | Default |
 | --- | --- |
-| First ordinary PR or push attempt | Select affected work |
-| Rerun, manual, schedule or release | Full checkpoint |
+| Ordinary PR or push, including reruns | Select affected work |
+| Manual, schedule, release or reusable-workflow call | Full checkpoint |
 | PR carrying `test:full` | Full checkpoint |
 | Unknown event or unreadable required event metadata | Full checkpoint |
 
@@ -157,7 +157,10 @@ For tests that must produce complete conformance evidence, use
 }
 ```
 
-An affected test selects its entire lane. A lane's roots hold its tests, not its
+An affected test selects its entire lane. A change whose imports reach every graph
+test selects every lane holding graph tests, and no lane whose roots hold none (Bun or
+Node tests, a build): other evidence selects those. A graph global input (an
+environment file) still selects every lane. A lane's roots hold its tests, not its
 inputs: another file under them (a README, notes, an unimported helper) selects the
 lane only through the graph, and the plan names it as `unreferenced under root`.
 Declare data that tests read, and let the read audit find undeclared reads. A
@@ -213,9 +216,14 @@ dependency sidecar, central dependency rule, or lane `inputs` entry still select
 the consuming tests or lanes. Explicit `global_inputs` globs also retain their
 full meaning: declaring `[".github/**"]` includes Markdown and runs every lane.
 
-The built-in environment policy matches `*requirements*.txt` and `*requirements*.in`
-anywhere, including a documentation site's `documentation/requirements.txt`, so such a
-repository should set `graph.global_inputs` to its real environment files. Inputs and
+Two lists decide which changes run every lane. `graph.global_inputs` is the
+environment-file list, and the only place to narrow it: its built-in default matches
+`*requirements*.txt` and `*requirements*.in` anywhere, including a documentation site's
+`documentation/requirements.txt`, so such a repository should set `graph.global_inputs`
+to its real environment files. Top-level `global_inputs` lists CI execution inputs; when
+omitted it is every non-Markdown file under `.github/` plus `graph.global_inputs`. An
+explicit top-level list replaces only the CI part: a change matching `graph.global_inputs`
+still runs every lane, because it reaches every test. Inputs and
 rules match like gitignore patterns: `dir/**/*.py` matches `dir/x.py` and
 `dir/a/x.py`, and `*` also crosses `/`. [Audit a documentation-only pull request](tutorials/skip-unrelated-ci.md#audit-what-a-documentation-only-pull-request-still-runs)
 before claiming the route works.
@@ -236,6 +244,22 @@ when the README is embedded in the built package.
 The action returns a `lanes` JSON object. Expose it as a planning-job output,
 then gate each expensive job with `always() && !cancelled()` and either a true
 lane value **or a failed planning job**. This preserves tests if planning fails.
+`always()` also ignores the job's other needs, so check their results explicitly.
+
+GitHub reports a job skipped by `if:` as a passing required check. Make one aggregate
+job per workflow the required check and run
+[`actions/validation-gate`](../actions/validation-gate/action.yml) in it, with
+`needs: ${{ toJSON(needs) }}`, the planner's `lanes` and a `lane-jobs` map from each
+gated job to its lanes. It fails unless each prerequisite succeeded or was skipped while
+the planner succeeded and every mapped lane is `false`; a failed planner fails it.
+
+Do not gate a job that a publish or deploy job `needs:` on pull-request-only logic:
+skipping it skips publishing. Keep it running on other events
+(`github.event_name != 'pull_request' || ...`), or plan inside the job with
+`continue-on-error: true` and admit only its expensive steps, as the `distributions`
+job in this repository's CI does. A branch's first push has no previous commit, so
+`on: push` for every branch runs every lane once per new branch; prefer pull-request
+triggers plus pushes to the default branch.
 The default event policy handles manual/release checkpoints, schedules and
 `test:full`. Ordinary PRs and main pushes use dependency selection.
 Selected jobs retain all of their existing tests and evidence checks.

@@ -15,7 +15,6 @@ from pytest_selective.checkpoint import full_checkpoint_reason
 from pytest_selective.impact_graph import DependencyDeclarationError, GraphCache, git, matches, within
 from pytest_selective.impact_models import ImpactConfig, ImpactModel
 from pytest_selective.impact_selection import affected
-from pytest_selective.input_policy import DEFAULT_GLOBAL_INPUTS
 
 JOB_INPUT = re.compile(r"(?P<path>[^#*?\[\]]+)#(?P<job>[A-Za-z_][A-Za-z0-9_-]*)")
 
@@ -63,7 +62,9 @@ class LaneConfig(ImpactModel):
             # Markdown is documentation unless a reader or adopter declares it.
             # Retain unknown/extensionless CI inputs rather than an extension allowlist.
             return Path(path).suffix.lower() not in {".md", ".markdown"}
-        return matches(path, list(DEFAULT_GLOBAL_INPUTS))
+        # The graph's list is the one environment-file authority: narrowing it (for
+        # example, dropping a docs site's requirements.txt) must not be re-widened here.
+        return matches(path, self.graph.global_inputs)
 
     @field_validator("lanes")
     @classmethod
@@ -164,6 +165,10 @@ def plan(repo: Path, config: LaneConfig, base: str, head: str, *, full: bool = F
         # completeness checks. Consult the cached base inventory, not filename guesses.
         before = cache.snapshot(repo, base, config.graph)
         affected_tests = set(report.selected) | (set(report.changed) & set(before.tests))
+        graph_tests = set(before.tests) | set(cache.snapshot(repo, head, config.graph).tests)
+        # An environment change (a graph global input) reaches every lane, tests or not; an import
+        # closure that happens to cover every graph test reaches only lanes holding graph tests.
+        environment = any(reason.startswith("global input: ") for reason in report.reasons)
         unmapped = sorted(
             test
             for test in affected_tests
@@ -183,7 +188,11 @@ def plan(repo: Path, config: LaneConfig, base: str, head: str, *, full: bool = F
         # Select whole lanes: validators may require complete conformance evidence.
         for name, lane in config.lanes.items():
             reasons = [f"global input: {path}" for path in global_paths]
-            if report.mode == "full":
+            # Every graph test being affected by imports says nothing about a lane that holds none
+            # (a Bun or Node lane, a build or smoke job), which other evidence selects.
+            if report.mode == "full" and (
+                environment or any(within(test, root) for test in graph_tests for root in lane.roots)
+            ):
                 reasons.append("all graph test files affected")
             reasons.extend(
                 f"affected test: {test}" for test in report.selected if any(within(test, root) for root in lane.roots)

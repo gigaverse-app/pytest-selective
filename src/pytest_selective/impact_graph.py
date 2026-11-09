@@ -12,6 +12,7 @@ import functools
 import hashlib
 import io
 import json
+import posixpath
 import re
 import shlex
 import sqlite3
@@ -426,6 +427,7 @@ def parse_source(source: bytes) -> ParsedSource:
     ]
     strings: set[str] = set()
     opaque: set[str] = set()
+    read_paths: set[str] = set()
     plugin = False
     aliases = {
         alias.asname or alias.name: alias.name
@@ -477,6 +479,16 @@ def parse_source(source: bytes) -> ParsedSource:
         )
         if write_only:
             continue
+        if qualified in {"open", "builtins.open", "io.open"} or name in {"read_text", "read_bytes"}:
+            # The path may be an argument (open("x")) or part of the receiver (Path("x").read_text()).
+            read_paths.update(
+                literal.value
+                for literal in ast.walk(node)
+                if isinstance(literal, ast.Constant)
+                and isinstance(literal.value, str)
+                and 0 < len(literal.value) < 300
+                and "\n" not in literal.value
+            )
         if (
             (name in OPAQUE_CALLS or subprocess_run)
             and not is_ast_walk
@@ -505,7 +517,24 @@ def parse_source(source: bytes) -> ParsedSource:
         pytest_plugin=plugin,
         dependencies=dependencies,
         exports=exports,
+        read_paths=sorted(read_paths),
     )
+
+
+def literal_read_targets(reader: str, literal: str, files: dict[str, str]) -> set[str]:
+    """Tracked files a literal path in a read call names.
+
+    Tests run from the repository root, and readers often resolve beside themselves
+    (``Path(__file__).parent / "data.json"``), so a path is tried from both. Only exact tracked files
+    count: a computed or missing path adds nothing.
+    """
+    relative = literal.replace("\\", "/")
+    found: set[str] = set()
+    for candidate in (relative, f"{PurePosixPath(reader).parent.as_posix()}/{relative}"):
+        normalized = posixpath.normpath(candidate)
+        if normalized != reader and normalized in files:
+            found.add(normalized)
+    return found
 
 
 def _literal_exports(tree: ast.Module) -> set[str]:
@@ -878,6 +907,9 @@ def resolve_graph(
         source = parsed[files[path]]
         for comment in source.dependencies:
             edges[path].update(declared_inputs(comment, files, f"{tree}:{path}"))
+        # A file read by literal path is a content read: its bytes, never its imports.
+        for literal in source.read_paths:
+            edges[path].update(contents_node(target) for target in literal_read_targets(path, literal, files))
         # A deferred name is not an edge of the file that only stores it; its consumers get it below.
         candidates = set(source.strings) - held.get(path, set())
         if source.django_urlconf and (config.django_urlconf is None or path != config.django_urlconf.settings_file):

@@ -44,6 +44,30 @@ def test_changes_select_complete_affected_lanes(repository, path, content, expec
     assert plan(repo, config, base, commit(repo)).lanes == expected
 
 
+def test_a_lane_root_can_be_a_single_test_file(repository):
+    repo, config, base = repository
+    config.lanes = {
+        "unit": Lane(roots=["tests/unit/test_value.py"]),
+        "live": Lane(roots=["tests/live/test_other.py"]),
+    }
+    write(repo, "src/sample/value.py", "VALUE = 2")
+    assert plan(repo, config, base, commit(repo)).lanes == {"unit": True, "live": False}
+
+
+def test_overlapping_lane_roots_select_every_lane_holding_an_affected_test(repository):
+    # A benchmark lane over a subset of the test lane's files runs only when one of them is affected.
+    repo, config, base = repository
+    write(repo, "tests/unit/bench/test_speed.py", "from sample.value import VALUE\ndef test_speed(): assert VALUE")
+    write(repo, "tests/unit/test_plain.py", "def test_plain(): pass")
+    base = commit(repo)
+    config.lanes = {"unit": Lane(roots=["tests/unit"]), "bench": Lane(roots=["tests/unit/bench"])}
+    write(repo, "src/sample/value.py", "VALUE = 2")
+    source = commit(repo)
+    assert plan(repo, config, base, source).lanes == {"unit": True, "bench": True}
+    write(repo, "tests/unit/test_plain.py", "def test_plain(): assert True")
+    assert plan(repo, config, source, commit(repo)).lanes == {"unit": True, "bench": False}
+
+
 def test_missing_base_and_explicit_checkpoints_run_every_lane(repository):
     repo, config, base = repository
     fallback = plan(repo, config, "missing-ref", base)
@@ -389,3 +413,20 @@ def test_double_star_inputs_match_direct_children_as_in_gitignore(repository, pa
     config.lanes["live"].inputs = ["external/**/*.json"]
     write(repo, path, "{}")
     assert plan(repo, config, base, commit(repo)).lanes == {"unit": False, "live": True}
+
+
+def test_every_graph_test_affected_selects_only_lanes_holding_graph_tests(tmp_path):
+    init(tmp_path)
+    write(tmp_path, "src/sample/__init__.py")
+    write(tmp_path, "src/sample/value.py", "VALUE = 1")
+    write(tmp_path, "tests/test_value.py", "from sample.value import VALUE\ndef test_value(): assert VALUE")
+    write(tmp_path, "web/sum.test.js", "test('sum', () => {});\n")
+    config = LaneConfig(
+        graph=ImpactConfig(module_roots=["src", "."], test_roots=["tests", "web"]),
+        lanes={"python": Lane(roots=["tests"]), "web": Lane(roots=["web"])},
+    )
+    base = commit(tmp_path)
+    write(tmp_path, "src/sample/value.py", "VALUE = 2")
+    result = plan(tmp_path, config, base, commit(tmp_path))
+    assert result.lanes == {"python": True, "web": False}
+    assert "all graph test files affected" in result.lane_reasons["python"]

@@ -1,0 +1,26 @@
+{
+  "tests": [
+    ".github",
+    "src",
+    "tests",
+    "scripts",
+    "actions",
+    "action.yml",
+    "pyproject.toml",
+    "uv.lock",
+    ".pre-commit-config.yaml"
+  ],
+  "contracts": [
+    ".github",
+    "src",
+    "contracts",
+    "tests/testing/git_repo.py",
+    "scripts",
+    "actions",
+    "action.yml",
+    "pyproject.toml",
+    "uv.lock",
+    ".pre-commit-config.yaml",
+    "README.md"
+  ]
+}

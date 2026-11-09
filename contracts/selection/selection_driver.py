@@ -21,13 +21,14 @@ class View(TypedDict):
     mode: str
     selected: AbstractSet[str]
     sinceStart: Selection
+    missed: AbstractSet[str]
 
 
 class SelectionDriver(ActionDriver):
     """Subclass this, implement each action against the real code, and read state back in observe()."""
 
     __quint_contract__ = "selection"
-    __quint_fingerprint__ = "9b94b348596ffc1e1b681762acef392fd9cd8fe3a96d7c7a06af512cc434eab1"
+    __quint_fingerprint__ = "40f9e4a52a1f7fce52f35f086d3825648232670ff6aca12e7d8001fa80cb91a2"
     __quint_codegen_command__ = "pytest-quint-connect codegen quint-connect.json -o selection_driver.py"
     __quint_actions__ = {
         "init": ("init", ()),
@@ -44,6 +45,7 @@ class SelectionDriver(ActionDriver):
         "toggleConfig": ("toggle_config", (("option", "file"),)),
         "restart": ("restart", ()),
         "corrupt": ("corrupt", ()),
+        "readTable": ("read_table", (("file", "file"),)),
         "inspect": ("inspect", ()),
     }
 
@@ -57,7 +59,7 @@ class SelectionDriver(ActionDriver):
 
     @abstractmethod
     def link(self, file: str, target: str) -> None:
-        """add an import to one file, commit, then select"""
+        """add an import to one file (import pkg.x, import tests.helpers, from pkg import *, or a bare import helpers), commit, then select"""
 
     @abstractmethod
     def unlink(self, file: str, target: str) -> None:
@@ -102,6 +104,10 @@ class SelectionDriver(ActionDriver):
     @abstractmethod
     def corrupt(self) -> None:
         """empty every stored graph's edges without updating its checksum, then plan the last commit again"""
+
+    @abstractmethod
+    def read_table(self, file: str) -> None:
+        """make a test read data/table.json with open() and a literal path at import time, commit, then select"""
 
     @abstractmethod
     def inspect(self) -> None:

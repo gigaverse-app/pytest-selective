@@ -21,9 +21,12 @@ jobs:
           uv run --no-project python -c 'import os, pathlib, tomllib; version = tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"]; assert os.environ["RELEASE_REF"] == f"refs/tags/v{version}", "Run publishing from the version-matching v tag"'
   checks:
     needs: validate-tag
-    # Reusable CI's Quint report requests this grant, even on a tag with no PR.
+    # A called workflow gets no more than this, and GitHub refuses to start it when a job asks for more: the Quint
+    # report needs pull-requests: write, and select-tests reads earlier runs' jobs and checks for lane receipts.
     permissions:
       contents: read
+      actions: read
+      checks: read
       pull-requests: write
     uses: ./.github/workflows/ci.yml
   publish:

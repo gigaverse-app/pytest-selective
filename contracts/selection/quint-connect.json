@@ -1,14 +1,14 @@
 {
   "version": 1,
   "name": "selection",
-  "description": "File-level selection across a history of real commits: import, conftest, declaration and content-read closure over the base and head trees, global inputs, deleted files, unparseable source, selection against the history's first commit, and a graph cache that never changes an answer across configuration edits, restarts and damaged entries.",
+  "description": "File-level selection across a history of real commits, checked two ways: against a Quint model of import, conftest, declaration, content-read, package-initializer and command-line-plugin closure, and against pytest itself, which must never load a changed file in a test the planner skipped.",
   "module": "selection",
   "model": "selection.qnt",
   "invariant": "selectsOnlyExistingTests",
   "actions": {
     "init": "create a fixture repository and commit it",
     "edit": "rewrite one file's body, commit, then select",
-    "link": "add an import to one file, commit, then select",
+    "link": "add an import to one file (import pkg.x, import tests.helpers, from pkg import *, or a bare import helpers), commit, then select",
     "unlink": "remove an import from one file, commit, then select",
     "remove": "delete a file, commit, then select",
     "restore": "add a deleted file back without imports or declarations, commit, then select",
@@ -20,6 +20,7 @@
     "toggleConfig": "flip test_roots between tests and tests/sub, or add/remove data/table.json as a global input, then plan the last commit again",
     "restart": "close the graph cache (it prunes on close), reopen it, then plan the last commit again",
     "corrupt": "empty every stored graph's edges without updating its checksum, then plan the last commit again",
+    "readTable": "make a test read data/table.json with open() and a literal path at import time, commit, then select",
     "inspect": "read the last selections without committing"
   },
   "witnesses": [
@@ -42,6 +43,11 @@
     "tableAsGlobalInputSelectsEveryTestTest",
     "damagedCacheIsRebuiltTest",
     "restartedCacheKeepsAnswersTest",
+    "starImportFollowsAllTest",
+    "commandLinePluginSelectsEveryTestTest",
+    "bareTestImportFollowsPrependModeTest",
+    "packageInitEditSelectsItsImportersTest",
+    "literalPathReadTest",
     "sinceStartSpansCommitsTest"
   ],
   "mutants": [
@@ -84,6 +90,22 @@
     {
       "name": "cache-checksum-ignored",
       "description": "Trusts a stored graph without checking its checksum, so a damaged entry is used as if it were valid."
+    },
+    {
+      "name": "star-exports-ignored",
+      "description": "Reintroduces the star-import bug: from pkg import * no longer reaches the submodules pkg lists in __all__."
+    },
+    {
+      "name": "addopts-plugins-ignored",
+      "description": "Reintroduces the plugin bug: a plugin named by -p in addopts is no longer a dependency of every test."
+    },
+    {
+      "name": "prepend-roots-ignored",
+      "description": "Reintroduces the import-mode bug: imports no longer resolve from the directories pytest prepends to sys.path."
+    },
+    {
+      "name": "literal-reads-ignored",
+      "description": "Reintroduces the literal-read bug: open('data/table.json') no longer makes the reader depend on that file."
     }
   ],
   "bounds": {"seed": 11, "max_samples": 800, "max_steps": 8, "n_traces": 24},
@@ -99,9 +121,40 @@
     "source": "src/pytest_selective"
   },
   "limits": [
-    "One repository: three modules, a test-root helper, a root and a nested conftest, three tests, one data file and one content-kind sidecar; at most 8 operations per sampled history.",
-    "Covers import, ancestor-conftest, import-kind comment and content-kind sidecar edges, file deletion, unparseable source, the default global inputs plus one optional one, two test_roots settings, and selection against both the previous commit and the history's first commit. First-party pins, name-scoped modules, deferred strings, Django URLconf policy and plugin-registering test modules are outside the model.",
-    "The graph cache is exercised through configuration edits, restarts (close prunes the cache) and damaged graph entries. Cache misses and pruning are performance, not correctness, so only answers are compared; the analyzer-version and Python-version parts of the cache key are not varied.",
+    "One repository: three modules and their package initializer (with __all__), a test-root helper, a command-line plugin loaded by addopts -p, a root and a nested conftest, three tests, one data file and one content-kind sidecar; at most 8 operations per sampled history.",
+    "Import spellings are import pkg.x, import tests.helpers, from pkg import * and a prepend-mode bare import helpers. Tests may also read data/table.json with open() and a literal repository path. Other forms (relative and dynamic imports, module strings, computed paths, symlinks) are not generated.",
+    "The runtime check records imports and opened files during pytest's collection of each test file, with plugin autoloading off and the default prepend import mode. It is a lower bound: a test that loads a changed file must be selected, but selecting more is not a failure. It is skipped for mutant cases, which the model comparison judges.",
+    "First-party pins, name-scoped modules, deferred strings and Django URLconf policy are outside the model. The graph cache is exercised through configuration edits, restarts and damaged entries; only answers are compared.",
     "Each step is a real Git commit or a re-plan of the last one, selected by affected() through one GraphCache per history; the driver's mapping of paths to file names is trusted."
+  ],
+  "bugs_found": [
+    {
+      "summary": "A test that does `from pkg import *` was not selected when a submodule pkg lists in __all__ changed.",
+      "fixed_in": "#94",
+      "found_by": "the runtime check (pytest loaded the changed file, the planner skipped the test), after an adversarial review reported it; witness starImportFollowsAllTest",
+      "regression_test": "tests/testing/test_impact_graph.py::test_star_import_reaches_the_submodules_its_package_lists_in_all",
+      "mutant": "star-exports-ignored"
+    },
+    {
+      "summary": "Editing a plugin loaded by `addopts = -p NAME` selected no test, though it is loaded into every session.",
+      "fixed_in": "#95",
+      "found_by": "the runtime check (pytest loaded the changed file, the planner skipped the test), after an adversarial review reported it; witness commandLinePluginSelectsEveryTestTest and random histories",
+      "regression_test": "tests/testing/test_impact_graph.py::test_command_line_plugin_in_addopts_reaches_every_test",
+      "mutant": "addopts-plugins-ignored"
+    },
+    {
+      "summary": "A bare `import helpers` resolved by pytest's default import mode was not followed, so editing tests/helpers.py selected nothing.",
+      "fixed_in": "#96",
+      "found_by": "the runtime check (pytest loaded the changed file, the planner skipped the test), after an adversarial review reported it; witness bareTestImportFollowsPrependModeTest",
+      "regression_test": "tests/testing/test_impact_graph.py::test_bare_import_resolves_from_the_importers_prepend_mode_base_directory",
+      "mutant": "prepend-roots-ignored"
+    },
+    {
+      "summary": "A test that read a tracked file with open() and a literal path was not selected when that file changed.",
+      "fixed_in": "#106",
+      "found_by": "the runtime check (pytest opened the changed file, the planner skipped the test), after an adversarial review reported it; witness literalPathReadTest",
+      "regression_test": "tests/testing/test_impact_graph.py::test_reading_a_tracked_file_by_literal_path_selects_the_reader",
+      "mutant": "literal-reads-ignored"
+    }
   ]
 }

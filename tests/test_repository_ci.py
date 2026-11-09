@@ -37,6 +37,11 @@ ROOT = Path(__file__).resolve().parents[1]
         ("documentation/requirements.txt", False, False, False),
         ("documentation/requirements.in", False, False, False),
         ("mkdocs.yml", False, False, False),
+        # The one-prompt agent setup and llms.txt are published documentation.
+        ("skills/pytest-selective/SKILL.md", False, False, False),
+        ("documentation/llms.txt", False, False, False),
+        ("documentation/check_site.py", False, False, False),
+        ("actions/validation-gate/action.yml", True, True, True),
         (".github/dependabot.yml", False, False, False),
         (".github/pull_request_template.md", False, False, False),
         (".github/workflows/observe-ci.yml", False, False, False),
@@ -46,8 +51,9 @@ ROOT = Path(__file__).resolve().parents[1]
         ("scripts/tutorial.py", True, True, True),
         ("scripts/smoke_distribution.py", True, True, True),
         ("pyproject.toml", True, True, True),
-        # The fixture's only test: selecting every graph test file admits every lane.
-        ("tests/test_sample.py", True, True, True),
+        # The fixture's only test: every graph test is affected by imports, which admits only the
+        # lanes holding graph tests; the package and contract lanes hold none here.
+        ("tests/test_sample.py", True, False, False),
         ("tests/testing/git_repo.py", True, True, False),
         ("contracts/selection/selection.qnt", False, True, False),
         ("contracts/selection/conftest.py", False, True, False),
@@ -87,10 +93,13 @@ def test_distributions_follow_the_package_lane_and_smoke_follows_runtime_selecti
     )
     steps = {step["run"]: step for step in distributions["steps"] if "run" in step}
     smoke = steps["uv run --locked python scripts/smoke_distribution.py"]
-    # Step admission preserves the default success() check for preceding build steps.
+    # Step admission preserves the default success() check for preceding build steps. It follows the plan before
+    # lane reuse: reused test proof does not stand in for smoking the distributions built in this run.
     assert (
         smoke["if"].split()
-        == ("${{ needs.select-tests.result != 'success' || fromJSON(needs.select-tests.outputs.lanes).tests }}").split()
+        == (
+            "${{ needs.select-tests.result != 'success' || fromJSON(needs.select-tests.outputs.planned).tests }}"
+        ).split()
     )
     for command in (
         "uv build",

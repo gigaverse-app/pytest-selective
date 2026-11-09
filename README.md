@@ -12,6 +12,15 @@
 
 **Run affected Python tests. See why they matter.**
 
+**Set it up with your coding agent.** Paste this one prompt into Claude Code, Codex, Cursor or any coding agent in
+your repository:
+
+```text
+Set up pytest-selective in this repository. Fetch https://pytest-selective.readthedocs.io/en/latest/agent-setup.md and follow it.
+```
+
+The agent maps your CI jobs to lanes, adds the planner, a gate and routing tests, proves a docs-only pull request skips the expensive jobs while code changes keep full coverage, measures the difference and opens a pull request. Making the gate a required check, labels and merging stay with you. [Read the procedure it follows](https://pytest-selective.readthedocs.io/en/latest/agent-setup/).
+
 [Read the documentation](https://pytest-selective.readthedocs.io/en/latest/) · [Related tools](https://pytest-selective.readthedocs.io/en/latest/ecosystem/)
 
 pytest-selective is a **Python test impact analysis** tool for incremental testing
@@ -20,8 +29,9 @@ the affected test files, and explains the result. Use it directly as a pytest
 plugin, or plan before collection and service startup with the CLI and CI actions.
 
 Built from the selector used in Gigaverse's backend, AI, and shared Python
-infrastructure. Use the moving `@v1` Actions tag. The Python package has its own
-version and compatible dependency range.
+infrastructure. Pin the actions and the package to the same release: `@vX.Y.Z`
+(or its commit SHA) and `pytest-selective==X.Y.Z`. The moving `@v1` tag follows
+the newest release.
 [Provenance and extraction scope](https://github.com/gigaverse-app/pytest-selective/blob/main/PROVENANCE.md).
 
 [Quick tutorial](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/tutorial.md) ·
@@ -65,14 +75,8 @@ Older immutable releases retain their original layouts.
 
 ## Have your agent set it up
 
-Paste this into your coding agent in the Python project you want to improve:
-
-```text
-Read https://raw.githubusercontent.com/gigaverse-app/pytest-selective/main/skills/pytest-selective/SKILL.md
-and use it to speed up this project's tests/CI. Preserve coverage, add routing
-regressions, and prove the result with measured before/after evidence.
-```
-
+The one-prompt setup above fetches the [agent setup procedure](https://pytest-selective.readthedocs.io/en/latest/agent-setup.md),
+which is the repository's [agent skill](skills/pytest-selective/SKILL.md) published verbatim.
 [Install the skill or add AGENTS.md instructions](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/agents.md).
 Works through existing Git/CLI tools; no new agent server is needed.
 
@@ -171,7 +175,7 @@ hold. It uses a temporary repository and leaves your checkout untouched.
 Install from PyPI using Python 3.11+:
 
 ```bash
-pip install "pytest-selective>=0.1.0,<0.2.0"
+pip install "pytest-selective>=1,<2"
 ```
 
 For source development, GitHub installation is also available:
@@ -244,34 +248,31 @@ change that runs the contract.
 <!-- pytest-quint-connect:contracts selection -->
 <a href="https://github.com/gigaverse-app/pytest-quint-connect#impact"><picture><source media="(prefers-color-scheme: dark)" srcset="https://pytest-quint-connect-counter.gigaverse-oss.workers.dev/v1/sign.svg?key=f8e41d50ca4018845c305f2f0dbd1cfd6d9b281e53b352490af53154a54e6265&amp;name=gigaverse-app%2Fpytest-selective&amp;theme=dark"><img alt="What pytest-quint-connect&#x27;s contracts caught in gigaverse-app/pytest-selective&#x27;s pull requests" src="https://pytest-quint-connect-counter.gigaverse-oss.workers.dev/v1/sign.svg?key=f8e41d50ca4018845c305f2f0dbd1cfd6d9b281e53b352490af53154a54e6265&amp;name=gigaverse-app%2Fpytest-selective" width="100%"></picture></a>
 
-<a href="https://github.com/gigaverse-app/pytest-quint-connect" title="Mutants are planted fake bugs: deliberately broken copies of the code, used only during this test run. Each must make some history diverge, proving the tests are meaningful: they would notice that kind of bug"><img alt="Quint contracts: 1 contract passed · 44 histories · 10/10 mutants caught" src="https://img.shields.io/badge/Quint_contracts-1_contract_passed_%C2%B7_44_histories_%C2%B7_10%2F10_mutants_caught-brightgreen"></a>
+<a href="https://github.com/gigaverse-app/pytest-quint-connect" title="Mutants: deliberately broken copies of the code. Each must make some history diverge, proving the contract would notice that kind of bug"><img alt="Quint contracts: 1 contract passed · 49 histories · 14/14 planted bugs caught" src="https://img.shields.io/badge/Quint_contracts-1_contract_passed_%C2%B7_49_histories_%C2%B7_14%2F14_planted_bugs_caught-brightgreen"></a>
 
-<details>
-<summary>✅ 1 contract · 55/55 cases · 10/10 mutants caught · 44 histories</summary>
-
-| | <img width="2000" height="1" align="right" alt="">Contract | Cases passed | [Mutants caught](https://github.com/gigaverse-app/pytest-quint-connect/blob/main/docs/why.md#proof-that-the-tests-can-fail "Mutants are planted fake bugs: deliberately broken copies of the code, used only during this test run. Each must make some history diverge, proving the tests are meaningful: they would notice that kind of bug") |
+| | Contract | Cases passed | [Planted bugs caught](https://github.com/gigaverse-app/pytest-quint-connect/blob/main/docs/why.md#proof-that-the-tests-can-fail "Mutants: deliberately broken copies of the code. Each must make some history diverge, proving the contract would notice that kind of bug") |
 | :-: | :-- | --: | --: |
-| ✅ | `selection` `test_selection_contract.py::test_selection`<br><sub>44 histories (20 witnesses, 24 samples, seed 11) · every action covered · Quint 0.33.1</sub> | 55/55 | 10/10 |
+| ✅ | `selection` `test_selection_contract.py::test_selection`<br><sub>49 histories (25 witnesses, 24 samples, seed 11) · every action covered · Quint 0.33.1</sub> | 64/64 | 14/14 |
 
-</details>
+**Bugs this contract found**
 
-<details>
-<summary>🧪 10 mutants (planted fake bugs), all caught</summary>
+1. **A test that does `from pkg import *` was not selected when a submodule pkg lists in __all__ changed.** Fixed in #94 · found by the runtime check (pytest loaded the changed file, the planner skipped the test), after an adversarial review reported it; witness starImportFollowsAllTest · regression test `tests/testing/test_impact_graph.py::test_star_import_reaches_the_submodules_its_package_lists_in_all`. 1 of 49 histories diverge when [planted bug](https://github.com/gigaverse-app/pytest-quint-connect/blob/main/docs/why.md#proof-that-the-tests-can-fail "Mutants: deliberately broken copies of the code. Each must make some history diverge, proving the contract would notice that kind of bug") `star-exports-ignored` (Reintroduces the star-import bug: from pkg import * no longer reaches the submodules pkg lists in __all__) reintroduces it; first caught by `witness-starImportFollowsAllTest` at state 2, after `edit(file='alpha', target='')`.
+1. **Editing a plugin loaded by `addopts = -p NAME` selected no test, though it is loaded into every session.** Fixed in #95 · found by the runtime check (pytest loaded the changed file, the planner skipped the test), after an adversarial review reported it; witness commandLinePluginSelectsEveryTestTest and random histories · regression test `tests/testing/test_impact_graph.py::test_command_line_plugin_in_addopts_reaches_every_test`. 2 of 49 histories diverge when [planted bug](https://github.com/gigaverse-app/pytest-quint-connect/blob/main/docs/why.md#proof-that-the-tests-can-fail "Mutants: deliberately broken copies of the code. Each must make some history diverge, proving the contract would notice that kind of bug") `addopts-plugins-ignored` (Reintroduces the plugin bug: a plugin named by -p in addopts is no longer a dependency of every test) reintroduces it; first caught by `witness-commandLinePluginSelectsEveryTestTest` at state 1, after `edit(file='plugin', target='')`.
+1. **A bare `import helpers` resolved by pytest's default import mode was not followed, so editing tests/helpers.py selected nothing.** Fixed in #96 · found by the runtime check (pytest loaded the changed file, the planner skipped the test), after an adversarial review reported it; witness bareTestImportFollowsPrependModeTest · regression test `tests/testing/test_impact_graph.py::test_bare_import_resolves_from_the_importers_prepend_mode_base_directory`. 1 of 49 histories diverge when [planted bug](https://github.com/gigaverse-app/pytest-quint-connect/blob/main/docs/why.md#proof-that-the-tests-can-fail "Mutants: deliberately broken copies of the code. Each must make some history diverge, proving the contract would notice that kind of bug") `prepend-roots-ignored` (Reintroduces the import-mode bug: imports no longer resolve from the directories pytest prepends to sys.path) reintroduces it; first caught by `witness-bareTestImportFollowsPrependModeTest` at state 2, after `edit(file='helper', target='')`.
+1. **A test that read a tracked file with open() and a literal path was not selected when that file changed.** Fixed in #106 · found by the runtime check (pytest opened the changed file, the planner skipped the test), after an adversarial review reported it; witness literalPathReadTest · regression test `tests/testing/test_impact_graph.py::test_reading_a_tracked_file_by_literal_path_selects_the_reader`. 1 of 49 histories diverge when [planted bug](https://github.com/gigaverse-app/pytest-quint-connect/blob/main/docs/why.md#proof-that-the-tests-can-fail "Mutants: deliberately broken copies of the code. Each must make some history diverge, proving the contract would notice that kind of bug") `literal-reads-ignored` (Reintroduces the literal-read bug: open('data/table.json') no longer makes the reader depend on that file) reintroduces it; first caught by `witness-literalPathReadTest` at state 2, after `edit(file='table', target='')`.
 
-| Contract | [Mutant](https://github.com/gigaverse-app/pytest-quint-connect/blob/main/docs/why.md#proof-that-the-tests-can-fail "Mutants are planted fake bugs: deliberately broken copies of the code, used only during this test run. Each must make some history diverge, proving the tests are meaningful: they would notice that kind of bug") | <img width="2000" height="1" align="right" alt="">What it breaks | Caught by | At |
-| :-- | :-- | :-- | :-- | :-- |
-| `selection` | `head-edges-only` | Plans with the head tree's edges only, so a deleted module's former importers are not selected | `witness-deletedModuleSelectsFormerImportersTest` | state 1, after `remove(file='beta', target='')` |
-| `selection` | `direct-importers-only` | Follows only files that import a changed file directly, not their importers | `witness-transitiveEditTest` | state 1, after `edit(file='beta', target='')` |
-| `selection` | `global-inputs-ignored` | Treats requirements.txt like any unreferenced file instead of selecting every test | `witness-globalInputSelectsEveryTestTest` | state 1, after `touchGlobal(file='', target='')` |
-| `selection` | `content-follows-imports` | Reads a kind: content declaration as an import, so it also follows the read file's imports | `witness-contentReadIsNotTransitiveTest` | state 2, after `edit(file='beta', target='')` |
-| `selection` | `conftest-scope-collapsed` | Scopes every conftest to the top test directory, so tests/sub/conftest.py reaches every test | `witness-nestedConftestSelectsItsSubtreeTest` | state 1, after `edit(file='subconftest', target='')` |
-| `selection` | `parse-errors-ignored` | Treats an unparseable file as importing nothing instead of stopping with an error | `witness-unparseableSourceIsAnErrorTest` | state 1, after `breakSyntax(file='beta', target='')` |
-| `selection` | `assumes-consecutive-base` | Plans every run against the head it planned last, which is right only between neighbouring commits | `witness-transitiveEditTest` | state 1, after `edit(file='beta', target='')` |
-| `selection` | `cache-key-omits-test-roots` | Leaves test_roots out of the cached graph's key, so a graph built for the old roots is reused after they change | `witness-narrowedTestRootsReplanFromScratchTest` | state 2, after `toggleConfig(file='narrow', target='')` |
-| `selection` | `parse-cache-keyed-by-path` | Caches parsed files by path instead of content, so an edited file keeps its old imports | `witness-importDeclarationFollowsImportsTest` | state 3, after `edit(file='beta', target='')` |
-| `selection` | `cache-checksum-ignored` | Trusts a stored graph without checking its checksum, so a damaged entry is used as if it were valid | `witness-damagedCacheIsRebuiltTest` | state 2, after `corrupt(file='', target='')` |
+**[Planted bugs](https://github.com/gigaverse-app/pytest-quint-connect/blob/main/docs/why.md#proof-that-the-tests-can-fail "Mutants: deliberately broken copies of the code. Each must make some history diverge, proving the contract would notice that kind of bug") this contract catches**
 
-</details>
+- `head-edges-only`: Plans with the head tree's edges only, so a deleted module's former importers are not selected. Caught by `witness-deletedModuleSelectsFormerImportersTest` at state 1, after `remove(file='beta', target='')`.
+- `direct-importers-only`: Follows only files that import a changed file directly, not their importers. Caught by `witness-transitiveEditTest` at state 1, after `edit(file='beta', target='')`.
+- `global-inputs-ignored`: Treats requirements.txt like any unreferenced file instead of selecting every test. Caught by `witness-globalInputSelectsEveryTestTest` at state 1, after `touchGlobal(file='', target='')`.
+- `content-follows-imports`: Reads a kind: content declaration as an import, so it also follows the read file's imports. Caught by `witness-contentReadIsNotTransitiveTest` at state 2, after `edit(file='beta', target='')`.
+- `conftest-scope-collapsed`: Scopes every conftest to the top test directory, so tests/sub/conftest.py reaches every test. Caught by `witness-nestedConftestSelectsItsSubtreeTest` at state 1, after `edit(file='subconftest', target='')`.
+- `parse-errors-ignored`: Treats an unparseable file as importing nothing instead of stopping with an error. Caught by `witness-unparseableSourceIsAnErrorTest` at state 1, after `breakSyntax(file='beta', target='')`.
+- `assumes-consecutive-base`: Plans every run against the head it planned last, which is right only between neighbouring commits. Caught by `witness-transitiveEditTest` at state 1, after `edit(file='beta', target='')`.
+- `cache-key-omits-test-roots`: Leaves test_roots out of the cached graph's key, so a graph built for the old roots is reused after they change. Caught by `witness-narrowedTestRootsReplanFromScratchTest` at state 2, after `toggleConfig(file='narrow', target='')`.
+- `parse-cache-keyed-by-path`: Caches parsed files by path instead of content, so an edited file keeps its old imports. Caught by `witness-importDeclarationFollowsImportsTest` at state 3, after `edit(file='beta', target='')`.
+- `cache-checksum-ignored`: Trusts a stored graph without checking its checksum, so a damaged entry is used as if it were valid. Caught by `witness-damagedCacheIsRebuiltTest` at state 2, after `corrupt(file='', target='')`.
 
 <sub>Generated by [pytest-quint-connect](https://github.com/gigaverse-app/pytest-quint-connect) from contract receipts; [what a passing run proves](https://github.com/gigaverse-app/pytest-quint-connect/blob/main/docs/limits.md).</sub>
 <!-- pytest-quint-connect:end -->
@@ -338,5 +339,14 @@ records progress against the accepted backlog. [Setup and cleanup workflow](CONT
 <!-- dry-lint-progress:start -->
 <a href="https://github.com/gigaverse-app/dry-lint"><picture><source media="(prefers-color-scheme: dark)" srcset="https://dry-lint-counter.gigaverse-oss.workers.dev/v1/sign.svg?theme=dark&amp;key=f8e41d50ca4018845c305f2f0dbd1cfd6d9b281e53b352490af53154a54e6265&amp;name=gigaverse-app%2Fpytest-selective&amp;cleaned=9&amp;remaining=0&amp;dismissed=0"><img alt="dry-lint in gigaverse-app/pytest-selective: new duplicates kept out of its pull requests, 9 old duplicates cleaned up, 0 remaining" src="https://dry-lint-counter.gigaverse-oss.workers.dev/v1/sign.svg?key=f8e41d50ca4018845c305f2f0dbd1cfd6d9b281e53b352490af53154a54e6265&amp;name=gigaverse-app%2Fpytest-selective&amp;cleaned=9&amp;remaining=0&amp;dismissed=0" width="100%"></picture></a>
 
+**Reviewed duplication debt** · Counts from the committed baselines.
+
+| Accepted pairs | Remaining | Retired | Dismissed |
+| :-- | --: | --: | --: |
+| Functions | 0 | 9 | 0 |
+| Models | Not initialized | — | — |
+
 [Accepted backlog](.dry-lint/baseline.json) · [Weekly audit](https://github.com/gigaverse-app/pytest-selective/actions/workflows/dry-lint-audit.yml)
+
+Retired means a side was removed, or (functions only) the judge now finds the pair separate. It is not a count of refactors. Dismissals stay separate; an uninitialized model baseline is unknown.
 <!-- dry-lint-progress:end -->

@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.1.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.1.0...v1.1.1) (2026-11-09)
+
+
+### Bug fixes
+
+* **selection:** follow file reads that name a tracked file by literal path ([#106](https://github.com/gigaverse-app/pytest-selective/issues/106)) ([5c534c4](https://github.com/gigaverse-app/pytest-selective/commit/5c534c48d3d098fb0e659973e2e40b410198af19))
+
+## [1.1.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.0.0...v1.1.0) (2026-11-09)
+
+
+### Features
+
+* one-prompt agent setup, and fixes from a real adoption trial ([#105](https://github.com/gigaverse-app/pytest-selective/issues/105)) ([27c4578](https://github.com/gigaverse-app/pytest-selective/commit/27c45786f1a6a349409eb2a083510e4e9a9180d3))
+
+
+### Bug fixes
+
+* **lanes:** select only lanes holding graph tests when every graph test is affected ([#102](https://github.com/gigaverse-app/pytest-selective/issues/102)) ([d6f22b8](https://github.com/gigaverse-app/pytest-selective/commit/d6f22b8f93773a4b2e60b2b8ad9d4b26762b2d2f))
+* **selection:** resolve imports from the directories pytest's default import mode adds to sys.path ([#96](https://github.com/gigaverse-app/pytest-selective/issues/96)) ([d825176](https://github.com/gigaverse-app/pytest-selective/commit/d825176eb6d259733ec8132ba98ac327be15eb72))
+
 ## [1.0.0](https://github.com/gigaverse-app/pytest-selective/compare/v0.4.3...v1.0.0) (2026-11-08)
 
 

@@ -1,11 +1,15 @@
 // What pytest-selective promises about one small repository, commit after commit.
 //
 // The selected tests are exactly the tests that reach a changed file, in the base or the head
-// tree, through imports, ancestor conftests or import-kind declarations, plus the readers of a
-// changed file's contents. A content read does not follow the read file's imports. A change to a
+// tree, through imports, ancestor conftests or import-kind declarations, or that reach a reader
+// of a changed file's contents. A content read does not follow the read file's imports. A change to a
 // global input selects every test. Unparseable Python in either tree is an error, never a
 // narrower or a full selection. `observed` holds the selection between the last two commits and
 // between the history's first commit and the last one, as a pull request's base and head.
+//
+// `missed` is the independent check: the driver runs pytest's collection on both trees, records
+// which repository files each test really imports or opens, and lists the tests that loaded a
+// changed file but were not selected. It must always be empty.
 //
 // The planner keeps a graph cache across plans. It is never part of the specification: every
 // answer below depends only on the trees and the configuration, so a configuration change, a
@@ -13,7 +17,7 @@
 module selection {
   type Event = { op: str, file: str, target: str }
   type Selection = { mode: str, selected: Set[str] }
-  type View = { mode: str, selected: Set[str], sinceStart: Selection }
+  type View = { mode: str, selected: Set[str], sinceStart: Selection, missed: Set[str] }
   type Tree = {
     imports: Set[(str, str)],
     present: Set[str],
@@ -21,27 +25,51 @@ module selection {
     versions: str -> int,
     broken: Set[str],
     requirements: int,
+    // Tests that read data/table.json with open() and a literal path, at import time.
+    reads: Set[str],
   }
-  type Content = { present: bool, imports: Set[(str, str)], declared: Set[(str, str)], version: int, broken: bool }
+  type Content = {
+    present: bool,
+    imports: Set[(str, str)],
+    declared: Set[(str, str)],
+    version: int,
+    broken: bool,
+    reads: bool,
+  }
   // narrow: test_roots is tests/sub instead of tests. tableGlobal: data/table.json is a global input.
   type Config = { narrow: bool, tableGlobal: bool }
 
   pure val MODULES = Set("alpha", "beta", "gamma")
+  // src/pkg/__init__.py, with `__all__ = ["alpha"]`. Importing any pkg module executes it.
+  pure val INIT = "init"
+  // plug.py, loaded into every pytest session by `addopts = -p plug` in pytest.ini.
+  pure val PLUGIN = "plugin"
   // tests/helpers.py: a module inside the test root that is not a test.
   pure val HELPER = "helper"
   // tests/conftest.py and tests/sub/conftest.py.
   pure val CONFTESTS = Set("conftest", "subconftest")
   // tests/test_one.py, tests/test_two.py and tests/sub/test_sub.py.
   pure val TESTS = Set("test_one", "test_two", "test_sub")
-  pure val PYTHON = MODULES.union(Set(HELPER)).union(CONFTESTS).union(TESTS)
+  pure val PYTHON = MODULES.union(Set(HELPER, INIT, PLUGIN)).union(CONFTESTS).union(TESTS)
   // Every file in the graph: the Python files and a data table.
   pure val FILES = PYTHON.union(Set("table"))
-  // Files that can be imported.
-  pure val TARGETS = MODULES.union(Set(HELPER))
+  // What an import names. "star" is `from pkg import *`, which imports pkg.alpha through
+  // `__all__`. "helperBare" is `import helpers`, which pytest's default prepend import mode
+  // resolves to tests/helpers.py for files directly in tests/.
+  pure val TARGETS = MODULES.union(Set(HELPER, "star", "helperBare"))
+  // Files allowed to spell each kind of import.
+  pure val MODULE_IMPORTERS = PYTHON.exclude(Set(PLUGIN))
+  pure val STAR_IMPORTERS = TESTS.union(CONFTESTS).union(Set(HELPER))
+  pure val BARE_IMPORTERS = Set("test_one", "test_two", "conftest")
+
+  // The file an import resolves to.
+  pure def resolved(target: str): str =
+    if (target == "star") "alpha" else if (target == "helperBare") HELPER else target
   // Files a test can declare it reads with a `# gv:test-dependency:` comment (import kind).
   pure val DECLARABLE = Set("table", "gamma")
-  // A sidecar declares that test_sub reads gamma's contents (content kind). It never changes.
-  pure val CONTENT_READS = Set(("test_sub", "gamma"))
+  // Sidecars declare that test_sub reads gamma's contents and that tests/helpers.py reads the
+  // table's (content kind). They never change, and exist while their reader does.
+  pure val CONTENT_READS = Set(("test_sub", "gamma"), (HELPER, "table"))
   // Files a commit may delete and add back.
   pure val REMOVABLE = Set("alpha", "beta", HELPER, "test_one", "test_two")
   pure val OPTIONS = Set("narrow", "tableGlobal")
@@ -64,8 +92,9 @@ module selection {
         declared: t.declared.filter(d => d._1 == f),
         version: t.versions.get(f),
         broken: t.broken.contains(f),
+        reads: t.reads.contains(f),
       }
-    else { present: false, imports: Set(), declared: Set(), version: 0, broken: false }
+    else { present: false, imports: Set(), declared: Set(), version: 0, broken: false, reads: false }
 
   // The files collected as tests under a configuration.
   pure def testsOf(c: Config): Set[str] = if (c.narrow) Set("test_sub") else TESTS
@@ -73,9 +102,14 @@ module selection {
   // The dependency edges of one tree: imports and import-kind declarations between files that
   // exist, and each test's ancestor conftests.
   pure def edges(t: Tree, c: Config): Set[(str, str)] = {
-    val linked = t.imports.union(t.declared).filter(e => t.present.contains(e._1) and t.present.contains(e._2))
-    val root = testsOf(c).intersect(t.present).map(test => (test, "conftest"))
-    linked.union(root).union(Set(("test_sub", "subconftest")))
+    val spelled = t.imports.map(e => (e._1, resolved(e._2))).union(t.declared)
+    val linked = spelled.filter(e => t.present.contains(e._1) and t.present.contains(e._2))
+    val packaged = t.imports.filter(e => MODULES.union(Set("star")).contains(e._2) and t.present.contains(e._1))
+      .map(e => (e._1, INIT))
+    val tests = testsOf(c).intersect(t.present)
+    val root = tests.map(test => (test, "conftest"))
+    val plugin = tests.map(test => (test, PLUGIN))
+    linked.union(packaged).union(root).union(plugin).union(Set(("test_sub", "subconftest")))
   }
 
   // The files that reach `changed` along `e`, the changed files included. Folding once per file
@@ -89,9 +123,13 @@ module selection {
       val changed = FILES.filter(f => content(before, f) != content(after, f))
       val global = before.requirements != after.requirements or (c.tableGlobal and changed.contains("table"))
       val tests = testsOf(c).intersect(after.present)
-      val readers = CONTENT_READS.filter(r => changed.contains(r._2)).map(r => r._1)
+      // A literal path read is a content read, like a kind: content sidecar.
+      val literal = before.reads.union(after.reads).map(f => (f, "table"))
+      val readers = CONTENT_READS.union(literal)
+        .filter(r => changed.contains(r._2) and (before.present.contains(r._1) or after.present.contains(r._1)))
+        .map(r => r._1)
       val chosen = if (global) tests
-        else reaching(edges(before, c).union(edges(after, c)), changed).union(readers).intersect(tests)
+        else reaching(edges(before, c).union(edges(after, c)), changed.union(readers)).intersect(tests)
       {
         mode: if (global or (chosen.size() > 0 and chosen == tests)) "full" else if (chosen.size() > 0) "scoped" else "none",
         selected: chosen,
@@ -107,7 +145,12 @@ module selection {
       start' = start,
       config' = config,
       event' = { op: op, file: file, target: target },
-      observed' = { mode: latest.mode, selected: latest.selected, sinceStart: selection(start, following, config) },
+      observed' = {
+        mode: latest.mode,
+        selected: latest.selected,
+        sinceStart: selection(start, following, config),
+        missed: Set(),
+      },
     }
   }
 
@@ -120,7 +163,12 @@ module selection {
       previous' = previous,
       start' = start,
       config' = nextConfig,
-      observed' = { mode: latest.mode, selected: latest.selected, sinceStart: selection(start, tree, nextConfig) },
+      observed' = {
+        mode: latest.mode,
+        selected: latest.selected,
+        sinceStart: selection(start, tree, nextConfig),
+        missed: Set(),
+      },
     }
   }
 
@@ -131,6 +179,7 @@ module selection {
     versions: FILES.mapBy(_ => 0),
     broken: Set(),
     requirements: 0,
+    reads: Set(),
   }
 
   action init = all {
@@ -139,7 +188,7 @@ module selection {
     start' = INITIAL,
     config' = { narrow: false, tableGlobal: false },
     event' = { op: "init", file: "", target: "" },
-    observed' = { mode: "none", selected: Set(), sinceStart: { mode: "none", selected: Set() } },
+    observed' = { mode: "none", selected: Set(), sinceStart: { mode: "none", selected: Set() }, missed: Set() },
   }
 
   // Change a file's body without changing what it imports or declares.
@@ -149,11 +198,13 @@ module selection {
   }
 
   action link(file: str, target: str): bool = all {
-    PYTHON.contains(file),
+    if (target == "star") STAR_IMPORTERS.contains(file)
+      else if (target == "helperBare") BARE_IMPORTERS.contains(file)
+      else MODULE_IMPORTERS.contains(file),
     TARGETS.contains(target),
-    file != target,
+    file != resolved(target),
     tree.present.contains(file),
-    tree.present.contains(target),
+    tree.present.contains(resolved(target)),
     not(tree.imports.contains((file, target))),
     commit("link", file, target, { ...tree, imports: tree.imports.union(Set((file, target))) }),
   }
@@ -174,6 +225,7 @@ module selection {
       present: tree.present.exclude(Set(file)),
       declared: tree.declared.filter(d => d._1 != file),
       broken: tree.broken.exclude(Set(file)),
+      reads: tree.reads.exclude(Set(file)),
     }),
   }
 
@@ -208,6 +260,14 @@ module selection {
   action repair(file: str): bool = all {
     tree.broken.contains(file),
     commit("repair", file, "", { ...tree, broken: tree.broken.exclude(Set(file)) }),
+  }
+
+  // Make a test read data/table.json with open() and a literal path, without declaring it.
+  action readTable(file: str): bool = all {
+    TESTS.contains(file),
+    tree.present.contains(file),
+    not(tree.reads.contains(file)),
+    commit("readTable", file, "", { ...tree, reads: tree.reads.union(Set(file)) }),
   }
 
   action touchGlobal = commit("touchGlobal", "", "", { ...tree, requirements: tree.requirements + 1 })
@@ -250,6 +310,7 @@ module selection {
       undeclare(file, target),
       breakSyntax(file),
       repair(file),
+      readTable(file),
       touchGlobal,
       toggleConfig(option),
       restart,
@@ -257,11 +318,11 @@ module selection {
     }
   }
 
-  val selectsOnlyExistingTests = observed.selected.subseteq(testsOf(config).intersect(tree.present))
+  val selectsOnlyExistingTests = observed.missed.size() == 0 and observed.selected.subseteq(testsOf(config).intersect(tree.present))
     and observed.sinceStart.selected.subseteq(testsOf(config).intersect(tree.present))
 
   pure def view(mode: str, selected: Set[str]): View =
-    { mode: mode, selected: selected, sinceStart: { mode: mode, selected: selected } }
+    { mode: mode, selected: selected, sinceStart: { mode: mode, selected: selected }, missed: Set() }
 
   run transitiveEditTest = init.then(edit("beta"))
     .then(all { assert(observed == view("scoped", Set("test_one"))), inspect })
@@ -269,8 +330,9 @@ module selection {
   run deletedModuleSelectsFormerImportersTest = init.then(remove("beta"))
     .then(all { assert(observed == view("scoped", Set("test_one"))), inspect })
 
+  // test_two declares the table; tests/helpers.py reads it as content, and test_sub imports the helper.
   run declaredReadTest = init.then(edit("table"))
-    .then(all { assert(observed == view("scoped", Set("test_two"))), inspect })
+    .then(all { assert(observed == view("scoped", Set("test_two", "test_sub"))), inspect })
 
   run conftestSelectsEveryTestTest = init.then(edit("conftest"))
     .then(all { assert(observed == view("full", TESTS)), inspect })
@@ -288,7 +350,8 @@ module selection {
     .then(all { assert(observed.mode == "none" and observed.sinceStart.selected == Set()), inspect })
 
   run removedDeclarationStopsSelectingTest = init.then(undeclare("test_two", "table")).then(edit("table"))
-    .then(all { assert(observed.mode == "none" and observed.sinceStart.selected == Set("test_two")), inspect })
+    // test_sub still follows the table through the helper's content read.
+    .then(all { assert(observed.selected == Set("test_sub") and observed.sinceStart.selected == Set("test_two", "test_sub")), inspect })
 
   run helperModuleSelectsItsImportersTest = init.then(link(HELPER, "beta")).then(edit("beta"))
     .then(all { assert(observed == view("scoped", Set("test_one", "test_sub"))), inspect })
@@ -306,13 +369,13 @@ module selection {
   run unparseableSourceIsAnErrorTest = init.then(breakSyntax("beta")).then(repair("beta"))
     .then(all {
       // The base is still unparseable; against the first commit nothing changed.
-      assert(observed == { mode: "error", selected: Set(), sinceStart: { mode: "none", selected: Set() } }),
+      assert(observed == { mode: "error", selected: Set(), sinceStart: { mode: "none", selected: Set() }, missed: Set() }),
       inspect,
     })
 
   run revertedImportIsNoChangeSinceStartTest = init.then(link("gamma", "alpha")).then(unlink("gamma", "alpha"))
     .then(all {
-      assert(observed == { mode: "scoped", selected: Set("test_two", "test_sub"), sinceStart: { mode: "none", selected: Set() } }),
+      assert(observed == { mode: "scoped", selected: Set("test_two", "test_sub"), sinceStart: { mode: "none", selected: Set() }, missed: Set() }),
       inspect,
     })
 
@@ -328,9 +391,25 @@ module selection {
   run restartedCacheKeepsAnswersTest = init.then(link("test_two", "alpha")).then(restart).then(edit("beta"))
     .then(all { assert(observed.selected == Set("test_one", "test_two")), inspect })
 
+  run starImportFollowsAllTest = init.then(link("test_two", "star")).then(edit("alpha"))
+    .then(all { assert(observed.selected == Set("test_one", "test_two")), inspect })
+
+  run commandLinePluginSelectsEveryTestTest = init.then(edit(PLUGIN))
+    .then(all { assert(observed == view("full", TESTS)), inspect })
+
+  run bareTestImportFollowsPrependModeTest = init.then(link("test_one", "helperBare")).then(edit(HELPER))
+    .then(all { assert(observed.selected == Set("test_one", "test_sub")), inspect })
+
+  run packageInitEditSelectsItsImportersTest = init.then(edit(INIT))
+    .then(all { assert(observed == view("scoped", Set("test_one", "test_two"))), inspect })
+
+  // test_one now reads the table by literal path; the other two already depended on it.
+  run literalPathReadTest = init.then(readTable("test_one")).then(edit("table"))
+    .then(all { assert(observed == view("full", TESTS)), inspect })
+
   run sinceStartSpansCommitsTest = init.then(edit("beta")).then(edit("table"))
     .then(all {
-      assert(observed == { mode: "scoped", selected: Set("test_two"), sinceStart: { mode: "scoped", selected: Set("test_one", "test_two") } }),
+      assert(observed == { mode: "scoped", selected: Set("test_two", "test_sub"), sinceStart: { mode: "full", selected: TESTS }, missed: Set() }),
       inspect,
     })
 }

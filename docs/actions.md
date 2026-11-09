@@ -38,6 +38,7 @@ Each link below is the public action's complete input/output contract.
 | `gigaverse-app/pytest-selective/actions/plan-lanes@v1` | [plan-lanes](../actions/plan-lanes/action.yml) |
 | `gigaverse-app/pytest-selective/actions/pytest-expansion@v1` | [pytest-expansion](../actions/pytest-expansion/action.yml) |
 | `gigaverse-app/pytest-selective/actions/test-impact@v1` | [test-impact](../actions/test-impact/action.yml) |
+| `gigaverse-app/pytest-selective/actions/validation-gate@v1` | [validation-gate](../actions/validation-gate/action.yml) |
 
 Reusable workflows are a different interface: GitHub requires them to live under
 `.github/workflows/` and callers use `jobs.<job>.uses`. Actions use
