@@ -4,14 +4,14 @@ import json
 import os
 import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 
 from tests.testing.git_repo import write
 
-# gv:test-dependency: scripts/run_ci_tests.py
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts/run_ci_tests.py"
+# gv:test-dependency: src/pytest_selective/execution.py
+# gv:test-dependency: src/pytest_selective/impact_cli.py
+COMMAND = [sys.executable, "-m", "pytest_selective.impact_cli", "execute-plan", "--", "-q"]
 
 
 @pytest.mark.parametrize(
@@ -34,7 +34,7 @@ def test_execution_respects_selection_and_falls_back_on_missing_proof(tmp_path, 
     )
     write(tmp_path, "tests/test_unrelated.py", "def test_unrelated(): assert False\n")
     completed = subprocess.run(
-        [sys.executable, str(SCRIPT), "-q"],
+        COMMAND,
         cwd=tmp_path,
         env={
             **os.environ,
@@ -56,7 +56,7 @@ def test_execution_respects_selection_and_falls_back_on_missing_proof(tmp_path, 
 def test_selected_paths_with_spaces_are_passed_as_single_arguments(tmp_path):
     write(tmp_path, "tests/test with spaces.py", "def test_selected(): pass\n")
     completed = subprocess.run(
-        [sys.executable, str(SCRIPT), "-q"],
+        COMMAND,
         cwd=tmp_path,
         env={
             **os.environ,
