@@ -61,6 +61,9 @@ fixture example, directory manifests, dependency comments, and dynamic Python in
 
 A read that names a tracked file by literal path, such as `open("data/prices.json")` or
 `(Path(__file__).parent / "prices.json").read_text()`, is followed automatically as a content read.
+A string that only names a tracked file, such as a routing test's `("bench.py", ...)` row, adds no
+edge: a dotted string is followed as a possible module name (a patch target, a plugin) only when it
+names no tracked file, from the repository root or beside its reader.
 For a path that is computed, or built from several parts, add a reader-owned comment:
 
 ```python

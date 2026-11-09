@@ -278,6 +278,47 @@ def test_a_path_that_is_not_read_from_a_tracked_file_adds_no_edge(
     assert affected(repo, base, head, config, cache).selected == []
 
 
+@pytest.mark.parametrize(
+    ("named", "changed"),
+    [
+        # A routing test's rows name files at the root: "bench.py" is not module bench's attribute "py".
+        ("bench.py", "bench.py"),
+        # A data file named beside a same-stem module: "tasks.cfg" is not module tasks's attribute "cfg".
+        ("tasks.cfg", "tasks.py"),
+        # Relative to the reader's directory.
+        ("helper.py", "tests/right/helper.py"),
+    ],
+)
+def test_a_string_that_names_a_tracked_file_is_not_a_module_import(
+    repo: Path, config: ImpactConfig, cache: GraphCache, named: str, changed: str
+) -> None:
+    write(repo, "bench.py", "VALUE = 1")
+    write(repo, "tasks.py", "VALUE = 1")
+    write(repo, "tasks.cfg", "[tasks]")
+    write(repo, "tests/right/helper.py", "VALUE = 1")
+    write(
+        repo,
+        "tests/right/test_two.py",
+        f'import pytest\n@pytest.mark.parametrize("path", ["{named}", "README.md"])\ndef test_two(path): pass\n',
+    )
+    base = commit(repo)
+    write(repo, changed, "VALUE = 2")
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == []
+
+
+def test_a_dotted_string_that_names_no_tracked_file_still_selects(
+    repo: Path, config: ImpactConfig, cache: GraphCache
+) -> None:
+    # A patch target names a module, and a file beside it does not make it a path.
+    write(repo, "pkg.json", "{}")
+    write(repo, "tests/right/test_two.py", 'TARGET = "pkg.leaf.VALUE"\ndef test_two(): pass\n')
+    base = commit(repo)
+    write(repo, "src/pkg/leaf.py", "VALUE = 2")
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == ["tests/left/test_one.py", "tests/right/test_two.py"]
+
+
 def test_declared_dynamic_import_reaches_reader_and_its_importers(
     repo: Path, config: ImpactConfig, cache: GraphCache
 ) -> None:
