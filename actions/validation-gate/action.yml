@@ -2,7 +2,7 @@ name: Validate selected CI
 description: Fail unless every prerequisite succeeded or a successful lane plan skipped it; use as the one required check.
 inputs:
   needs:
-    description: The gate job's direct prerequisites, exactly `${{ toJSON(needs) }}`.
+    description: The gate job's direct prerequisites, serialized with the toJSON function applied to the needs context.
     required: true
   planner:
     description: The prerequisite job that ran plan-lanes. Its failure fails the gate.
