@@ -4,7 +4,9 @@
 # gv:test-dependency: .github/workflows/ci.yml
 # gv:test-dependency: .github/workflows/observe-ci.yml
 # gv:test-dependency: .github/workflows/public-actions.yml
+# gv:test-dependency: .github/workflows/weekly-checkpoint.yml
 
+import json
 from contextlib import closing
 from pathlib import Path
 
@@ -159,7 +161,16 @@ def test_pytest_jobs_consume_the_public_actions_shared_file_plan():
 @pytest.mark.parametrize("name", ["ci.yml", "public-actions.yml"])
 def test_self_adoption_keeps_weekly_full_checkpoints(name):
     workflow = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())
-    assert workflow[True]["schedule"]
+    assert "workflow_dispatch" in workflow[True]
+    assert "schedule" not in workflow[True]
+    checkpoint = yaml.safe_load((ROOT / ".github/workflows/weekly-checkpoint.yml").read_text())
+    events = checkpoint.get("on", checkpoint.get(True))
+    assert events["schedule"]
+    assert "workflow_dispatch" in events
+    assert checkpoint["permissions"]["actions"] == "write"
+    action = checkpoint["jobs"]["dispatch"]["steps"][0]
+    assert action["uses"] == "gigaverse-app/ci-esta/actions/weekly-checkpoint@v1"
+    assert name in json.loads(action["with"]["workflows"])
     planner = workflow["jobs"]["select-tests"]
     selection = next(step for step in planner["steps"] if step.get("uses") == "./actions/plan-lanes")
     assert selection.get("with", {}).get("full", "auto") == "auto"

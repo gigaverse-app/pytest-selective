@@ -294,8 +294,11 @@ def command_line_plugins(policies: dict[str, str]) -> set[str]:
     return set().union(*(options.loaded for options in plugin_options(policies)))
 
 
-def pytest11_entry_points(repo: Path, files: dict[str, str]) -> dict[str, str]:
-    """Entry-point name to module for every ``pytest11`` entry point a tracked ``pyproject.toml`` declares.
+def pytest11_entry_points(repo: Path, files: dict[str, str]) -> set[tuple[str, str]]:
+    """``(name, module)`` for every ``pytest11`` entry point a tracked ``pyproject.toml`` declares.
+
+    One name can map to several modules (a root project and a workspace member, or PEP 621 and Poetry
+    tables in one file); each is kept, since any of them may be the one installed.
 
     Installing the project registers them, and pytest then loads each one into every session
     without any test importing it. A nested project is included: a workspace installs its members
@@ -303,7 +306,7 @@ def pytest11_entry_points(repo: Path, files: dict[str, str]) -> dict[str, str]:
     """
     paths = {path: oid for path, oid in files.items() if PurePosixPath(path).name == "pyproject.toml"}
     contents = blobs(repo, set(paths.values()))
-    entry_points: dict[str, str] = {}
+    entry_points: set[tuple[str, str]] = set()
     for oid in paths.values():
         try:
             document = tomllib.loads(contents[oid].decode("utf-8-sig"))
@@ -312,10 +315,11 @@ def pytest11_entry_points(repo: Path, files: dict[str, str]) -> dict[str, str]:
             continue
         project = document.get("project", {}).get("entry-points", {}).get("pytest11", {})
         poetry = document.get("tool", {}).get("poetry", {}).get("plugins", {}).get("pytest11", {})
-        for name, value in {**project, **poetry}.items():
-            if isinstance(value, str):
-                # `module:attribute [extra]` imports `module`.
-                entry_points[name] = value.split("[", 1)[0].split(":", 1)[0].strip()
+        for table in (project, poetry):
+            for name, value in table.items():
+                if isinstance(value, str):
+                    # `module:attribute [extra]` imports `module`.
+                    entry_points.add((name, value.split("[", 1)[0].split(":", 1)[0].strip()))
     return entry_points
 
 
@@ -329,7 +333,7 @@ def session_plugins(repo: Path, files: dict[str, str], policies: dict[str, str])
     """
     options = plugin_options(policies) or [PluginOptions()]
     modules = command_line_plugins(policies)
-    for name, module in pytest11_entry_points(repo, files).items():
+    for name, module in pytest11_entry_points(repo, files):
         if any(name in option.loaded or (option.autoload and name not in option.blocked) for option in options):
             modules.add(module)
     return modules

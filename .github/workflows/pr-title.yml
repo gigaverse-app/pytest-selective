@@ -2,7 +2,8 @@ name: PR title
 
 # Squash merges use this checked title as the Conventional Commit header.
 on:
-  pull_request_target:
+  # Metadata reads need no privileged target event or repository secrets.
+  pull_request:
     types: [opened, edited, synchronize, reopened, ready_for_review]
 
 permissions:

@@ -1308,6 +1308,21 @@ def addopts(options: str) -> str:
         ({"pyproject.toml": '[tool.poetry.plugins.pytest11]\nplug = "plug.fixtures"\n'}, True),
         # A workspace member's entry points are installed with it.
         ({"libs/member/pyproject.toml": PROJECT + ENTRY_POINT}, True),
+        # Two projects may register the same name for different modules; either may be installed.
+        (
+            {
+                "pyproject.toml": PROJECT + ENTRY_POINT,
+                "libs/member/pyproject.toml": PROJECT + '[project.entry-points.pytest11]\nplug = "other.module"\n',
+            },
+            True,
+        ),
+        (
+            {
+                "pyproject.toml": PROJECT + '[project.entry-points.pytest11]\nplug = "other.module"\n',
+                "libs/member/pyproject.toml": PROJECT + ENTRY_POINT,
+            },
+            True,
+        ),
         # `-p no:NAME` blocks the entry point's name, and `pytest_NAME` with it.
         ({"pyproject.toml": PROJECT + ENTRY_POINT + addopts("-p no:plug")}, False),
         ({"pyproject.toml": PROJECT + PREFIXED_ENTRY_POINT + addopts("-p no:plug")}, False),

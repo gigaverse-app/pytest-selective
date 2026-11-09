@@ -7,6 +7,12 @@ inputs:
   base:
     description: Base commit containing the complete change set.
     default: ${{ github.event.pull_request.base.sha || github.event.before }}
+  pr-head:
+    description: >-
+      The pull request's head. When the checkout is GitHub's merge of it (refs/pull/N/merge), changes are measured from
+      that merge's base-branch parent, so commits that landed on the base branch after `base` are not counted as the PR's.
+      Empty (any other event) keeps `base`.
+    default: ${{ github.event.pull_request.head.sha }}
   full:
     description: 'auto preserves selection on PR/push reruns and runs full for manual/scheduled/release checkpoints or test:full. Override with true or false.'
     default: auto
@@ -40,10 +46,12 @@ runs:
         SELECTIVE_CONFIG: ${{ inputs.config }}
         SELECTIVE_BASE: ${{ inputs.base }}
         SELECTIVE_FULL: ${{ inputs.full }}
+        SELECTIVE_PR_HEAD: ${{ inputs.pr-head }}
       run: |
         export PYTHONPATH="$SELECTIVE_ACTION/../../src${PYTHONPATH:+:$PYTHONPATH}"
         args=(--config "$SELECTIVE_CONFIG" --base "$SELECTIVE_BASE" --github-output "$GITHUB_OUTPUT")
         args+=(--full "$SELECTIVE_FULL")
+        if [ -n "$SELECTIVE_PR_HEAD" ]; then args+=(--pr-head "$SELECTIVE_PR_HEAD"); fi
         uv run --no-project --python 3.14 --with pydantic==2.13.4 --with pyyaml==6.0.3 \
           python -m pytest_selective.ci "${args[@]}" | tee test-lanes.json
         {

@@ -1,0 +1,21 @@
+name: Weekly full checkpoint
+'on':
+  schedule:
+  - cron: 13 3 * * 1
+  workflow_dispatch: null
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: weekly-full-checkpoint
+  cancel-in-progress: false
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - uses: gigaverse-app/ci-esta/actions/weekly-checkpoint@v1
+      with:
+        workflows: '["ci.yml", "public-actions.yml"]'
+        ref: ''
+        workflow-inputs: '{}'
