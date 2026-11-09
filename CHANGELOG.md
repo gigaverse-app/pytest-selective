@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.3.0...v1.4.0) (2026-11-09)
+
+
+### Features
+
+* **lanes:** partition test roots by filename patterns ([27c10ec](https://github.com/gigaverse-app/pytest-selective/commit/27c10ec608f052a36f58d9b10730048ab9d38598))
+
 ## [1.3.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.2.0...v1.3.0) (2026-11-09)
 
 
