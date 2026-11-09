@@ -2711,3 +2711,30 @@ def test_inventory_does_not_lend_one_repository_s_commits_to_another(repo: Path,
     commit(other)
     with pytest.raises(subprocess.CalledProcessError):
         inventory(other, known)
+
+
+def test_a_lane_config_records_and_honors_its_pytest_policy_without_a_derived_copy(
+    repo: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The adoption flow: fingerprint and explain against .github/test-lanes.json itself."""
+    write(repo, "pyproject.toml", '[tool.pytest.ini_options]\ntestpaths = ["tests"]\n')
+    lanes = {
+        "graph": {"module_roots": ["src", "."], "test_roots": ["tests"]},
+        "lanes": {"tests": {"roots": ["tests"]}},
+        "global_inputs": [".github/test-lanes.json"],
+    }
+    write(repo, ".github/test-lanes.json", json.dumps(lanes))
+    head = commit(repo)
+    args = ["--repo", str(repo), "--config", str(repo / ".github/test-lanes.json"), "--cache", str(tmp_path / "c.db")]
+    why = ["--test", "tests/left/test_one.py", "--source", "src/pkg/leaf.py"]
+    assert main(["explain", *args, "--head", head, *why]) == 1
+    # The failure names the file whose policy is unreviewed and the command that refreshes it.
+    error = capsys.readouterr().err
+    assert "pytest configuration changed (pyproject.toml)" in error
+    assert "pytest-selective fingerprints --config" in error
+    assert main(["fingerprints", *args, "--head", head]) == 0
+    lanes["graph"]["pytest_policy"] = json.loads(capsys.readouterr().out)
+    write(repo, ".github/test-lanes.json", json.dumps(lanes))
+    head = commit(repo)
+    assert main(["explain", *args, "--head", head, *why]) == 0
+    assert json.loads(capsys.readouterr().out) == ["tests/left/test_one.py", "src/pkg/helper.py", "src/pkg/leaf.py"]

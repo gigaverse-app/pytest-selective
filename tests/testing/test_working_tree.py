@@ -192,6 +192,16 @@ def test_local_runner_skips_pytest_on_empty_plan_but_full_override_executes(repo
     assert "1 failed, 1 passed" in full.stdout
 
 
+def test_local_runner_reads_a_lane_config_directly(repo: Path) -> None:
+    lanes = {"graph": {"test_roots": ["tests"]}, "lanes": {"tests": {"roots": ["tests"]}}}
+    (repo / "selection.json").write_text(json.dumps(lanes), encoding="utf-8")
+    commit(repo)
+    write(repo, "pkg/value.py", "VALUE = 2\n")
+    result = run_local(repo, "--", "-q")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "1 failed" in result.stdout
+
+
 def test_local_runner_missing_history_runs_all_tests(repo: Path) -> None:
     result = run_local(repo, "--base", "missing-history", "--", "-q")
     assert result.returncode == 0, result.stdout + result.stderr

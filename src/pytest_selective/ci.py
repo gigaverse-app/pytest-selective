@@ -63,6 +63,20 @@ class LaneConfig(ImpactModel):
             update={"global_inputs": sorted(set(self.graph.global_inputs) | set(self.global_inputs))}
         )
 
+    @classmethod
+    def file_config_at(cls, path: Path) -> ImpactConfig:
+        """The file-selection config at `path`, which may also be a lane config such as `.github/test-lanes.json`.
+
+        A lane config gives its graph, with its explicit global inputs when it declares them. Reading
+        it directly means no derived copy can miss a later `graph.pytest_policy` refresh.
+        """
+        text = path.read_text(encoding="utf-8")
+        data = json.loads(text)
+        if not isinstance(data, dict) or "lanes" not in data:
+            return ImpactConfig.model_validate_json(text)
+        lanes = cls.model_validate(data)
+        return lanes.graph if lanes.global_inputs is None else lanes.file_config()
+
     def is_global_input(self, path: str) -> bool:
         if self.global_inputs is not None:
             return matches(path, self.global_inputs)

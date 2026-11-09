@@ -22,6 +22,11 @@ select. The default filenames are `test_*.py`, `*_test.py`, `*_tests.py`, and
 `tests.py`; configure
 `test_patterns` for a different collection policy.
 
+Every `--config` (`affected`, `explain`, `fingerprints`, `audit`, `run` and the rest) also accepts a
+[lane config](ci.md) such as `.github/test-lanes.json`: it uses the lane config's `graph`, with its
+top-level `global_inputs` when declared. Pass the lane config itself rather than a copy of its graph,
+so a later `graph.pytest_policy` refresh is always the one in use.
+
 ## Review and record collection policy
 
 If your repository has `pyproject.toml`, `pytest.ini`, a `tox.ini` with a `[pytest]`

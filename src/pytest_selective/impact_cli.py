@@ -391,7 +391,9 @@ def main(argv: list[str] | None = None) -> int:
         return _floor_budget(args)
     cache = None
     try:
-        config = ImpactConfig.model_validate_json(args.config.read_text(encoding="utf-8"))
+        from pytest_selective.ci import LaneConfig
+
+        config = LaneConfig.file_config_at(args.config)
         if args.working_tree:
             from pytest_selective.working_tree import snapshot_working_tree
 

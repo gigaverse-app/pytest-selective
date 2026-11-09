@@ -715,8 +715,17 @@ class GraphCache:
         add_sidecar_edges(repo, tree, files, snapshot)
         # Declaration errors are actionable authoring failures, even when the
         # same tree also needs a collection-policy review/full-suite fallback.
-        if policy_fingerprints(repo, git_tree, tuple(config.pytest_config_files)) != config.pytest_policy:
-            raise ValueError("pytest configuration changed; review collection policy and refresh its fingerprints")
+        current = policy_fingerprints(repo, git_tree, tuple(config.pytest_config_files))
+        if current != config.pytest_policy:
+            changed = sorted(
+                name for name in current.keys() | config.pytest_policy.keys()
+                if current.get(name) != config.pytest_policy.get(name)
+            )
+            raise ValueError(
+                f"pytest configuration changed ({', '.join(changed)}); review collection policy and refresh its "
+                "fingerprints: record the output of `pytest-selective fingerprints --config CONFIG --head COMMIT` "
+                "as pytest_policy (graph.pytest_policy in a lane config), and pass that same file as --config"
+            )
         self.put(key, snapshot.model_dump_json())
         self.connection.commit()
         return snapshot

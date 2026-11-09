@@ -7,10 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from pydantic import ValidationError
-
+from pytest_selective.ci import LaneConfig
 from pytest_selective.impact_graph import DependencyDeclarationError, GraphCache, git
-from pytest_selective.impact_models import ImpactConfig
 from pytest_selective.impact_selection import affected
 from pytest_selective.working_tree import snapshot_working_tree
 
@@ -25,8 +23,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     repo = args.repo.resolve()
     try:
-        config = ImpactConfig.model_validate_json(args.config.read_text(encoding="utf-8"))
-    except (OSError, ValidationError) as error:
+        config = LaneConfig.file_config_at(args.config)
+    except (OSError, ValueError) as error:
         print(f"Invalid test configuration: {error}", file=sys.stderr)
         return 2
     selected = config.test_roots
