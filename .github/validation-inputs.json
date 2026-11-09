@@ -1,0 +1,11 @@
+[
+  ".github",
+  "src",
+  "tests",
+  "scripts",
+  "actions",
+  "action.yml",
+  "pyproject.toml",
+  "uv.lock",
+  ".pre-commit-config.yaml"
+]
