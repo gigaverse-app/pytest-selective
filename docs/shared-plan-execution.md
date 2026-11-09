@@ -41,3 +41,5 @@ runner. Its full checkpoints retain all Python 3.11 and 3.14 compatibility tests
 on Linux, Windows and macOS. Coverage runs on Python 3.14 on all three systems,
 avoiding a second instrumentation pass on Python 3.11. The minimum-pytest lane,
 Quint contract and installed-distribution smoke remain independent checks.
+
+<!-- Documentation-only selection measurement; no execution inputs change. -->
