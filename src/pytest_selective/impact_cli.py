@@ -179,7 +179,9 @@ def _typecheck_scope(args: argparse.Namespace) -> int:
     """
     cache = None
     try:
-        config = ImpactConfig.model_validate_json(args.config.read_text(encoding="utf-8"))
+        from pytest_selective.ci import LaneConfig
+
+        config = LaneConfig.file_config_at(args.config)
         cache = GraphCache(args.cache)
         result = scope(
             args.repo, args.base, args.head, config, cache, args.checker_config, args.global_inputs, args.max_fraction
@@ -268,7 +270,9 @@ def _floor_budget(args: argparse.Namespace) -> int:
     fell back to the complete suite wrote no explanation it can trust, so the check passes rather
     than block a PR on an unproven floor. A floor under budget passes with a notice to lower it.
     """
-    config = ImpactConfig.model_validate_json(args.config.read_text(encoding="utf-8"))
+    from pytest_selective.ci import LaneConfig
+
+    config = LaneConfig.file_config_at(args.config)
     budget = config.floor_budget
     if budget is None:
         return 0
@@ -410,7 +414,9 @@ def main(argv: list[str] | None = None) -> int:
         return _floor_budget(args)
     cache = None
     try:
-        config = ImpactConfig.model_validate_json(args.config.read_text(encoding="utf-8"))
+        from pytest_selective.ci import LaneConfig
+
+        config = LaneConfig.file_config_at(args.config)
         if args.working_tree:
             from pytest_selective.working_tree import snapshot_working_tree
 

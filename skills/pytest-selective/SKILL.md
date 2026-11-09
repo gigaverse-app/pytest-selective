@@ -56,7 +56,10 @@ A fresh fork has no runs yet. Read the typical jobs and durations from UPSTREAM 
 
 Record:
 
-- **Conventions**: commit and PR title style, changelog rules, AI policy, pre-commit hooks.
+- **Conventions**: commit and PR title style, changelog rules, AI policy, pre-commit hooks. When the pull request
+  template names a CONTRIBUTING, CODE_OF_CONDUCT or security file the repository lacks, read the owner's organization
+  default from its `.github` repository (in a fork, the upstream owner's):
+  `gh api "repos/OWNER/.github/contents/CONTRIBUTING.md" --jq .content | base64 -d`.
 - **Packaging tool**: uv project, Poetry, PDM, Hatch with tox or nox, or plain pip requirements/extras. It decides how
   you run the planner locally and how routing tests install (step 6). CI planning itself installs nothing in the
   project: the actions bring their own Python 3.14 planner.
@@ -66,7 +69,11 @@ Record:
   its matrix size, services, coverage floors and typical duration (`gh run view RUN --repo "$REPO" --json jobs`).
 - **Publish paths**: jobs that publish or deploy (PyPI, Test PyPI, Pages, containers, releases) and every job they
   `needs:`, directly or transitively. Step 4.4 keeps these paths unchanged.
-- **Triggers**: whether `push` runs for every branch, and any `branches:`/`paths:` filters.
+- **Test workflows**: the file name of each workflow that runs tests (`test.yml`, `tests.yaml`, `ci.yml`, ...).
+  Below, `test.yml` stands for `<the repo's test workflow>`: write the real names in the config, the routing test and
+  the report.
+- **Triggers**: whether `push` runs for every branch, and any `branches:`, `paths:` or `paths-ignore:` filters (4.3
+  removes path filters from gated workflows).
 - **Existing gate**: an aggregate job (`all-green`, `alls-green`, `check`) and the required check names.
 
 If CI already finishes in a couple of minutes, or nearly every change touches source code, say so in your report:
@@ -84,7 +91,9 @@ VERSION=${TAG#v}
 ```
 
 Local commands use `pytest-selective==$VERSION`; the routing-test job (step 6) installs `pytest-selective>=$VERSION,<2`,
-so it follows the same major version as `@v1`.
+so it follows the same major version as `@v1`. uv caches the package index, so a release published minutes ago can
+be missing (`No solution found`, `pytest-selective==X.Y.Z` unsatisfiable): the local commands below pass
+`--refresh-package pytest-selective`. With pip, add `--no-cache-dir`.
 
 Only when the repository's tooling rejects tags (zizmor's `unpinned-uses`, a `pinact` hook, or an all-SHA policy its
 CI enforces) pin the release instead: `@$SHA # $TAG` on every action, with
@@ -122,7 +131,7 @@ line or a nox `session.install`). CI does not need this.
     "global_inputs": ["pyproject.toml", "tox.ini", "requirements/tests.txt"]
   },
   "lanes": {
-    "tests": {"roots": ["tests"]},
+    "tests": {"roots": ["tests"], "inputs": ["src/toy/*.c", "src/toy/*.pyi"]},
     "bench": {"roots": ["tests/benchmarks"]},
     "package": {"inputs": ["src/**", "pyproject.toml", "README.md", "LICENSE"]},
     "routing": {"roots": ["ci_tests"]}
@@ -143,6 +152,11 @@ Adapt every path; this is a shape, not an inventory. The rules:
   `dir/**/*.py` matches `dir/x.py` and `dir/a/x.py`. Name execution files; never a directory that also holds prose
   (`examples/**` runs the lane for an example's README; use `examples/**/*.py`). A lane without roots runs only on its
   inputs, on global inputs, or when a change reaches every test.
+- **Non-Python sources are not imports.** A C extension (`_speedups.c`), Cython (`.pyx`, `.pxd`), type stubs
+  (`.pyi`), templates or data files the tests read: the graph does not see them unless a test opens them by literal
+  path. Add each as an input of the lanes that build or test it, as exact globs
+  (`"tests": {"roots": ["tests"], "inputs": ["src/pkg/*.c", "src/pkg/*.pyi"]}`) or the package directory (`src/**`)
+  when every file there matters, and give each a routing row (step 6).
 - **`graph.global_inputs`** are the environment files whose change can affect every test, and the only place to narrow
   them. Omitted, the built-in list applies: `pyproject.toml`, `setup.cfg`, `setup.py`, `tox.ini`, `pytest.ini`,
   `pytest.toml`, `uv.lock`, `poetry.lock`, `pdm.lock`, `pixi.lock`, `Pipfile`, `Pipfile.lock`, `*requirements*.txt`,
@@ -166,29 +180,38 @@ Add `.test-impact/` to `.gitignore`: the planner keeps its graph cache there.
 
 **Collection policy.** If pytest configuration exists (`pyproject.toml`, `pytest.ini`, `pytest.toml`, a `tox.ini`
 with `[pytest]`, a `setup.cfg` with `[tool:pytest]`), the planner runs every lane until you record its fingerprints
-(`full-suite fallback: pytest configuration changed; review collection policy and refresh its fingerprints`). Review
+(`full-suite fallback: pytest configuration changed (pyproject.toml); review collection policy and refresh its
+fingerprints: ...`). Review
 the pytest settings and collection hooks, commit the config, then:
 
 ```bash
-mkdir -p .test-impact
-python -c "import json; print(json.dumps(json.load(open('.github/test-lanes.json'))['graph']))" > .test-impact/graph.json
-uv run --no-project --with "pytest-selective==$VERSION" \
-  pytest-selective fingerprints --config .test-impact/graph.json --head HEAD
+uv run --refresh-package pytest-selective --no-project --with "pytest-selective==$VERSION" \
+  pytest-selective fingerprints --config .github/test-lanes.json --head HEAD
 ```
 
-Copy the printed object into `graph.pytest_policy` and commit. Releases up to 1.1.1 also print a `tox.ini` or
+Copy the printed object into `graph.pytest_policy` and commit. Every `pytest-selective` command (`fingerprints`,
+`explain`, `affected`, `run`) takes the lane config itself as `--config`, so the policy you record is the one in use.
+Releases up to 1.2.0 need a derived file instead: `pytest-selective file-config --lanes .github/test-lanes.json
+--output .test-impact/graph.json` (it needs top-level `global_inputs`), passed as `--config .test-impact/graph.json`.
+Re-run it after every lane-config change, recording `pytest_policy` included, or `explain` keeps failing with
+`pytest configuration changed`. Releases up to 1.1.1 also print a `tox.ini` or
 `setup.cfg` that has no pytest section (pytest ignores it); keeping that entry is harmless. Without uv, run the same
 commands in a virtual environment after `python -m pip install "pytest-selective==$VERSION"`. When pytest settings
 change later, the planner falls back to every lane until someone reviews and refreshes the fingerprints.
 
 ### Prove the config locally
 
-On a throwaway branch, commit one probe edit at a time and plan it against the default branch:
+On a throwaway branch made from the adoption branch, after committing the lane config, commit one probe edit at a
+time and plan it against its parent:
 
 ```bash
-uv run --no-project --with "pytest-selective==$VERSION" \
-  python -m pytest_selective.ci --config .github/test-lanes.json --base origin/DEFAULT --head HEAD
+uv run --refresh-package pytest-selective --no-project --with "pytest-selective==$VERSION" \
+  python -m pytest_selective.ci --config .github/test-lanes.json --base HEAD^ --head HEAD
 ```
+
+Do not plan against `origin/DEFAULT` before the merge: DEFAULT lacks `.github/test-lanes.json`, a global input, so
+every probe would report `global input: .github/test-lanes.json` and select every lane. The parent commit already has
+the config, so the plan sees only the probe edit.
 
 Expected: JSON with `lanes` (one boolean per lane), `reason` and `lane_reasons`. A README edit gives every lane
 `false` (or only `package`, when the build embeds the README) with `no affected tests or changed inputs`; a source
@@ -241,6 +264,10 @@ The action also uploads its plan as a `test-lane-selection` artifact, which
           fromJSON(needs.select-tests.outputs.lanes).tests) }}
 ```
 
+A skipped matrix job is listed under its unevaluated name (for example `${{ matrix.name || matrix.python }}`),
+because the matrix never expands. Mention it in the report, or give the job a name that also reads well unexpanded,
+such as `name: tests (${{ matrix.python }})`.
+
 `always()` lets the condition run when the planner failed, and the failed-planner branch then runs the job: a broken
 plan must never become a green skip. The condition applies before the matrix expands, so the whole matrix skips
 together. A job with other needs must check them itself, because `always()` also ignores their failure:
@@ -259,6 +286,10 @@ together. A job with other needs must check them itself, because `always()` also
   control at the probe head (step 8), so keep them; cancel the source probe's push runs as soon as they start
   (`gh run cancel RUN --repo "$REPO"`) and judge that probe by its `pull_request` runs. The cost ends once the
   adoption merges.
+- **`paths:` and `paths-ignore:` filters.** Remove them from every workflow that gets a gate; the lanes replace
+  them. A required gate in a workflow that a filter skipped never reports, so a docs-only pull request would wait on
+  it forever. This is a behavior change: a change the filter skipped (say `docs/**`) now starts the planner, the
+  unconditional jobs and the gate. Say so in the report, with its cost (step 10, net effect).
 - **`branches:` filters.** A probe pull request opened against your adoption branch does not start workflows filtered
   to `pull_request: branches: [main]`. Prove those workflows with routing tests and local plans, and say in the report
   that their hosted probe waits for the merge.
@@ -365,6 +396,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = LaneConfig.model_validate_json((ROOT / ".github/test-lanes.json").read_text(encoding="utf-8"))
 EVERY = dict.fromkeys(CONFIG.lanes, True)
 NONE = dict.fromkeys(CONFIG.lanes, False)
+# <the repo's test workflow>: tests.yaml, ci.yml, ...
 WORKFLOW = ROOT / ".github/workflows/test.yml"
 PLANNER = "select-tests"
 # The gate job's id. Keep an existing aggregate job's id, for example "success".
@@ -406,6 +438,8 @@ def repo(tmp_path: Path) -> Path:
         ("requirements-mypy.txt", NONE),
         ("tests/test_other.py", {**NONE, "tests": True}),
         ("src/toy/other.py", {**NONE, "tests": True, "package": True}),
+        # Non-Python sources the tests exercise (a C extension, stubs), declared as lane inputs.
+        ("src/toy/_speedups.c", {**NONE, "tests": True, "package": True}),
         ("tests/benchmarks/test_bench.py", {**NONE, "tests": True, "bench": True}),
         ("tox.ini", EVERY),
         (".github/test-lanes.json", EVERY),
@@ -446,12 +480,12 @@ def test_the_gate_guards_every_job_and_lane_jobs_run_when_planning_fails() -> No
         assert all(f"fromJSON(needs.{PLANNER}.outputs.lanes).{lane}" in condition for lane in lanes), job
 ```
 
-Add a row for every directory you narrowed, every requirements file, each workflow and each lane, using real tracked
-paths. A row appends a comment; a `<workflow>#<job>` input ignores comments, so edit the job itself in that row. With
+Add a row for every directory you narrowed, every requirements file, each non-Python source input, each workflow and
+each lane, using real tracked paths. A row only names its path; it does not make this test depend on that file. A row appends a comment; a `<workflow>#<job>` input ignores comments, so edit the job itself in that row. With
 several workflows, repeat the gate test per workflow with its own `GATE`. Make the file pass the repository's own
 linters, formatter and type checker before committing: for example, ruff's `required-imports` may demand
 `from __future__ import annotations` (the template has it), and black or `ruff format` with a shorter line length
-reflows it. Run it locally with `uv run --no-project --with "pytest-selective==$VERSION" pytest ci_tests -q` and
+reflows it. Run it locally with `uv run --refresh-package pytest-selective --no-project --with "pytest-selective==$VERSION" pytest ci_tests -q` and
 commit it.
 
 ## 7. Prove it on hosted CI
@@ -487,8 +521,12 @@ Compare a selected run with a full control **at the same head**:
   gh workflow run WORKFLOW --repo "$REPO" --ref PROBE_BRANCH      # once per workflow
   ```
 
-  GitHub dispatches only workflows whose file exists on DEFAULT, and may read the trigger from there: if a workflow
-  gains `workflow_dispatch:` only in your adoption and the dispatch is refused, measure after the merge. A rerun is
+  Dispatch only the workflows this adoption gates. A workflow without `workflow_dispatch:` returns HTTP 422
+  (`Workflow does not have 'workflow_dispatch' trigger`); do not add the trigger to workflows you otherwise leave
+  alone. Leave such workflows out of both sides and say the comparison covers only the gated workflows. GitHub
+  dispatches only workflows whose file exists on DEFAULT, and may read the trigger from DEFAULT's copy rather than the
+  branch's: if a workflow gains `workflow_dispatch:` only in your adoption and the dispatch is refused, measure after
+  the merge. A rerun is
   not a control: it keeps the selection. Do not wait on a `test:full` label; creating one is the human's step 9.
 
 Both sides then share a head SHA: a `pull_request` run records the branch head as its `head_sha`, although it checks
@@ -541,6 +579,15 @@ pytest-selective vX.Y.Z: actions at `@v1` (or `@<sha> # vX.Y.Z` where tags are r
 | Elapsed seconds | | |
 
 Runs: [full](https://github.com/OWNER/NAME/actions/runs/RUN_ID), [selected](https://github.com/OWNER/NAME/actions/runs/RUN_ID). One pair, not an average or a bill.
+Workflows compared: ... (and any left out, such as one without `workflow_dispatch:`).
+
+### Net effect
+- Docs-only pull requests: before ... runner-seconds (0 where a removed `paths-ignore` skipped them), after ....
+- Code changes: lane jobs now wait for the planner, about N s.
+- Changes that now skip tests: ... (prose and tooling the old filters did not cover).
+
+### Trigger changes (behavior change)
+- Removed `paths-ignore: [...]` from `<the repo's test workflow>`; added `workflow_dispatch:` ... (or "none").
 
 ### Evidence
 - N routing tests: docs, requirements, source, tests, benchmarks, workflows, missing history, full checkpoint.
@@ -551,8 +598,14 @@ Runs: [full](https://github.com/OWNER/NAME/actions/runs/RUN_ID), [selected](http
 - Label `test:full`; trigger change; scheduled full run.
 
 ### Not done or not verified
+- Skipped matrix jobs show their unevaluated name (`matrix.name || matrix.python`), if kept.
 - ...
 ```
+
+The net effect and trigger changes are required. Write them honestly: when CI was already cheap, or a `paths-ignore`
+already skipped docs, say the adoption saves little, what it costs (planner latency on code changes; docs-only runs
+going from 0 to about N runner-seconds), and what it buys (a gate that can be required, and skips for changes the old
+filters missed).
 
 For depth: [configuration reference](https://pytest-selective.readthedocs.io/en/latest/docs/configuration/),
 [CI guide](https://pytest-selective.readthedocs.io/en/latest/docs/ci/),

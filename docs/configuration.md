@@ -22,6 +22,11 @@ select. The default filenames are `test_*.py`, `*_test.py`, `*_tests.py`, and
 `tests.py`; configure
 `test_patterns` for a different collection policy.
 
+Every `--config` (`affected`, `explain`, `fingerprints`, `audit`, `run` and the rest) also accepts a
+[lane config](ci.md) such as `.github/test-lanes.json`: it uses the lane config's `graph`, with its
+top-level `global_inputs` when declared. Pass the lane config itself rather than a copy of its graph,
+so a later `graph.pytest_policy` refresh is always the one in use.
+
 ## Review and record collection policy
 
 If your repository has `pyproject.toml`, `pytest.ini`, a `tox.ini` with a `[pytest]`
@@ -61,6 +66,9 @@ fixture example, directory manifests, dependency comments, and dynamic Python in
 
 A read that names a tracked file by literal path, such as `open("data/prices.json")` or
 `(Path(__file__).parent / "prices.json").read_text()`, is followed automatically as a content read.
+A string that only names a tracked file, such as a routing test's `("bench.py", ...)` row, adds no
+edge: a dotted string is followed as a possible module name (a patch target, a plugin) only when it
+names no tracked file, from the repository root or beside its reader.
 For a path that is computed, or built from several parts, add a reader-owned comment:
 
 ```python
