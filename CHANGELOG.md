@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/gigaverse-app/pytest-selective/compare/v1.1.1...v1.1.2) (2026-11-09)
+
+
+### Bug fixes
+
+* agent setup round 2, from a second adoption trial ([#114](https://github.com/gigaverse-app/pytest-selective/issues/114)) ([45d4afe](https://github.com/gigaverse-app/pytest-selective/commit/45d4afe76cde9f6093519d97000244c6c06b157d))
+
 ## [1.1.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.1.0...v1.1.1) (2026-11-09)
 
 
