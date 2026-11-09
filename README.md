@@ -334,5 +334,14 @@ records progress against the accepted backlog. [Setup and cleanup workflow](CONT
 <!-- dry-lint-progress:start -->
 <a href="https://github.com/gigaverse-app/dry-lint"><picture><source media="(prefers-color-scheme: dark)" srcset="https://dry-lint-counter.gigaverse-oss.workers.dev/v1/sign.svg?theme=dark&amp;key=f8e41d50ca4018845c305f2f0dbd1cfd6d9b281e53b352490af53154a54e6265&amp;name=gigaverse-app%2Fpytest-selective&amp;cleaned=9&amp;remaining=0&amp;dismissed=0"><img alt="dry-lint in gigaverse-app/pytest-selective: new duplicates kept out of its pull requests, 9 old duplicates cleaned up, 0 remaining" src="https://dry-lint-counter.gigaverse-oss.workers.dev/v1/sign.svg?key=f8e41d50ca4018845c305f2f0dbd1cfd6d9b281e53b352490af53154a54e6265&amp;name=gigaverse-app%2Fpytest-selective&amp;cleaned=9&amp;remaining=0&amp;dismissed=0" width="100%"></picture></a>
 
+**Reviewed duplication debt** · Counts from the committed baselines.
+
+| Accepted pairs | Remaining | Retired | Dismissed |
+| :-- | --: | --: | --: |
+| Functions | 0 | 9 | 0 |
+| Models | Not initialized | — | — |
+
 [Accepted backlog](.dry-lint/baseline.json) · [Weekly audit](https://github.com/gigaverse-app/pytest-selective/actions/workflows/dry-lint-audit.yml)
+
+Retired means a side was removed, or (functions only) the judge now finds the pair separate. It is not a count of refactors. Dismissals stay separate; an uninitialized model baseline is unknown.
 <!-- dry-lint-progress:end -->
