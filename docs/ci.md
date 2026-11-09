@@ -157,7 +157,10 @@ For tests that must produce complete conformance evidence, use
 }
 ```
 
-An affected test selects its entire lane. A lane's roots hold its tests, not its
+An affected test selects its entire lane. A change whose imports reach every graph
+test selects every lane holding graph tests, and no lane whose roots hold none (Bun or
+Node tests, a build): other evidence selects those. A graph global input (an
+environment file) still selects every lane. A lane's roots hold its tests, not its
 inputs: another file under them (a README, notes, an unimported helper) selects the
 lane only through the graph, and the plan names it as `unreferenced under root`.
 Declare data that tests read, and let the read audit find undeclared reads. A
