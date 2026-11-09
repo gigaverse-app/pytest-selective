@@ -65,6 +65,7 @@ uv run --group quint pytest-quint-connect report '**/.artifacts/quint-connect/re
 | Private working-tree snapshots, staged inputs and index timestamp preservation | `working_tree.py` |
 | Python module names, Unicode matching and dotted import relationships | `ast_imports.py` |
 | Test-file discovery and cache exclusions | `test_inventory.py` |
+| Reader-owned declaration grammar, path expansion and dependency kinds | `impact_declarations.py`, with the canonical models in `impact_models.py` |
 | Repository-relative path containment, including the dot root | `impact_graph.within` |
 
 The expansion guard imports the first three owners directly when run as a script;
@@ -116,8 +117,11 @@ execute-plan`, which CI-esta does not read as a pytest command), a
 and a rule that plans the tests lane when the installed-distribution smoke script
 changes, because `distributions` smokes only when that lane is planned. When a test
 or a script starts reading a file by path, declare it next to the reader (a
-`<test>.gv-dependency.yaml` sidecar, which `pytest-selective audit
---write-declarations` writes, or a `# gv:test-dependency: PATH` comment).
+`# gv:test-dependency: PATH` comment for simple inputs, or a directory
+`.gv-dependencies.yaml` with `relative_to: reader` for repeated local layouts).
+Keep per-reader sidecars for exceptions needing separate declarations. Review
+`pytest-selective audit --write-declarations` output for shared conventions before
+retaining its individual sidecars; preserve `content` versus `import` semantics.
 `quality` runs [scripts/check_lane_routing.py](scripts/check_lane_routing.py),
 which plans one-file changes with CI-esta against real Git commits, including a
 full checkpoint, and `ci-esta check-workflow`, which keeps the job conditions, the

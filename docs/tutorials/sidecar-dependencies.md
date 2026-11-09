@@ -20,7 +20,7 @@ cd selective-sidecar-demo
 git init
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install "pytest-selective>=0.3,<0.4"
+python -m pip install "pytest-selective>=1,<2"
 mkdir -p tests/data
 ```
 
@@ -142,7 +142,7 @@ change should select its reader. There is no universal documentation exemption.
 | --- | --- | --- |
 | Dependency comment | In the reading Python file | One or two inputs fit naturally beside the code |
 | File sidecar | `reader.py.gv-dependency.yaml` | You need an explicit dependency kind or want declarations outside Python |
-| Directory manifest | `.gv-dependencies.yaml` | Several related readers share inputs |
+| Directory manifest | `.gv-dependencies.yaml` | Several related readers share inputs or a per-reader layout convention |
 
 Instead of the sidecar above, a comment in `tests/test_prices.py` can declare:
 
@@ -171,6 +171,46 @@ This example assumes `test_receipts.py` exists. Directory rules require
 are relative to its directory. `//` anchors either pattern at the repository
 root, for example `//schemas/receipt.json`. Do not use `../` to reach another
 directory.
+
+### Share a convention without sharing every input
+
+When each reader consumes files beside itself, use `relative_to: reader` in a
+directory manifest. For example, `contracts/.gv-dependencies.yaml` can replace
+one sidecar per contract:
+
+```yaml
+dependencies:
+  - readers: ["**/test_*_contract.py"]
+    relative_to: reader
+    inputs: ["model.qnt", "quint-connect.json", "history/**", "//contracts/quint.ini"]
+    kind: content
+    reason: Each contract reads its own model, manifest and history under the shared pytest configuration.
+```
+
+The `readers` pattern is still relative to the manifest. Each unanchored input
+is resolved separately beside each matched reader; `//` still means the repository
+root. Changing one contract's model selects its readers, without connecting sibling
+contracts to that model. New matching readers inherit the same convention. Every
+input pattern must match for **each** reader; a missing history directory in one
+contract is an error even if a sibling has one. Omit inputs your convention does
+not require, or put distinct conventions in separate rules.
+
+The default, `relative_to: manifest`, preserves existing behavior. Both modes
+support `content` and `import`; a file sidecar has the same directory as its reader,
+so either mode means the same thing there. Expansion is reused for readers in the
+same directory within a rule and rebuilt against each Git tree, including added
+files and deleted inputs. Editing the shared manifest selects all its readers;
+keep unrelated conventions in separate manifests.
+
+For a source scanner, the same mechanism can declare `readers: ["*/test_inventory.py"]`
+with `inputs: ["**/*.py"]`, `relative_to: reader` and `kind: content`. Each inventory
+then follows only the Python source under its own directory. Prefer this to a broad
+rule joining every scanner to every project's source.
+
+Keep the convention where its readers live. A project-specific layout belongs in
+its manifest; it does not need a framework-specific plugin in the selector. Review
+`audit --write-declarations` output for repeated layouts before retaining individual
+sidecars. An existing shared rule already satisfies the audit for covered reads.
 
 ### Reading content versus executing Python
 

@@ -89,6 +89,12 @@ root. `content` follows the file's bytes; `import` also follows its dependencies
 The default is `import`. Inputs must match tracked files. Invalid patterns,
 missing matches, duplicate YAML keys, and aliases are errors to repair.
 
+For repeated conventions, a directory `.gv-dependencies.yaml` can match `readers`
+and set `relative_to: reader`: each unanchored input then resolves beside each
+matched reader. The default remains `relative_to: manifest`, and `//` always
+anchors at the repository root. This keeps sibling readers' inputs separate;
+see [shared conventions](tutorials/sidecar-dependencies.md#share-a-convention-without-sharing-every-input).
+
 Declare lock files, environment manifests, and other suite-wide inputs explicitly:
 
 ```json

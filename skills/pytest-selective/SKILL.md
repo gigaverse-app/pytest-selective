@@ -178,6 +178,16 @@ Adapt every path; this is a shape, not an inventory. The rules:
 
 Add `.test-impact/` to `.gitignore`: the planner keeps its graph cache there.
 
+**Reader-owned inputs.** For runtime file reads, use inline `# gv:test-dependency:` comments
+for simple inputs and executed helpers. For repeated layouts, use a directory
+`.gv-dependencies.yaml` with `readers`, `inputs` and `relative_to: reader`: each reader
+then follows its own files, without connecting sibling projects. Keep `kind: content`
+for Python source scanned as text; comments use import semantics. Reserve per-reader
+sidecars for exceptions. Review generated audit declarations for these conventions and
+compare affected readers/lanes before and after, including additions and deletions.
+The [shared-convention guide](https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/sidecar-dependencies/#share-a-convention-without-sharing-every-input)
+has the syntax and validation rules; use a selector revision supporting `relative_to`.
+
 **Collection policy.** If pytest configuration exists (`pyproject.toml`, `pytest.ini`, `pytest.toml`, a `tox.ini`
 with `[pytest]`, a `setup.cfg` with `[tool:pytest]`), the planner runs every lane until you record its fingerprints
 (`full-suite fallback: pytest configuration changed (pyproject.toml); review collection policy and refresh its
