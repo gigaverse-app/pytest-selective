@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.4.0...v1.5.0) (2026-11-09)
+
+
+### Features
+
+* **declarations:** share reader-relative dependency rules ([#139](https://github.com/gigaverse-app/pytest-selective/issues/139)) ([7eea4ba](https://github.com/gigaverse-app/pytest-selective/commit/7eea4ba3ec3fd4607acf1e52b171e6eabd0c96fc))
+
 ## [1.4.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.3.0...v1.4.0) (2026-11-09)
 
 
