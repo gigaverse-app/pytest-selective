@@ -64,6 +64,14 @@ controls the test interpreter. `full-roots` must contain the complete roots, not
 the previous selection. `base` defaults to the PR base or the push's previous
 commit. Override it only when you have validated a different comparison base.
 
+On a pull request, GitHub checks out a merge of the PR head into the base
+branch's current tip, which can be newer than the PR's recorded base. Both
+actions pass the PR head (`pr-head`) so the planner measures changes from that
+merge's base-branch parent. Commits that landed on the base branch after the PR
+was opened, such as a release's version bump, are then not counted as the PR's
+own. A shallow checkout or any other event keeps `base`. Check out with
+`fetch-depth: 0` to get the narrower plan.
+
 Both file and lane actions default to `full: auto`:
 
 | Trigger | Default |

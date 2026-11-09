@@ -15,6 +15,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from pytest_selective.checkpoint import full_checkpoint_reason
+from pytest_selective.git_operations import pull_request_merge_base
 from pytest_selective.impact_audit import audit, load_records, summary
 from pytest_selective.impact_explanation import dependent_tests, explain
 from pytest_selective.impact_graph import (
@@ -284,6 +285,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cache", type=Path, default=Path(".test-impact/cache.sqlite3"))
     parser.add_argument("--base", default=None)
     parser.add_argument("--head", default="HEAD")
+    # A pull request's head: when `--head` is GitHub's merge of it, select against the merge's actual base.
+    parser.add_argument("--pr-head", default="")
     parser.add_argument(
         "--working-tree", action="store_true", help="analyze staged, unstaged and untracked local edits"
     )
@@ -328,6 +331,14 @@ def main(argv: list[str] | None = None) -> int:
     full_reason = args.full
     args.full = full_reason is not None
     args.base = args.base or ("HEAD" if args.working_tree else "HEAD^")
+    if args.pr_head and not args.working_tree:
+        tested = pull_request_merge_base(args.repo, args.base, args.head, args.pr_head)
+        if tested != args.base:
+            print(
+                f"Selecting against the tested merge's base {tested}; the event's base {args.base} is behind it.",
+                file=sys.stderr,
+            )
+            args.base = tested
     if args.working_tree and args.command not in {"affected", "warm", "dependencies", "explain", "conftest-impact"}:
         parser.error("--working-tree is supported for affected, warm, dependencies, explain and conftest-impact")
     if args.command == "typecheck-scope":
