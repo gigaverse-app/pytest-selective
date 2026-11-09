@@ -1,67 +1,22 @@
 {
-  "graph": {
-    "module_roots": [
-      "src",
-      "."
-    ],
-    "test_roots": [
-      "tests"
-    ],
-    "global_inputs": [
-      "pyproject.toml",
-      "uv.lock",
-      ".python-version"
-    ],
-    "pytest_policy": {
-      "pyproject.toml": "7a78d68735c0e3b091962244620d3a17557951123c645970638f15d3a737d987"
-    }
-  },
+  "extends": "workflow",
   "lanes": {
     "tests": {
-      "roots": [
-        "tests"
-      ],
-      "inputs": [
-        "src/**",
-        "tests/**"
-      ]
-    },
-    "contracts": {
-      "roots": [
-        "contracts"
-      ],
-      "inputs": [
-        "src/**",
-        "contracts/**",
-        "tests/testing/git_repo.py"
-      ]
-    },
-    "package": {
-      "inputs": [
-        "src/**",
-        "pyproject.toml",
-        "uv.lock",
-        "README.md",
-        "LICENSE",
-        "scripts/check_metadata.py",
-        "scripts/smoke_distribution.py"
-      ]
+      "roots": ["tests"]
     }
   },
-  "global_inputs": [
-    "scripts/**",
-    ".pre-commit-config.yaml",
-    ".python-version",
-    "**/pyproject.toml",
-    "pyproject.toml",
-    "**/uv.lock",
-    "uv.lock",
-    ".github/test-lanes.json",
-    ".github/workflows/ci.yml",
-    ".github/workflows/release.yml",
-    "actions/*/*",
-    "actions/*.py",
-    "action.yml",
-    ".github/workflows/public-actions.yml"
+  "rules": [
+    {
+      "name": "python-environment",
+      "when": ["pyproject.toml", "**/pyproject.toml", "uv.lock", "**/uv.lock", ".python-version"],
+      "select": ["all"],
+      "reason": "the locked test environment; documentation/requirements*.txt belongs to Read the Docs"
+    },
+    {
+      "name": "distribution-smoke",
+      "when": ["scripts/smoke_distribution.py"],
+      "select": ["lane:tests"],
+      "reason": "the distributions job runs the smoke only when the tests lane is planned"
+    }
   ]
 }

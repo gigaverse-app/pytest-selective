@@ -59,7 +59,7 @@ from pytest_selective.impact_models import (
 from pytest_selective.parse_batch import parse_records
 from pytest_selective.pytest_plugins import declared_plugins
 
-VERSION = "26"
+VERSION = "27"
 OPAQUE_CALLS = {
     "__import__",
     "import_module",
@@ -551,6 +551,16 @@ def literal_read_targets(reader: str, literal: str, files: dict[str, str]) -> se
     return found
 
 
+def module_strings(reader: str, source: ParsedSource, files: dict[str, str]) -> list[str]:
+    """The reader's dotted strings that may name a module, without those that name a tracked file.
+
+    ``"bench.py"`` or ``"setup.cfg"`` looks like a dotted name, but a string that names a tracked
+    file, as a routing test's row or a parameter list does, is a path: its prefix ``bench`` is not an
+    import. Naming a file without reading it adds no edge; a literal read is a content edge instead.
+    """
+    return [value for value in source.strings if not literal_read_targets(reader, value, files)]
+
+
 def _path_root(expression: ast.expr) -> ast.expr:
     """The base of a path expression: ``tmp_path`` in ``(tmp_path / "a").joinpath("b")``."""
     while True:
@@ -709,8 +719,18 @@ class GraphCache:
         add_sidecar_edges(repo, tree, files, snapshot)
         # Declaration errors are actionable authoring failures, even when the
         # same tree also needs a collection-policy review/full-suite fallback.
-        if policy_fingerprints(repo, git_tree, tuple(config.pytest_config_files)) != config.pytest_policy:
-            raise ValueError("pytest configuration changed; review collection policy and refresh its fingerprints")
+        current = policy_fingerprints(repo, git_tree, tuple(config.pytest_config_files))
+        if current != config.pytest_policy:
+            changed = sorted(
+                name
+                for name in current.keys() | config.pytest_policy.keys()
+                if current.get(name) != config.pytest_policy.get(name)
+            )
+            raise ValueError(
+                f"pytest configuration changed ({', '.join(changed)}); review collection policy and refresh its "
+                "fingerprints: record the output of `pytest-selective fingerprints --config CONFIG --head COMMIT` "
+                "as pytest_policy (graph.pytest_policy in a lane config), and pass that same file as --config"
+            )
         self.put(key, snapshot.model_dump_json())
         self.connection.commit()
         return snapshot
@@ -962,7 +982,7 @@ def resolve_graph(
         for literal in source.read_paths:
             edges[path].update(contents_node(target) for target in literal_read_targets(path, literal, files))
         # A deferred name is not an edge of the file that only stores it; its consumers get it below.
-        candidates = set(source.strings) - held.get(path, set())
+        candidates = set(module_strings(path, source, files)) - held.get(path, set())
         if source.django_urlconf and (config.django_urlconf is None or path != config.django_urlconf.settings_file):
             candidates.add(source.django_urlconf)
         for package in index.packages.get(path, {""}):
@@ -1181,6 +1201,7 @@ class EdgeEvidence:
             if isinstance(node, ast.Constant)
             and isinstance(node.value, str)
             and is_module_string(node.value)
+            and not literal_read_targets(reader, node.value, self.snapshot.files)
             and self._names({node.value}, dependency)
         ]
         return PathStep(path=reader, kind="string", line=min(strings)) if strings else None

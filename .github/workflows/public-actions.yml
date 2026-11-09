@@ -15,10 +15,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      # This workflow smokes the repository's own actions, so its planner is plan-lanes itself, run selectively on every
+      # change against .github/plan-lanes.json; CI's lanes come from CI-esta's plan-work.
       - id: select
         uses: ./actions/plan-lanes
         with:
-          config: .github/test-lanes.json
+          config: .github/plan-lanes.json
           artifact-name: public-action-selection
   public-actions:
     needs: select-tests
@@ -35,7 +37,7 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          graph = json.loads(Path('.github/test-lanes.json').read_text())['graph']
+          graph = json.loads(Path('.github/plan-lanes.json').read_text())['graph']
           Path('smoke-impact.json').write_text(json.dumps(graph))
           PY
       - uses: ./
@@ -57,7 +59,7 @@ jobs:
       - uses: ./actions/plan-lanes
         id: lanes
         with:
-          config: .github/test-lanes.json
+          config: .github/plan-lanes.json
           base: ${{ github.sha }}
           full: 'true'
           artifact-name: ''
@@ -68,7 +70,7 @@ jobs:
           python - <<'PY'
           import json, os
           # A full checkpoint admits every configured lane.
-          configured = json.load(open('.github/test-lanes.json', encoding='utf-8'))['lanes']
+          configured = json.load(open('.github/plan-lanes.json', encoding='utf-8'))['lanes']
           assert json.loads(os.environ['LANES']) == dict.fromkeys(configured, True)
           PY
       - name: Require successful planning after fallback execution

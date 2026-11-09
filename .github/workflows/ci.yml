@@ -13,6 +13,9 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.run_attempt == 1 && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' && github.run_attempt == 1 }}
 jobs:
+  # Plans whole lanes before any runner starts: each lane is the name a job's condition reads, and a change selects it
+  # through the tests, scripts and actions that job runs. `ci-esta lanes` shows the lanes and why; .github/test-lanes.json
+  # holds only what the workflow cannot show.
   select-tests:
     runs-on: ubuntu-latest
     permissions:
@@ -49,9 +52,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: 'true'
       - id: plan
-        uses: ./actions/plan-lanes
+        uses: gigaverse-app/ci-esta/actions/plan-work@v1
         with:
           config: .github/test-lanes.json
+      # File selection has no workflow graph, so it reads the complete lane file public-actions.yml plans with.
       - name: Share the repository graph and execution inputs with file selection
         env:
           PYTHONPATH: src
@@ -109,11 +113,18 @@ jobs:
       - run: uv run --locked pre-commit run --all-files
         env:
           SKIP: dry-lint
+      # Each lane-gated job's condition, the gate's lane-jobs and the lanes the workflow defines must agree.
       - name: Check aggregate gate against the execution lanes
         run: >-
           uv run --no-project --python 3.14
           --with "ci-esta[selection]>=1.13.0,<2.0.0"
           ci-esta check-workflow --workflow .github/workflows/ci.yml --lanes .github/test-lanes.json
+      # Plans one-file changes with CI-esta against real commits and fails on any lane a change should not run.
+      - name: Check the lane routing
+        run: >-
+          uv run --no-project --python 3.14
+          --with "ci-esta[selection]>=1.13.0,<2.0.0"
+          python scripts/check_lane_routing.py
       - name: Validate GitHub Actions
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
   tests:

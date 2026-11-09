@@ -1,4 +1,6 @@
 """Install each built distribution outside the checkout and run the public tutorial."""
+# The distributions job runs this script, which runs the tutorial by path:
+# gv:test-dependency: scripts/tutorial.py
 
 import os
 import subprocess

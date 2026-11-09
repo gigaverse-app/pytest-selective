@@ -1,0 +1,5 @@
+dependencies:
+  - inputs:
+      - "//.github/workflows/**"
+    kind: content
+    reason: "Checks the admission of every workflow's runtime commands and planner steps."

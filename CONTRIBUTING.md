@@ -98,24 +98,44 @@ limitations. The pull request template provides a short checklist. See
 
 ## CI lane selection
 
-This repository uses its own `plan-lanes` action. Documentation-only PRs keep
+CI plans whole lanes with [CI-esta](https://github.com/gigaverse-app/ci-esta)'s
+`plan-work` before any runner starts: `tests` (the Python matrix and
+`pytest-minimum`), `contracts` (the Quint selection contract) and `package` (the
+distribution build), the names the jobs' conditions read. A change selects a lane
+through what its jobs run: the tests that import it, the files tests declare they
+read, and the scripts and actions each job executes. Documentation-only PRs keep
 quality checks (including Markdown links) and the documentation build, while
-skipping every test lane and the distribution build. A README or LICENSE change
-also runs the `package` lane, because both distributions embed them. Within an
-admitted lane, the repository's public file-selection action selects affected
-test files once; the platform matrix and minimum-pytest job execute that same
-plan. CI-esta receives both lane and file explanations, learns JUnit timings,
-and validates the aggregate gate. Source and test edits follow dependencies;
-scripts, dependency/pytest policy and execution workflow changes retain full
-validation. Manual/called/release runs and the `test:full` label run it in full; a
-failed planner also runs all tests. Installed-distribution smoke checks use the
-same runtime-input decision; README-only changes skip those checks while still
-verifying the README embedded in both release archives. Repository routing
-controls exercise the committed config against real Git trees, including full and missing-history
-controls. Add new non-import execution inputs to `.github/test-lanes.json`.
+skipping every lane. A README or LICENSE change runs the `package` lane, because
+both distributions embed them; a README change also runs `contracts`, whose job
+checks the README's contract report, and the one test whose metadata check reads it. `pyproject.toml` and `uv.lock` run every
+lane. `ci-esta lanes --base origin/main` shows what a change would run and why.
+[.github/test-lanes.json](.github/test-lanes.json) extends the workflow and holds
+only what it cannot show: the `tests` lane's roots (its jobs run `pytest-selective
+execute-plan`, which CI-esta does not read as a pytest command), a
+`python-environment` rule that leaves the documentation site's requirements out,
+and a rule that plans the tests lane when the installed-distribution smoke script
+changes, because `distributions` smokes only when that lane is planned. When a test
+or a script starts reading a file by path, declare it next to the reader (a
+`<test>.gv-dependency.yaml` sidecar, which `pytest-selective audit
+--write-declarations` writes, or a `# gv:test-dependency: PATH` comment).
+`quality` runs [scripts/check_lane_routing.py](scripts/check_lane_routing.py),
+which plans one-file changes with CI-esta against real Git commits, including a
+full checkpoint, and `ci-esta check-workflow`, which keeps the job conditions, the
+gate and the lane file in agreement. Manual/called/release runs and the
+`test:full` label run everything; a failed planner also runs all tests.
+Installed-distribution smoke checks follow the tests lane's plan; README-only
+changes skip them while still verifying the README embedded in both release
+archives.
 
-File planning derives its graph from that same lane config and merges its declared
-global execution inputs with the graph's environment inputs. Declare subprocess
+Within an admitted lane, the repository's public file-selection action selects
+affected test files once; the platform matrix and minimum-pytest job execute that
+same plan. CI-esta receives both lane and file explanations, learns JUnit timings,
+and validates the aggregate gate. File selection has no workflow graph, so it reads
+[.github/plan-lanes.json](.github/plan-lanes.json), a complete lane file: its graph
+plus the execution inputs that run every test file (scripts, workflows, actions,
+dependency and pytest policy). `public-actions.yml` plans with the same file through
+this repository's own `plan-lanes` action, selectively on every change, and smokes
+its full checkpoint. Declare subprocess
 and non-import dependencies at their readers. Full plans collect whole-suite
 coverage; scoped plans produce JUnit timing evidence without presenting partial
 coverage as a whole-suite result. The public [shared-plan executor](docs/shared-plan-execution.md)
