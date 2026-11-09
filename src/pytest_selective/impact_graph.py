@@ -41,6 +41,7 @@ from pytest_selective.impact_declarations import (
     match_inputs,
 )
 from pytest_selective.impact_models import (
+    SECTION_ONLY_PYTEST_CONFIG,
     DeferredAssignments,
     DeferredRoute,
     DependencyComment,
@@ -191,7 +192,8 @@ def pytest_policies(repo: Path, files: dict[str, str], extra_files: tuple[str, .
     review fingerprints and by any rule that must inspect what that configuration loads.
     """
     # Collection can choose a nested/hidden config, even an empty one. Track all
-    # conventional candidates; caller-supplied -c files are opaque global policy.
+    # conventional candidates except a tox.ini or setup.cfg without a pytest section,
+    # which pytest skips; caller-supplied -c files are opaque global policy.
     if missing := set(extra_files) - files.keys():
         raise ValueError(f"declared pytest configuration missing from committed tree: {sorted(missing)}")
     names = {"pyproject.toml", "pytest.ini", ".pytest.ini", "pytest.toml", ".pytest.toml", "setup.cfg", "tox.ini"}
@@ -218,6 +220,9 @@ def pytest_policies(repo: Path, files: dict[str, str], extra_files: tuple[str, .
             policy_sections = {
                 section: dict(parser[section]) for section in parser.sections() if section in {"pytest", "tool:pytest"}
             }
+            if not policy_sections and PurePosixPath(path).name in SECTION_ONLY_PYTEST_CONFIG:
+                # pytest skips this file, so it neither configures collection nor moves the rootdir.
+                continue
             canonical = json.dumps(policy_sections, sort_keys=True)
         policies[path] = canonical
     return policies

@@ -12,8 +12,10 @@ inputs:
     default: auto
   artifact-name:
     description: >
-      Upload the lane plan under this name, where CI-esta's report renders it as
-      the sticky's lane section. Empty skips the upload.
+      Upload the lane plan (test-lanes.json) as an artifact under this name, where
+      CI-esta's report renders it as the sticky's lane section. Give each planner job
+      in one workflow run its own name. Empty skips the upload; planning and the
+      outputs are unchanged.
     default: test-lane-selection
 outputs:
   lanes:

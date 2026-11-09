@@ -24,7 +24,11 @@ matrix, services and coverage checks unchanged.
   release publishes. Selection only decides whether a job starts.
 - Stop and tell the human, with the exact step, when something needs a repository setting: required checks, rulesets,
   labels, secrets. Do not change them yourself.
-- Pass `--repo "$REPO"` to every `gh` command. In a clone of a fork, `gh` otherwise picks the upstream repository.
+- Name the repository on every `gh` command; in a clone of a fork, `gh` otherwise picks the upstream repository.
+  `gh pr`, `gh run`, `gh workflow`, `gh label`, `gh secret` and `gh release` take `--repo "$REPO"`; `gh repo view`
+  takes it as an argument (`gh repo view "$REPO"`); `gh api` takes it in the path (`repos/$REPO/...`).
+- Keep scratch files in `.test-impact/` (ignored, step 3), not `/tmp`: native Windows Python cannot open Git Bash's
+  `/tmp`.
 - If a command fails, report the exact command and its error. Do not make a failure pass by widening or emptying
   inputs, ignoring a test directory, or removing a job from the gate.
 
@@ -34,7 +38,8 @@ Run these and note the answers. Every later step uses them.
 
 ```bash
 REPO=OWNER/NAME     # the repository you will open the pull request in: check `git remote -v`; in a fork, the fork
-gh repo view --repo "$REPO" --json defaultBranchRef -q .defaultBranchRef.name           # DEFAULT below
+gh repo view "$REPO" --json defaultBranchRef -q .defaultBranchRef.name                  # DEFAULT below
+gh api "repos/$REPO" --jq '.parent.full_name // "not a fork"'                           # UPSTREAM below
 ls AGENTS.md CLAUDE.md CONTRIBUTING.md .github/pull_request_template.md .github/PULL_REQUEST_TEMPLATE* \
    .pre-commit-config.yaml zizmor.yml .github/zizmor.yml 2>/dev/null
 ls pyproject.toml setup.cfg setup.py tox.ini noxfile.py pytest.ini uv.lock poetry.lock pdm.lock Pipfile.lock \
@@ -45,6 +50,9 @@ grep -nE '^on:|^  [a-z_]+:$|branches|paths|needs:|matrix:|services:|^\s+if:' .gi
 gh run list --repo "$REPO" --branch DEFAULT --limit 10 --json databaseId,workflowName,event,conclusion
 gh api "repos/$REPO/branches/DEFAULT/protection/required_status_checks" --jq .contexts   # 403/404: ask the human
 ```
+
+A fresh fork has no runs yet. Read the typical jobs and durations from UPSTREAM instead, read-only: the same
+`gh run list` and `gh run view` commands with `--repo UPSTREAM`. Never push, label or dispatch there.
 
 Record:
 
@@ -64,24 +72,25 @@ Record:
 If CI already finishes in a couple of minutes, or nearly every change touches source code, say so in your report:
 selection saves little there. Continue only if the human's request still stands.
 
-### One version, used everywhere
+### Which version
 
-Resolve the latest release once:
+Reference the actions by the moving major tag, `gigaverse-app/pytest-selective/actions/NAME@v1`: planner fixes reach
+the repository without a pull request per release. The measurement script (step 8) comes from `v1` too. Resolve the
+latest release once for the package:
 
 ```bash
 TAG=$(gh release view --repo gigaverse-app/pytest-selective --json tagName -q .tagName)   # for example v1.1.0
 VERSION=${TAG#v}
-SHA=$(gh api "repos/gigaverse-app/pytest-selective/commits/$TAG" --jq .sha)
 ```
 
-The rule: every action and the package you add come from that one release. The package is
-`pytest-selective==$VERSION` (or `>=$VERSION,<2` where the repository uses ranges with a lock). Each action is
-`gigaverse-app/pytest-selective/actions/NAME@<ref>`, where `<ref>` follows the repository's pinning policy:
-`@$SHA # $TAG` if it pins commit SHAs, otherwise `@$TAG`. Update them together. The moving `@v1` tag also works,
-but it runs a newer planner than the version your routing tests install.
+Local commands use `pytest-selective==$VERSION`; the routing-test job (step 6) installs `pytest-selective>=$VERSION,<2`,
+so it follows the same major version as `@v1`.
 
-`gh api .../commits/TAG` resolves annotated tags to the commit; `git/ref/tags/TAG` would return the tag object.
-Version-matched source files are at `https://github.com/gigaverse-app/pytest-selective/blob/$TAG/...`.
+Only when the repository's tooling rejects tags (zizmor's `unpinned-uses`, a `pinact` hook, or an all-SHA policy its
+CI enforces) pin the release instead: `@$SHA # $TAG` on every action, with
+`SHA=$(gh api "repos/gigaverse-app/pytest-selective/commits/$TAG" --jq .sha)` (this resolves an annotated tag to its
+commit; `git/ref/tags/TAG` would return the tag object), and `pytest-selective==$VERSION` in the routing job. Update
+them together.
 
 ## 2. Choose lanes
 
@@ -96,7 +105,8 @@ Start with as few lanes as the jobs need:
 | Your routing tests (step 6) | `routing`: roots = their directory |
 | Integration tests with services, or another suite run separately | its own lane with its own roots |
 
-Keep these unconditional: the planner, lint, type checking, documentation builds, link checks and the gate.
+Keep these unconditional: the planner, lint, type checking, documentation builds, link checks, the gate, and every
+job a publish or deploy job needs (step 4.4). Every other job that installs, builds or tests the project is gated.
 
 Optionally, developers can also run only affected tests locally with `pytest --selective` after adding
 `pytest-selective` to the test dependencies (`uv add --dev`, `poetry add --group dev`, a `tests` extra, a tox `deps`
@@ -137,9 +147,13 @@ Adapt every path; this is a shape, not an inventory. The rules:
   them. Omitted, the built-in list applies: `pyproject.toml`, `setup.cfg`, `setup.py`, `tox.ini`, `pytest.ini`,
   `pytest.toml`, `uv.lock`, `poetry.lock`, `pdm.lock`, `pixi.lock`, `Pipfile`, `Pipfile.lock`, `*requirements*.txt`,
   `*requirements*.in`, `requirements*.lock`, `pylock*.toml`, `requirements/**` and `*constraints*.txt`, anywhere in the
-  tree. Set it explicitly when the repository has a requirements file the tests do not use (a docs site's
-  `docs/requirements.txt`, a type-check or release requirements file), and add files the list lacks, such as
-  `noxfile.py` or a `constraints/` directory.
+  tree. Root-level files match too: `requirements-mypy.txt`, `requirements-lint.txt` or `docs-requirements.txt` each
+  run every lane, so a Dependabot bump of mypy would start the whole test matrix. Set the list explicitly whenever the
+  repository has a requirements file the tests do not install (a docs site's, a type-check, lint or release one),
+  naming only what the tests do use, and add files the built-in list lacks, such as `noxfile.py` or a `constraints/`
+  directory. For example, tests installed from `pyproject.toml` through tox, beside a `requirements-mypy.txt`:
+  `"graph": {"global_inputs": ["pyproject.toml", "tox.ini"], ...}`. Prove it with a routing-test row
+  (`("requirements-mypy.txt", NONE)`, step 6).
 - **Top-level `global_inputs`** are CI execution files whose change must run every lane. Omitted, they are every
   non-Markdown file under `.github/` plus `graph.global_inputs`, so a `dependabot.yml` or release-workflow edit would
   run everything. An explicit list replaces that: name the lane config, the workflows that run lane jobs, local
@@ -150,20 +164,22 @@ Adapt every path; this is a shape, not an inventory. The rules:
 
 Add `.test-impact/` to `.gitignore`: the planner keeps its graph cache there.
 
-**Collection policy.** If pytest configuration exists (`[tool.pytest.ini_options]`, `pytest.ini`, a `[pytest]` or
-`[tool:pytest]` section, `tox.ini`), the planner runs every lane until you record its fingerprints
+**Collection policy.** If pytest configuration exists (`pyproject.toml`, `pytest.ini`, `pytest.toml`, a `tox.ini`
+with `[pytest]`, a `setup.cfg` with `[tool:pytest]`), the planner runs every lane until you record its fingerprints
 (`full-suite fallback: pytest configuration changed; review collection policy and refresh its fingerprints`). Review
 the pytest settings and collection hooks, commit the config, then:
 
 ```bash
-python -c "import json; print(json.dumps(json.load(open('.github/test-lanes.json'))['graph']))" > /tmp/graph.json
+mkdir -p .test-impact
+python -c "import json; print(json.dumps(json.load(open('.github/test-lanes.json'))['graph']))" > .test-impact/graph.json
 uv run --no-project --with "pytest-selective==$VERSION" \
-  pytest-selective fingerprints --config /tmp/graph.json --head HEAD
+  pytest-selective fingerprints --config .test-impact/graph.json --head HEAD
 ```
 
-Copy the printed object into `graph.pytest_policy` and commit. Without uv, run the same commands in a virtual
-environment after `python -m pip install "pytest-selective==$VERSION"`. When pytest settings change later, the planner
-falls back to every lane until someone reviews and refreshes the fingerprints.
+Copy the printed object into `graph.pytest_policy` and commit. Releases up to 1.1.1 also print a `tox.ini` or
+`setup.cfg` that has no pytest section (pytest ignores it); keeping that entry is harmless. Without uv, run the same
+commands in a virtual environment after `python -m pip install "pytest-selective==$VERSION"`. When pytest settings
+change later, the planner falls back to every lane until someone reviews and refreshes the fingerprints.
 
 ### Prove the config locally
 
@@ -177,15 +193,18 @@ uv run --no-project --with "pytest-selective==$VERSION" \
 Expected: JSON with `lanes` (one boolean per lane), `reason` and `lane_reasons`. A README edit gives every lane
 `false` (or only `package`, when the build embeds the README) with `no affected tests or changed inputs`; a source
 edit selects the lanes of the tests that import it (`affected test: tests/test_x.py`); a lockfile or workflow edit
-selects every lane (`global input: ...`). Probe a docs page, each requirements file, a source module, a test, a
-benchmark, a nested file in each directory you narrowed, and each workflow. If a source edit selects every lane
+selects every lane (`global input: ...`). Probe a prose-only file that no lane covers (a docs page; without a `docs/`
+directory, a CHANGELOG, RELEASING or CONTRIBUTING file, or the README unless the package lane embeds it), each
+requirements file, a source module, a test, a benchmark, a nested file in each directory you narrowed, and each
+workflow. If a source edit selects every lane
 (`all graph test files affected`), every test reaches it, often through a package `__init__.py`: correct, not a misroute.
 
 ## 4. Wire the workflows
 
 ### 4.1 The planner job
 
-Add to each workflow that runs lane jobs, using the repository's own pin for `actions/checkout`:
+Add to each workflow that runs lane jobs. The snippets in this file write third-party actions as `@vN`; use the
+repository's own ref for each one instead (its SHA and `# vX.Y.Z` comment, when it pins SHAs):
 
 ```yaml
   select-tests:
@@ -198,14 +217,19 @@ Add to each workflow that runs lane jobs, using the repository's own pin for `ac
           fetch-depth: 0               # the planner needs the base commit
           persist-credentials: false
       - id: plan
-        uses: gigaverse-app/pytest-selective/actions/plan-lanes@REF   # step 1's ref
+        uses: gigaverse-app/pytest-selective/actions/plan-lanes@v1   # or step 1's SHA pin
         with:
           config: .github/test-lanes.json
 ```
 
 `full` defaults to `auto`: pull requests and pushes select; `workflow_dispatch`, `workflow_call`, `schedule` and
 `release` events, and pull requests labelled `test:full`, run every lane. Reruns keep the first attempt's selection.
-Keep (or propose) a scheduled full run.
+Keep (or propose) a scheduled full run, and make sure each workflow with lane jobs has `workflow_dispatch:`: it is
+how you start a full control in step 8.
+
+The action also uploads its plan as a `test-lane-selection` artifact, which
+[CI-esta](https://github.com/gigaverse-app/ci-esta) renders. Give each planner job in one workflow run its own
+`artifact-name`, or set `artifact-name: ''` to skip the upload; the plan and the `lanes` output stay the same.
 
 ### 4.2 Gate each lane job
 
@@ -229,20 +253,22 @@ together. A job with other needs must check them itself, because `always()` also
   `push: branches: [DEFAULT]`. If the repository wants branch pushes, give the planner a base for new branches:
   `base: ${{ github.event.pull_request.base.sha || (github.event.created && format('origin/{0}', github.event.repository.default_branch)) || github.event.before }}`.
   Changing triggers is a behavior change: say so in the pull request.
+- **Probe branches before the merge.** With branch pushes kept, each probe branch's first push (step 7) plans
+  against DEFAULT, which does not have your workflow change yet, so it runs every lane. That full run is not a
+  misroute and costs a matrix per probe. Make it useful or stop it: the docs-only probe's push runs are a full
+  control at the probe head (step 8), so keep them; cancel the source probe's push runs as soon as they start
+  (`gh run cancel RUN --repo "$REPO"`) and judge that probe by its `pull_request` runs. The cost ends once the
+  adoption merges.
 - **`branches:` filters.** A probe pull request opened against your adoption branch does not start workflows filtered
   to `pull_request: branches: [main]`. Prove those workflows with routing tests and local plans, and say in the report
   that their hosted probe waits for the merge.
 
 ### 4.4 Jobs on a publish path
 
-If a publish or deploy job `needs:` a job you gate, skipping that job also skips publishing. Do not change what
-publishes. Use one of these, in order of preference:
-
-1. Leave publish workflows and every job they need ungated. Gate only pull-request verification.
-2. Keep the needed job running on every other event:
-   `${{ always() && !cancelled() && (github.event_name != 'pull_request' || needs.select-tests.result != 'success' || fromJSON(needs.select-tests.outputs.lanes).package) }}`.
-3. Admit steps, not the job: the job always runs and succeeds, so its dependents still run, and only its expensive
-   steps skip. Plan inside the job and let a failed plan run everything:
+One rule: a job that a publish or deploy job `needs:`, directly or transitively, is never skipped, because a skipped
+job skips its dependents and so the publication. Leave it ungated, as it is. If it is expensive and you want pull
+requests to skip that work, admit its steps instead of the job: the job always runs and succeeds, so its dependents
+still run, and only the expensive steps skip. Plan inside the job and let a failed plan run everything:
 
 ```yaml
     steps:
@@ -252,7 +278,7 @@ publishes. Use one of these, in order of preference:
           persist-credentials: false
       - id: plan
         continue-on-error: true          # a failed plan runs the steps below
-        uses: gigaverse-app/pytest-selective/actions/plan-lanes@REF
+        uses: gigaverse-app/pytest-selective/actions/plan-lanes@v1
         with:
           config: .github/test-lanes.json
           artifact-name: ''
@@ -260,7 +286,8 @@ publishes. Use one of these, in order of preference:
         run: python -m build && python -m twine check --strict dist/*
 ```
 
-Keep the steps that produce what the publish job downloads unconditional.
+Keep the steps that produce what the publish job downloads unconditional. Every other job that installs, builds or
+tests is gated as in 4.2.
 
 ## 5. Add the gate
 
@@ -274,7 +301,7 @@ check:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: gigaverse-app/pytest-selective/actions/validation-gate@REF
+      - uses: gigaverse-app/pytest-selective/actions/validation-gate@v1
         with:
           needs: ${{ toJSON(needs) }}
           lanes: ${{ needs.select-tests.outputs.lanes || '{}' }}
@@ -283,10 +310,8 @@ check:
 
 It passes only when every prerequisite succeeded, or was skipped while the planner succeeded and every lane mapped to
 that job is `false`. A failed, cancelled or skipped planner, a failed job, or a skip of an unmapped job fails it. It
-installs nothing. If the repository already has an aggregate job, keep its name and replace its logic with this step.
-`actions/validation-gate` exists from the release after 1.0.0; if
-`gh api "repos/gigaverse-app/pytest-selective/contents/actions/validation-gate/action.yml?ref=$TAG"` returns 404, use
-`gigaverse-app/ci-esta/actions/validation-gate@v1` with the same inputs.
+installs nothing. If the repository already has an aggregate job, keep its job id and name and replace its logic with
+this step; the routing test's `GATE` names that id (step 6).
 
 ## 6. Add routing tests
 
@@ -308,7 +333,7 @@ only what they need there:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
-      - run: python -m pip install "pytest-selective==VERSION"   # brings pytest and PyYAML
+      - run: python -m pip install "pytest-selective>=VERSION,<2"   # brings pytest and PyYAML; ==VERSION with SHA pins
       - run: python -m pytest ci_tests -q
 ```
 
@@ -319,10 +344,13 @@ only what they need there:
   would run every lane; list it in `graph.global_inputs` only if tests really use it.
 - pre-commit and prek only check tracked files: `git add` new files before running the hooks.
 
-Start from this file, `ci_tests/test_ci_routing.py`, and adapt `FIXTURE`, the rows and the workflow path:
+Start from this file, `ci_tests/test_ci_routing.py`. Adapt the rows, `WORKFLOW` and `GATE`; the fixture copies
+every tracked file, so a misroute cannot hide behind a file the test forgot to copy:
 
 ```python
 """Route real Git changes through the committed lane config (pytest-selective)."""
+
+from __future__ import annotations
 
 import json
 import shutil
@@ -337,8 +365,10 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = LaneConfig.model_validate_json((ROOT / ".github/test-lanes.json").read_text(encoding="utf-8"))
 EVERY = dict.fromkeys(CONFIG.lanes, True)
 NONE = dict.fromkeys(CONFIG.lanes, False)
-# Real files the graph needs, plus every file whose collection policy is fingerprinted.
-FIXTURE = ["src/toy/__init__.py", "src/toy/core.py", "src/toy/other.py", "tests/test_core.py", "tests/test_other.py"]
+WORKFLOW = ROOT / ".github/workflows/test.yml"
+PLANNER = "select-tests"
+# The gate job's id. Keep an existing aggregate job's id, for example "success".
+GATE = "gate"
 
 
 def git(repo: Path, *args: str) -> str:
@@ -354,19 +384,26 @@ def commit(repo: Path) -> str:
 
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
+    """A copy of every tracked file, so no file the planner reads can be missing from the fixture."""
     git(tmp_path, "init", "--quiet")
-    for path in {*FIXTURE, *CONFIG.graph.pytest_policy}:
-        (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(ROOT / path, tmp_path / path)
+    for path in git(ROOT, "ls-files", "-z").split("\0"):
+        source, target = ROOT / path, tmp_path / path
+        # Skips the empty tail, submodules and files deleted in the working tree.
+        if path and (source.is_symlink() or source.is_file()):
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target, follow_symlinks=False)
     return tmp_path
 
 
 @pytest.mark.parametrize(
-    "path, expected",
+    ("path", "expected"),
     [
         ("README.md", {**NONE, "package": True}),
+        # Prose no lane covers; without docs/, use CHANGELOG.md or RELEASING.md.
         ("docs/index.md", NONE),
-        ("docs/requirements.txt", NONE),  # the docs site's environment, not the tests'
+        # Requirements the tests do not install, narrowed out of graph.global_inputs.
+        ("docs/requirements.txt", NONE),
+        ("requirements-mypy.txt", NONE),
         ("tests/test_other.py", {**NONE, "tests": True}),
         ("src/toy/other.py", {**NONE, "tests": True, "package": True}),
         ("tests/benchmarks/test_bench.py", {**NONE, "tests": True, "bench": True}),
@@ -377,9 +414,7 @@ def repo(tmp_path: Path) -> Path:
 )
 def test_a_change_runs_exactly_its_lanes(repo: Path, path: str, expected: dict[str, bool]) -> None:
     base = commit(repo)
-    target = repo / path
-    target.parent.mkdir(parents=True, exist_ok=True)
-    with target.open("a", encoding="utf-8") as handle:
+    with (repo / path).open("a", encoding="utf-8") as handle:
         handle.write("\n# routing probe\n")
     result = plan(repo, CONFIG, base, commit(repo))
     assert result.lanes == expected, result.lane_reasons
@@ -387,43 +422,54 @@ def test_a_change_runs_exactly_its_lanes(repo: Path, path: str, expected: dict[s
 
 def test_missing_history_and_full_checkpoints_run_every_lane(repo: Path) -> None:
     head = commit(repo)
-    assert plan(repo, CONFIG, "0" * 40, head).lanes == EVERY  # e.g. a new branch's first push
+    # No previous commit, as on a new branch's first push.
+    assert plan(repo, CONFIG, "0" * 40, head).lanes == EVERY
     assert plan(repo, CONFIG, head, head, full=True).lanes == EVERY
 
 
 def test_the_gate_guards_every_job_and_lane_jobs_run_when_planning_fails() -> None:
-    workflow = yaml.safe_load((ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8"))
-    assert "pull_request" in workflow[True]  # PyYAML reads the `on:` key as the boolean True
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    # PyYAML reads the `on:` key as the boolean True.
+    assert "pull_request" in workflow[True]
     jobs = workflow["jobs"]
-    (step,) = [step for step in jobs["gate"]["steps"] if "validation-gate" in step.get("uses", "")]
+    (step,) = [step for step in jobs[GATE]["steps"] if "validation-gate" in step.get("uses", "")]
     lane_jobs = json.loads(step["with"]["lane-jobs"])
-    assert set(jobs["gate"]["needs"]) == set(jobs) - {"gate"}
+    assert set(jobs[GATE]["needs"]) == set(jobs) - {GATE}
     assert {lane for lanes in lane_jobs.values() for lane in lanes} <= set(CONFIG.lanes)
+    gated = {name for name, job in jobs.items() if f"needs.{PLANNER}.outputs.lanes" in str(job.get("if", ""))}
+    # Every job that a lane admits is in the gate's lane map, and nothing else is.
+    assert set(lane_jobs) == gated
     for job, lanes in lane_jobs.items():
         condition = " ".join(jobs[job]["if"].split())
         assert "always() && !cancelled()" in condition, job
-        assert "needs.select-tests.result != 'success'" in condition, job
-        assert all(f"fromJSON(needs.select-tests.outputs.lanes).{lane}" in condition for lane in lanes), job
+        assert f"needs.{PLANNER}.result != 'success'" in condition, job
+        assert all(f"fromJSON(needs.{PLANNER}.outputs.lanes).{lane}" in condition for lane in lanes), job
 ```
 
-Add a row for every directory you narrowed, every requirements file, each workflow and each lane. A row appends a
-comment; a `<workflow>#<job>` input ignores comments, so edit the job itself in that row. Run the file locally with
-`uv run --no-project --with "pytest-selective==$VERSION" pytest ci_tests -q` and commit it.
+Add a row for every directory you narrowed, every requirements file, each workflow and each lane, using real tracked
+paths. A row appends a comment; a `<workflow>#<job>` input ignores comments, so edit the job itself in that row. With
+several workflows, repeat the gate test per workflow with its own `GATE`. Make the file pass the repository's own
+linters, formatter and type checker before committing: for example, ruff's `required-imports` may demand
+`from __future__ import annotations` (the template has it), and black or `ruff format` with a shorter line length
+reflows it. Run it locally with `uv run --no-project --with "pytest-selective==$VERSION" pytest ci_tests -q` and
+commit it.
 
 ## 7. Prove it on hosted CI
 
 1. Push the branch and open the draft pull request. Its first run changes workflows, so every lane runs: that is the
    full baseline, not a misroute.
-2. Branch from the adoption branch, edit only a README line and a docs page, push, and open a probe pull request
-   against the adoption branch (mind 4.3's `branches:` filters). List what executed:
+2. Branch from the adoption branch, edit only prose no lane covers (a docs page and a README line; without a `docs/`
+   directory, a CHANGELOG or RELEASING line), push, and open a probe pull request against the adoption branch (mind
+   4.3's `branches:` filters, and its note on the probe's own push runs). List what the pull request executed:
 
    ```bash
-   gh run list --repo "$REPO" --branch PROBE_BRANCH --json databaseId,workflowName,conclusion
+   gh run list --repo "$REPO" --branch PROBE_BRANCH --event pull_request --json databaseId,workflowName,conclusion
    gh run view RUN --repo "$REPO" --json jobs --jq '.jobs[] | [.name, .conclusion] | @tsv'
    ```
 
-   Expected: the planner, lint, docs, the `package` lane only if the build embeds the README, and the gate ran; every
-   other lane job is `skipped`; the gate succeeded. Anything else that installs, builds or tests is a trap: gate it.
+   Expected: the planner, lint, docs, the `package` lane only if the build embeds the README, the jobs a publish job
+   needs (4.4), and the gate ran; every other lane job is `skipped`; the gate succeeded. Any other job that installs,
+   builds or tests and still ran is a missed gate: gate it as in 4.2.
 3. Repeat with a one-line source change: its lanes run in full, the rest skip.
 4. Keep the probe pull requests open until you have measured, then close them without merging and delete their
    branches.
@@ -432,18 +478,26 @@ comment; a `<workflow>#<job>` input ignores comments, so edit the job itself in 
 
 Compare a selected run with a full control **at the same head**:
 
-- Selected: the docs-only probe's runs.
-- Full control: ask the human to create the `test:full` label if `gh label list --repo "$REPO"` lacks it. Add it to
-  the probe pull request, then close and reopen the pull request: the `reopened` event plans with the label and runs
-  every lane. Adding a label alone starts nothing unless a workflow lists `labeled`. Or run
-  `gh workflow run WORKFLOW --repo "$REPO" --ref PROBE_BRANCH` where the workflow has `workflow_dispatch`; it runs
-  every lane but checks out the branch head instead of the pull request's merge commit, so record both SHAs. A rerun
-  is not a control: it keeps the selection.
+- Selected: the docs-only probe's `pull_request` runs.
+- Full control: if the probe branch's push runs already ran every lane at the probe head (4.3), use them. Otherwise
+  dispatch every workflow the selected side ran, on the probe branch; `workflow_dispatch` plans a full checkpoint, so
+  every lane runs:
+
+  ```bash
+  gh workflow run WORKFLOW --repo "$REPO" --ref PROBE_BRANCH      # once per workflow
+  ```
+
+  GitHub dispatches only workflows whose file exists on DEFAULT, and may read the trigger from there: if a workflow
+  gains `workflow_dispatch:` only in your adoption and the dispatch is refused, measure after the merge. A rerun is
+  not a control: it keeps the selection. Do not wait on a `test:full` label; creating one is the human's step 9.
+
+Both sides then share a head SHA: a `pull_request` run records the branch head as its `head_sha`, although it checks
+out the merge commit, and a dispatch or push run on the branch records the same commit. Record both checked-out SHAs.
 
 ```bash
 gh run list --repo "$REPO" --commit HEAD_SHA --json databaseId,workflowName,event,conclusion,createdAt
-uv run --no-project https://raw.githubusercontent.com/gigaverse-app/pytest-selective/main/scripts/measure_ci_runs.py \
-  "$REPO" --selected RUN_A RUN_B --full RUN_C RUN_D --output comparison.json
+uv run --no-project https://raw.githubusercontent.com/gigaverse-app/pytest-selective/v1/scripts/measure_ci_runs.py \
+  "$REPO" --selected RUN_A RUN_B --full RUN_C RUN_D --output .test-impact/comparison.json
 ```
 
 List every workflow run of each side (it adds runner-seconds across workflows and spans elapsed time from the first
@@ -459,7 +513,8 @@ and label hosted impact unmeasured.
 Leave these to the human and list them in the pull request:
 
 - Make each workflow's gate job a required check, and remove required checks for jobs that can now be skipped.
-- Create the `test:full` label, if it does not exist.
+- Create the `test:full` label, if it does not exist: adding it to a pull request and then closing and reopening the
+  pull request runs every lane (adding a label alone starts nothing unless a workflow lists `labeled`).
 - Approve any trigger change from 4.3 and a scheduled full run.
 - Merge. Then a docs-only pull request against the default branch proves the workflows that 4.3's filters hid.
 
@@ -470,7 +525,8 @@ Use this in the pull request body, filled in:
 ```markdown
 ## pytest-selective adoption
 
-pytest-selective vX.Y.Z: actions at `<sha>` (`# vX.Y.Z`), routing tests install `pytest-selective==X.Y.Z`.
+pytest-selective vX.Y.Z: actions at `@v1` (or `@<sha> # vX.Y.Z` where tags are rejected), routing tests install
+`pytest-selective>=X.Y.Z,<2`.
 
 | Lane | Jobs it admits | Roots and inputs |
 | --- | --- | --- |

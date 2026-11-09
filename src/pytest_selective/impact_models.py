@@ -1,11 +1,19 @@
 """Validated contracts for cached, conservative test impact analysis."""
 
+import hashlib
+import json
+from pathlib import PurePosixPath
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from pytest_selective.input_policy import DEFAULT_GLOBAL_INPUTS
 from pytest_selective.test_inventory import TEST_FILE_PATTERNS
+
+#: pytest reads these only when they hold a pytest section; without one they configure nothing.
+SECTION_ONLY_PYTEST_CONFIG = frozenset({"tox.ini", "setup.cfg"})
+#: The fingerprint releases up to 1.1.1 recorded for such a file without a pytest section.
+EMPTY_SECTIONS_FINGERPRINT = hashlib.sha256(json.dumps({}).encode()).hexdigest()
 
 #: Marks a graph node that stands for a file's bytes: its readers inspect it without executing it.
 CONTENTS_PREFIX = "@contents:"
@@ -193,6 +201,19 @@ class ImpactConfig(ImpactModel):
     pytest_policy: dict[str, str] = Field(default_factory=dict)
     #: Repository-relative files passed through pytest -c; fingerprint their complete contents.
     pytest_config_files: list[str] = Field(default_factory=list)
+
+    @field_validator("pytest_policy")
+    @classmethod
+    def _ignore_sectionless_fingerprints(cls, policy: dict[str, str]) -> dict[str, str]:
+        # Older fingerprints also recorded a tox.ini or setup.cfg without a pytest section. pytest
+        # ignores such a file, so its entry is dropped instead of forcing every adopter to refresh.
+        return {
+            path: fingerprint
+            for path, fingerprint in policy.items()
+            if not (
+                PurePosixPath(path).name in SECTION_ONLY_PYTEST_CONFIG and fingerprint == EMPTY_SECTIONS_FINGERPRINT
+            )
+        }
 
     @field_validator("pytest_config_files")
     @classmethod

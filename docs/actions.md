@@ -28,6 +28,10 @@ supported on GitHub.com with runner 2.336.0 or newer. Individual `actions/NAME`
 entry points call the implementations directly and do not require that syntax.
 [GitHub reference documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax).
 
+`plan-lanes` uploads its plan as the `test-lane-selection` artifact by default. Set
+`artifact-name` to rename it, which a second planner job in the same workflow run needs, or to
+`''` to skip the upload.
+
 ## Action reference
 
 Each link below is the public action's complete input/output contract.

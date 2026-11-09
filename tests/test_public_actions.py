@@ -42,3 +42,11 @@ def test_metadata_text_has_no_expressions_the_runner_would_evaluate(source):
     for kind in ("inputs", "outputs"):
         for name, spec in (action.get(kind) or {}).items():
             assert "${{" not in spec.get("description", ""), (kind, name)
+
+
+def test_plan_lanes_uploads_its_plan_unless_the_artifact_name_is_empty():
+    action = yaml.safe_load((ROOT / "actions" / "plan-lanes" / "action.yml").read_text())
+    assert action["inputs"]["artifact-name"]["default"] == "test-lane-selection"
+    (upload,) = [step for step in action["runs"]["steps"] if "upload-artifact" in step.get("uses", "")]
+    assert upload["if"] == "${{ inputs.artifact-name != '' }}"
+    assert upload["with"]["name"] == "${{ inputs.artifact-name }}"
