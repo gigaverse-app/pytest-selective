@@ -129,6 +129,12 @@ jobs:
           uv run --no-project --python 3.14
           --with "ci-esta[selection]>=1.12.0,<2.0.0"
           ci-esta check-workflow --workflow .github/workflows/ci.yml --lanes .github/test-lanes.json
+      # Plans one-file changes with CI-esta against real commits and fails on any lane a change should not run.
+      - name: Check the lane routing
+        run: >-
+          uv run --no-project --python 3.14
+          --with "ci-esta[selection]>=1.12.0,<2.0.0"
+          python scripts/check_lane_routing.py
       - name: Validate GitHub Actions
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
   tests:
