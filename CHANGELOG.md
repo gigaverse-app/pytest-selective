@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.0](https://github.com/gigaverse-app/pytest-selective/compare/v0.4.3...v1.0.0) (2026-11-08)
+
+
+### Bug fixes
+
+* **ci:** streamline dogfood checks and prepare the 1.0 release ([#97](https://github.com/gigaverse-app/pytest-selective/issues/97)) ([5c79edc](https://github.com/gigaverse-app/pytest-selective/commit/5c79edcc2e234ccd90902ef001d2852cf7ecfdbc))
+* **selection:** follow star imports to the submodules a package lists in __all__ ([#94](https://github.com/gigaverse-app/pytest-selective/issues/94)) ([ea02fbf](https://github.com/gigaverse-app/pytest-selective/commit/ea02fbfe85c2d5b6e8685a4b159215d421f78653))
+
 ## [0.4.3](https://github.com/gigaverse-app/pytest-selective/compare/v0.4.2...v0.4.3) (2026-11-08)
 
 

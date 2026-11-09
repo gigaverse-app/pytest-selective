@@ -38,6 +38,67 @@ interval or a guarantee for different machines. Use the **Matched Windows
 performance** workflow with an immutable baseline and the desired candidate ref
 to repeat the measurement.
 
+## Worker-count controls
+
+The earlier worker-count controls used the same Git executable in both arms
+and the runner work disk for temporary repositories. Their logs subsequently
+showed that the old native-Git action had retained the launcher on Git 2.56.
+Each arm loaded its own checkout through `PYTHONPATH` and explicitly disabled
+selective execution, preserving the full suite, coverage and JUnit evidence.
+
+[Run 42505855403, attempt 1](https://github.com/gigaverse-app/pytest-selective/actions/runs/42505855403)
+compared four and eight workers on the same revision,
+`1535d35b17e242219550f4534e1c059bc4abbc59`:
+
+| Python | Four-worker samples | Eight-worker samples | Mean before | Mean after | Reduction (higher is better) |
+| --- | --- | --- | --- | --- | --- |
+| 3.11 | 100.88s, 90.08s | 98.72s, 93.56s | 95.48s | 96.14s | -0.7% |
+| 3.14 | 127.28s, 128.69s | 123.15s, 124.00s | 127.98s | 123.58s | 3.4% |
+
+All samples retained the same 830 test identities and outcomes per interpreter:
+819 passed/11 skipped on Python 3.11 and 828 passed/2 skipped on Python 3.14.
+Covered line and branch totals were identical within each interpreter. The
+`matched-windows-3.11` and `matched-windows-3.14` artifacts hold the raw evidence.
+These two samples per arm do not establish a consistent benefit from eight
+workers, so ordinary CI retains four.
+
+[Run 42506661099, attempt 1](https://github.com/gigaverse-app/pytest-selective/actions/runs/42506661099)
+tested two workers against four on the same revision, in 4/2/2/4 order:
+
+| Python | Four-worker samples | Two-worker samples | Mean before | Mean after | Reduction (higher is better) |
+| --- | --- | --- | --- | --- | --- |
+| 3.11 | 174.68s, 164.44s | 232.35s, 235.57s | 169.56s | 233.96s | -38.0% |
+| 3.14 | 115.78s, 118.46s | 163.77s, 158.67s | 117.12s | 161.22s | -37.7% |
+
+Every sample passed with the same test identities, outcomes and covered
+line/branch totals as its four-worker controls. Two workers were consistently
+slower. Compare arms within each run: the different absolute baseline times
+across runs demonstrate runner variation and are not evidence of a code change.
+
+## Restore native Git discovery on Git 2.56
+
+Git for Windows 2.56 moved its native x64 executable from `mingw64` to `ucrt64`.
+CI-esta's action now discovers the active installation instead of hard-coding
+that prefix. [Run 42507428424](https://github.com/gigaverse-app/pytest-selective/actions/runs/42507428424)
+compared launcher/native/native/launcher on identical source and four workers:
+
+| Python | Launcher mean | Native mean | Reduction |
+| --- | --- | --- | --- |
+| 3.11 | 175.4s | 139.6s | 20.4% |
+| 3.14 | 123.4s | 100.8s | 18.3% |
+
+All samples passed with identical test identities, outcomes and covered-line
+sets within each interpreter. These are test-step elapsed times from two samples
+per arm, not whole-gate or billing estimates. Each timing receipt records the
+actual executable, making a silently retained launcher visible.
+
+To repeat this comparison, manually dispatch **Matched Windows performance**,
+set `baseline` to the selected workflow ref's exact SHA, leave `candidate-workers`
+at four, and choose the CI-esta action ref with `ci-esta-ref` (default `v1`). The
+baseline uses the launcher and the candidate uses the action's chosen executable.
+Changing the worker count also changes concurrency, so keep it at four to isolate
+Git discovery. Ordinary CI retains four workers and one runner per Windows lane.
+
 ## Coverage preservation
 
 On Python 3.11, both candidates retain all 540 original outcomes: 529 passed and

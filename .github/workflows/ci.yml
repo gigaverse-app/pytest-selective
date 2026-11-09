@@ -222,10 +222,15 @@ jobs:
         run: uv run --locked --group quint pytest-quint-connect codegen --check contracts/selection/quint-connect.json
       - name: Generate histories from the model and replay them against the planner
         run: uv run --locked --group quint pytest -c contracts/selection/quint.ini contracts/selection --quint-require-complete -q
-      # One updated PR comment, an artifact of every receipt and mismatch, and a check that the
-      # README's contract block still matches the run.
+      # Match the README with the same locked renderer that produced these receipts.
+      # A presentation update to the floating report action must not break an immutable release.
+      - name: Check the README against the locked contract renderer
+        run: uv run --locked --group quint pytest-quint-connect report '**/.artifacts/quint-connect/results.json' --readme README.md --check
+      # The current action owns the sticky and artifacts, independently of README formatting.
       - uses: gigaverse-app/pytest-quint-connect/report@v1
         if: ${{ always() }}
+        with:
+          readme-mode: 'off'
 
   validation-gate:
     name: Validation gate

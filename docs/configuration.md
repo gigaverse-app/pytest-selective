@@ -16,7 +16,8 @@ Create `.github/test-impact.json`:
 ```
 
 Paths are repository-relative, with forward slashes. Module roots are directories
-containing import packages. Test roots must include every suite you intend to
+containing import packages. Imports also resolve from every directory pytest's default import mode puts
+on `sys.path`: the first directory above each test module and conftest without an `__init__.py`. Test roots must include every suite you intend to
 select. The default filenames are `test_*.py`, `*_test.py`, `*_tests.py`, and
 `tests.py`; configure
 `test_patterns` for a different collection policy.
@@ -93,7 +94,7 @@ patterns to your actual inventory. Central-rule reader patterns use shell-style
 matching: here `*` also covers nested paths under `tests/`. Common lockfiles, dependency manifests and pytest configuration already belong
 to the default `global_inputs`. Keep those defaults unless you have reviewed a
 narrower environment contract; these reader-specific rules are for additional
-inputs. Other non-Python files are not automatically global inputs. Use `global_modules` for modules loaded by every test and
+inputs. Other non-Python files are not automatically global inputs. Plugins named by `-p NAME` in a pytest configuration's `addopts` are global modules automatically; plugins passed only on the command line or in `PYTEST_ADDOPTS` are not visible to the planner. Use `global_modules` for those and other modules loaded by every test and
 `always_run` for explicit canary test paths. Retain full-suite checkpoints.
 
 ## Explain and audit
