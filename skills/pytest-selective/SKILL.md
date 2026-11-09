@@ -180,7 +180,8 @@ Add `.test-impact/` to `.gitignore`: the planner keeps its graph cache there.
 
 **Collection policy.** If pytest configuration exists (`pyproject.toml`, `pytest.ini`, `pytest.toml`, a `tox.ini`
 with `[pytest]`, a `setup.cfg` with `[tool:pytest]`), the planner runs every lane until you record its fingerprints
-(`full-suite fallback: pytest configuration changed; review collection policy and refresh its fingerprints`). Review
+(`full-suite fallback: pytest configuration changed (pyproject.toml); review collection policy and refresh its
+fingerprints: ...`). Review
 the pytest settings and collection hooks, commit the config, then:
 
 ```bash
@@ -533,7 +534,7 @@ out the merge commit, and a dispatch or push run on the branch records the same 
 
 ```bash
 gh run list --repo "$REPO" --commit HEAD_SHA --json databaseId,workflowName,event,conclusion,createdAt
-uv run --refresh-package pytest-selective --no-project https://raw.githubusercontent.com/gigaverse-app/pytest-selective/v1/scripts/measure_ci_runs.py \
+uv run --no-project https://raw.githubusercontent.com/gigaverse-app/pytest-selective/v1/scripts/measure_ci_runs.py \
   "$REPO" --selected RUN_A RUN_B --full RUN_C RUN_D --output .test-impact/comparison.json
 ```
 
