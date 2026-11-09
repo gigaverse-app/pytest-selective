@@ -79,7 +79,9 @@ split indexes and linked worktrees without modifying the user's index or HEAD.
 CI tests Python 3.11 and 3.14 on Linux, Windows, and macOS. A separate job checks
 pytest 8.0.0 on Python 3.11, the plugin's lower bound. It also checks hooks, builds both distribution
 formats, validates PyPI metadata, and installs each distribution in an isolated
-environment on both Python versions. Evidence artifacts carry coverage and tutorial output on every platform and Python version.
+environment on both Python versions. JUnit retains results and timings on every platform and Python version.
+Full runs collect coverage on Python 3.14 on all three operating systems; Python 3.11 runs the same compatibility
+tests without a duplicate instrumentation pass. Each runner uses four work-stealing workers.
 
 Use `uv lock --upgrade-package NAME` for a targeted dependency update and run the
 affected checks. Dependabot proposes weekly uv and GitHub Actions updates.
@@ -116,8 +118,8 @@ File planning derives its graph from that same lane config and merges its declar
 global execution inputs with the graph's environment inputs. Declare subprocess
 and non-import dependencies at their readers. Full plans collect whole-suite
 coverage; scoped plans produce JUnit timing evidence without presenting partial
-coverage as a whole-suite result. The small execution wrapper only consumes the
-public action's JSON file list: it does not implement another selector.
+coverage as a whole-suite result. The public [shared-plan executor](docs/shared-plan-execution.md)
+consumes the action's JSON file list without implementing another selector.
 The outer pytest process disables the selective plugin to avoid a second planner
 and a hidden dependency of every test on plugin startup. Plugin integration tests
 still load it normally in subprocesses and declare that dependency explicitly.

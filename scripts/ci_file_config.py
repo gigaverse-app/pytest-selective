@@ -4,15 +4,8 @@ import sys
 from pathlib import Path
 
 from pytest_selective.ci import LaneConfig
-from pytest_selective.impact_models import ImpactConfig
 
-
-def file_config(lanes: LaneConfig) -> ImpactConfig:
-    if lanes.global_inputs is None:
-        raise ValueError("This repository must declare its shared CI execution inputs")
-    return lanes.graph.model_copy(
-        update={"global_inputs": sorted(set(lanes.graph.global_inputs) | set(lanes.global_inputs))}
-    )
+file_config = LaneConfig.file_config
 
 
 if __name__ == "__main__":

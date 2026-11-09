@@ -260,6 +260,20 @@ def _floor_budget(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["execute-plan"]:
+        from pytest_selective.execution import main as execute
+
+        return execute(argv[1:])
+    if argv[:1] == ["file-config"]:
+        from pytest_selective.ci import LaneConfig
+
+        config_parser = argparse.ArgumentParser(description="Derive file-selection config from explicit lane inputs")
+        config_parser.add_argument("--lanes", type=Path, required=True)
+        config_parser.add_argument("--output", type=Path, required=True)
+        config_args = config_parser.parse_args(argv[1:])
+        lanes = LaneConfig.model_validate_json(config_args.lanes.read_text(encoding="utf-8"))
+        config_args.output.write_text(lanes.file_config().model_dump_json(), encoding="utf-8")
+        return 0
     if argv[:1] == ["run"]:
         from pytest_selective.local import main as run_local
 

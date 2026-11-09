@@ -12,6 +12,7 @@ RUNTIME = (
     "-m unittest",
     "node --test",
     "run_ci_tests.py",
+    "pytest-selective execute-plan",
     "smoke_distribution.py",
     "check_wheel.py",
     "check_core_is_framework_free.py",
