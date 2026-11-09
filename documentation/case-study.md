@@ -1,5 +1,5 @@
 ---
-title: "From the trenches: thirty thousand tests"
+title: "Faster, cheaper CI: from the trenches"
 description: "From the trenches: coding agents tripled our tests, from 9K+ to 30K+. How a Django monorepo and a microservices repo cut CI wait and cost per test, and the open-source tools that did it: pytest-selective and CI-esta."
 hide:
   - navigation
@@ -97,12 +97,20 @@ hide:
 .tt .methods div{font-size:14.5px;color:var(--tt-ink-2);display:grid;gap:6px;align-content:start}
 .tt .methods b{color:var(--tt-ink)}
 .tt .foot{margin-top:64px;padding-top:18px;border-top:1px solid var(--tt-rule);font-size:13px;color:var(--tt-ink-2)}
+.tt .wins{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px}
+.tt .win{border:1px solid var(--tt-rule);border-top:4px solid var(--tt-good);border-radius:12px;padding:14px 18px;background:var(--tt-surface);display:grid;gap:4px;align-content:start}
+.tt .win .k{font-family:var(--tt-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--tt-ink-2)}
+.tt .win .kr{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tt .win .v{font-size:28px;font-weight:850;letter-spacing:-.02em;color:var(--tt-good);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tt .win .v small{font-size:16px;font-weight:750;margin-left:4px}
+.tt .win .d{font-size:14px;color:var(--tt-ink-2);line-height:1.4}
+.tt .win .save{flex:none;font-family:var(--tt-mono);font-size:12.5px;font-weight:700;color:var(--tt-good);background:color-mix(in srgb,var(--tt-good) 14%,transparent);border-radius:999px;padding:2px 9px}
 </style>
 
 <div class="tt">
 <div class="hero">
 <div class="kicker"><span class="eyebrow">From the trenches</span><span class="badge">case study · May → Nov 2026</span></div>
-<h1>Thirty Thousand Tests</h1>
+<h1>Faster, Cheaper CI</h1>
 <p class="sub">Coding agents tripled our test suites. Here is how we kept CI fast and cheap anyway.</p>
 <p class="lede">Sound familiar? Tests were piling up faster than anyone could read them. Every pull request waited longer for a green check, and the CI bill kept climbing. CI had turned from a safety net into friction. If you are shipping with coding agents, it is probably happening to you too. We spent five months fighting it across two very different backends, cut the wait and the cost per test dramatically, and open-sourced the tools that did it.</p>
 <div class="cta">
@@ -126,9 +134,10 @@ hide:
 </div>
 <div class="head" style="padding-top:28px">
 <span class="eyebrow">Five months later</span>
-<h2>Faster per test, cheaper per test, and open source</h2>
+<h2>What we saved</h2>
+<p>Normalized for a suite that more than tripled, every measure went down.</p>
 </div>
-<div class="tiles"><div class="tile"><span class="from">9K+ →</span><span class="to">30K+</span><span class="what">test functions across both backends and the shared CI tooling, more than 3×</span><span class="src">git grep on main</span></div><div class="tile"><span class="from">6.8 →</span><span class="to">0.53 min</span><span class="what">Django monorepo wait per 1,000 tests, final push to last gating check (−92%)</span><span class="src">check-suite timestamps, 1,900+ PRs</span></div><div class="tile"><span class="from">0.59 →</span><span class="to">0.25 min</span><span class="what">microservices wait per 1,000 tests (−58%); absolute wait 5.0 → 4.1 min</span><span class="src">check-suite timestamps, 1,300+ PRs</span></div><div class="tile"><span class="from">52 min →</span><span class="to">5.1 min</span><span class="what">monorepo test gate against running today's full suite on one runner (week of Nov 2)</span><span class="src">CI observability artifacts</span></div><div class="tile"><span class="from">all 1,000+ files →</span><span class="to">1.6%</span><span class="what">median share of monorepo test files a PR ran (week of Nov 2, the first week with selection receipts)</span><span class="src">test-impact-explanation artifacts</span></div><div class="tile"><span class="from">20.5¢ →</span><span class="to">12.6¢</span><span class="what">microservices billed dollars per merged PR per 1,000 tests, August → October (−38%)</span><span class="src">GitHub billing usage API</span></div><div class="tile"><span class="from">285 →</span><span class="to">163</span><span class="what">billed Actions minutes per merged PR, August peak → October</span><span class="src">GitHub billing usage API</span></div><div class="tile"><span class="from">0 →</span><span class="to">2 packages</span><span class="what">open-source releases on PyPI, pytest-selective and CI-esta, with nearly 250 merged PRs since Oct 22</span><span class="src"><a href="https://pypi.org/project/pytest-selective/">pytest-selective</a> · <a href="https://pypi.org/project/ci-esta/">ci-esta</a></span></div></div>
+<div class="wins"><div class="win"><div class="kr"><span class="k">Wait per 1K tests</span><span class="save">−92%</span></div><span class="v">6.8 → 0.53<small>min</small></span><span class="d">Django monorepo, push to verdict</span></div><div class="win"><div class="kr"><span class="k">Wait per 1K tests</span><span class="save">−58%</span></div><span class="v">0.59 → 0.25<small>min</small></span><span class="d">microservices, push to verdict</span></div><div class="win"><div class="kr"><span class="k">Wait vs. running everything</span><span class="save">−90%</span></div><span class="v">52 → 5.1<small>min</small></span><span class="d">monorepo test gate, full suite vs. actual</span></div><div class="win"><div class="kr"><span class="k">Tests a PR runs</span><span class="save">−98%</span></div><span class="v">100 → 1.6<small>%</small></span><span class="d">share of the monorepo suite</span></div><div class="win"><div class="kr"><span class="k">CI cost per 1K tests</span><span class="save">−29%</span></div><span class="v">25.7 → 18.3<small>¢</small></span><span class="d">monorepo, billed per merged PR</span></div><div class="win"><div class="kr"><span class="k">CI cost per 1K tests</span><span class="save">−38%</span></div><span class="v">20.5 → 12.6<small>¢</small></span><span class="d">microservices, billed per merged PR</span></div><div class="win"><div class="kr"><span class="k">CI minutes per PR</span><span class="save">−43%</span></div><span class="v">285 → 163<small>min</small></span><span class="d">billed, August peak → October</span></div><div class="win"><div class="kr"><span class="k">Test cost per 1K tests</span><span class="save">−39%</span></div><span class="v">1.14 → 0.69<small>¢</small></span><span class="d">microservices, per test run</span></div></div>
 </div>
 <section id="how">
 <div class="head">
