@@ -25,8 +25,17 @@ module selection {
     versions: str -> int,
     broken: Set[str],
     requirements: int,
+    // Tests that read data/table.json with open() and a literal path, at import time.
+    reads: Set[str],
   }
-  type Content = { present: bool, imports: Set[(str, str)], declared: Set[(str, str)], version: int, broken: bool }
+  type Content = {
+    present: bool,
+    imports: Set[(str, str)],
+    declared: Set[(str, str)],
+    version: int,
+    broken: bool,
+    reads: bool,
+  }
   // narrow: test_roots is tests/sub instead of tests. tableGlobal: data/table.json is a global input.
   type Config = { narrow: bool, tableGlobal: bool }
 
@@ -83,8 +92,9 @@ module selection {
         declared: t.declared.filter(d => d._1 == f),
         version: t.versions.get(f),
         broken: t.broken.contains(f),
+        reads: t.reads.contains(f),
       }
-    else { present: false, imports: Set(), declared: Set(), version: 0, broken: false }
+    else { present: false, imports: Set(), declared: Set(), version: 0, broken: false, reads: false }
 
   // The files collected as tests under a configuration.
   pure def testsOf(c: Config): Set[str] = if (c.narrow) Set("test_sub") else TESTS
@@ -113,7 +123,9 @@ module selection {
       val changed = FILES.filter(f => content(before, f) != content(after, f))
       val global = before.requirements != after.requirements or (c.tableGlobal and changed.contains("table"))
       val tests = testsOf(c).intersect(after.present)
-      val readers = CONTENT_READS
+      // A literal path read is a content read, like a kind: content sidecar.
+      val literal = before.reads.union(after.reads).map(f => (f, "table"))
+      val readers = CONTENT_READS.union(literal)
         .filter(r => changed.contains(r._2) and (before.present.contains(r._1) or after.present.contains(r._1)))
         .map(r => r._1)
       val chosen = if (global) tests
@@ -167,6 +179,7 @@ module selection {
     versions: FILES.mapBy(_ => 0),
     broken: Set(),
     requirements: 0,
+    reads: Set(),
   }
 
   action init = all {
@@ -212,6 +225,7 @@ module selection {
       present: tree.present.exclude(Set(file)),
       declared: tree.declared.filter(d => d._1 != file),
       broken: tree.broken.exclude(Set(file)),
+      reads: tree.reads.exclude(Set(file)),
     }),
   }
 
@@ -246,6 +260,14 @@ module selection {
   action repair(file: str): bool = all {
     tree.broken.contains(file),
     commit("repair", file, "", { ...tree, broken: tree.broken.exclude(Set(file)) }),
+  }
+
+  // Make a test read data/table.json with open() and a literal path, without declaring it.
+  action readTable(file: str): bool = all {
+    TESTS.contains(file),
+    tree.present.contains(file),
+    not(tree.reads.contains(file)),
+    commit("readTable", file, "", { ...tree, reads: tree.reads.union(Set(file)) }),
   }
 
   action touchGlobal = commit("touchGlobal", "", "", { ...tree, requirements: tree.requirements + 1 })
@@ -288,6 +310,7 @@ module selection {
       undeclare(file, target),
       breakSyntax(file),
       repair(file),
+      readTable(file),
       touchGlobal,
       toggleConfig(option),
       restart,
@@ -379,6 +402,10 @@ module selection {
 
   run packageInitEditSelectsItsImportersTest = init.then(edit(INIT))
     .then(all { assert(observed == view("scoped", Set("test_one", "test_two"))), inspect })
+
+  // test_one now reads the table by literal path; the other two already depended on it.
+  run literalPathReadTest = init.then(readTable("test_one")).then(edit("table"))
+    .then(all { assert(observed == view("full", TESTS)), inspect })
 
   run sinceStartSpansCommitsTest = init.then(edit("beta")).then(edit("table"))
     .then(all {

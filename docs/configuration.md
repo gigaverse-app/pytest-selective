@@ -58,7 +58,9 @@ runs the complete configured roots.
 Start with the [sidecar tutorial](tutorials/sidecar-dependencies.md) for a runnable
 fixture example, directory manifests, dependency comments, and dynamic Python inputs.
 
-For a test that reads a tracked JSON fixture, add a reader-owned comment:
+A read that names a tracked file by literal path, such as `open("data/prices.json")` or
+`(Path(__file__).parent / "prices.json").read_text()`, is followed automatically as a content read.
+For a path that is computed, or built from several parts, add a reader-owned comment:
 
 ```python
 # gv:test-dependency: tests/data/prices.json

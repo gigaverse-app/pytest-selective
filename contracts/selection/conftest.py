@@ -193,6 +193,9 @@ MUTANTS: dict[str, Callable[[], list[tuple[str, object]]]] = {
     ],
     "addopts-plugins-ignored": lambda: [("pytest_selective.impact_graph.command_line_plugins", lambda policies: set())],
     "prepend-roots-ignored": lambda: [("pytest_selective.impact_graph.prepend_roots", lambda python_files, config: [])],
+    "literal-reads-ignored": lambda: [
+        ("pytest_selective.impact_graph.literal_read_targets", lambda reader, literal, files: set())
+    ],
 }
 
 
@@ -210,6 +213,7 @@ class RepositoryDriver(SelectionDriver):
         self.imports: dict[str, set[str]] = {}
         self.declared: dict[str, set[str]] = {}
         self.broken: set[str] = set()
+        self.reads: set[str] = set()
         self.versions = dict.fromkeys(PATHS, 0)
         self.requirements = 0
         self.config = CONFIG
@@ -231,6 +235,8 @@ class RepositoryDriver(SelectionDriver):
         lines += [f"# gv:test-dependency: {PATHS[target]}" for target in sorted(self.declared.get(name, ()))]
         lines += [IMPORT_LINES[target] for target in sorted(self.imports.get(name, ()))]
         lines.append(f"VERSION = {version}")
+        if name in self.reads:
+            lines.append(f'TABLE = open("{PATHS["table"]}", encoding="utf-8").read()')
         if name in self.broken:
             lines.append("def broken(:")
         write(self.root, PATHS[name], "\n".join(lines) + "\n")
@@ -334,6 +340,7 @@ class RepositoryDriver(SelectionDriver):
         self.imports.pop(file, None)
         self.declared.pop(file, None)
         self.broken.discard(file)
+        self.reads.discard(file)
         (self.root / PATHS[file]).unlink()
         if file in CONTENT_SIDECARS:
             (self.root / CONTENT_SIDECARS[file][0]).unlink()
@@ -358,6 +365,10 @@ class RepositoryDriver(SelectionDriver):
 
     def repair(self, file: str) -> None:
         self.broken.discard(file)
+        self._commit(file)
+
+    def read_table(self, file: str) -> None:
+        self.reads.add(file)
         self._commit(file)
 
     def touch_global(self) -> None:

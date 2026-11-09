@@ -257,6 +257,8 @@ class ParsedSource(ImpactModel):
     #: Names in a module-level literal ``__all__``. For a package initializer, ``from pkg import *``
     #: imports each submodule named here.
     exports: list[str] = Field(default_factory=list)
+    #: String literals inside a file-reading call (``open``, ``read_text``, ``read_bytes``), receiver included.
+    read_paths: list[str] = Field(default_factory=list)
 
 
 class DeferredAssignments(ImpactModel):
