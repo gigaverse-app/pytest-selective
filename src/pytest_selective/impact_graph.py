@@ -887,6 +887,7 @@ class ModuleIndex:
         self.modules: dict[str, set[str]] = {}
         self.packages: dict[str, set[str]] = {}
         self.names: dict[str, set[str]] = {}
+        self.initializers: dict[str, set[str]] = {}
         for path in python_files:
             for root in roots:
                 if not within(path, root):
@@ -899,6 +900,14 @@ class ModuleIndex:
                 package = dotted if is_package else dotted.rpartition(".")[0]
                 self.packages.setdefault(path, set()).add(package)
                 self.names.setdefault(path, set()).add(dotted)
+                # Naming a module does not import a same-named module in another root.
+                # Only its physical package ancestors execute with this file.
+                for parent in source.parents:
+                    if parent.as_posix() == ".":
+                        continue
+                    initializer = (PurePosixPath(root) / parent / "__init__.py").as_posix()
+                    if initializer in python_files:
+                        self.initializers.setdefault(path, set()).add(initializer)
 
         self.linked_modules = {
             normalized_name((link if root == "." else link[len(root.rstrip("/")) + 1 :]).replace("/", "."))
@@ -988,8 +997,7 @@ def resolve_graph(
         for package in index.packages.get(path, {""}):
             candidates.update(source_candidates(source, package))
             candidates.update(star_import_candidates(source, package, index, parsed, files))
-        for name in index.names.get(path, ()):
-            edges[path].update(index.resolve(name))
+        edges[path].update(index.initializers.get(path, ()))
         missing: list[str] = []
         for candidate in sorted(candidates):
             resolved = index.resolve(candidate) | prepended.resolve(candidate)
