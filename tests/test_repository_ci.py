@@ -1,4 +1,4 @@
-"""Exercise this repository's actual routing policy against real Git changes."""
+"""Pin this repository's lane-file overrides and file selection; scripts/check_lane_routing.py pins the lanes."""
 
 # gv:test-dependency: .github/test-lanes.json
 # gv:test-dependency: .github/plan-lanes.json

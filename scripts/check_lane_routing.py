@@ -74,7 +74,10 @@ ROUTES: dict[str, set[str]] = {
     # Lane planning is outside the Quint contract.
     "src/pytest_selective/ci.py": {"package", "tests"},
     "tests/test_hygiene.py": TESTS,
+    # The selector reports every graph test affected by these (as it did with the old lane file), and the planner
+    # follows them into the modules the tests and distributions jobs run.
     "tests/testing/git_repo.py": EVERY,
+    "contracts/selection/conftest.py": EVERY,
     "contracts/selection/selection.qnt": {"contracts"},
     "contracts/selection/quint-connect.json": {"contracts"},
     "contracts/selection/quint.ini": {"contracts"},
