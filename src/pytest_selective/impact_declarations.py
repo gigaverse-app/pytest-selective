@@ -101,9 +101,17 @@ def manifest_edges(path: str, source: bytes, tree: str, files: set[str]) -> dict
         if is_directory:
             assert rule.readers is not None
             readers = _expand(rule.readers, reader_files, directory, rule_location)
-        inputs = _expand(rule.inputs, files, directory, rule_location)
-        for reader in readers:
-            dependencies = inputs if rule.kind == "import" else {contents_node(target) for target in inputs}
+        by_directory: dict[str, set[str]] = {}
+        for reader in sorted(readers):
+            # Resolve each reader's inputs separately: a sibling's matching files
+            # must neither widen this reader nor conceal its missing inputs.
+            input_directory = str(PurePosixPath(reader).parent) if rule.relative_to == "reader" else directory
+            if input_directory not in by_directory:
+                inputs = _expand(rule.inputs, files, input_directory, f"{rule_location}:reader {reader}")
+                by_directory[input_directory] = (
+                    inputs if rule.kind == "import" else {contents_node(target) for target in inputs}
+                )
+            dependencies = by_directory[input_directory]
             edges.setdefault(reader, set()).update(dependencies | {path})
             edges[reader].discard(reader)
     return edges

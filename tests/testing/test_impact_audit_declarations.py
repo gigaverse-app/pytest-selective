@@ -74,6 +74,22 @@ def test_a_directory_becomes_a_glob_only_when_every_tracked_file_in_it_was_read(
     ]
 
 
+def test_shared_convention_satisfies_audit_without_regenerating_sidecars(repo: Path, tmp_path: Path) -> None:
+    write(repo, "tests/data/input.json", "1")
+    write(
+        repo,
+        "tests/.gv-dependencies.yaml",
+        'dependencies: [{readers: ["test_*.py"], relative_to: reader, inputs: ["data/*.json"], kind: content}]',
+    )
+    commit(repo)
+    assert plan(repo, tmp_path, "tests/data/input.json").sidecars == []
+    # A read outside the convention still needs a declaration.
+    [missing] = plan(repo, tmp_path, "tests/data/input.json", "data/other.json").sidecars
+    assert missing.rules == [
+        ManifestDependencyRule(inputs=["//data/other.json"], kind="content", reason=CONTENT_REASON)
+    ]
+
+
 def test_python_inputs_are_import_rules_even_when_globbed(repo: Path, tmp_path: Path) -> None:
     # A script run in a subprocess also depends on what it imports, which `import` follows.
     [sidecar] = plan(repo, tmp_path, "scripts/tool.py", "scripts/helper.py", "data/other.json").sidecars

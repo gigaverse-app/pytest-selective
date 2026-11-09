@@ -1760,6 +1760,97 @@ def test_directory_declaration_changes_keep_old_and_new_readers(
     assert affected(repo, base, head, config, cache).selected == ["tests/left/test_one.py", "tests/right/test_two.py"]
 
 
+@pytest.mark.parametrize("kind", ["content", "import"])
+@pytest.mark.parametrize("change", ["edit", "add", "delete", "transitive", "rooted", "unrelated"])
+def test_reader_relative_rules_keep_each_readers_inputs_local(
+    repo: Path, config: ImpactConfig, cache: GraphCache, tmp_path: Path, kind: str, change: str
+) -> None:
+    for directory in ("left", "right"):
+        write(repo, f"tests/{directory}/data/input.py", "from pkg.leaf import VALUE")
+        write(repo, f"tests/{directory}/data/keep.py", "VALUE = 0")
+    write(repo, "shared.json", "1")
+    write(
+        repo,
+        "tests/.gv-dependencies.yaml",
+        f"""dependencies:
+  - readers: ["**/test_*.py"]
+    relative_to: reader
+    inputs: ["data/**/*.py", "//shared.json"]
+    kind: {kind}
+""",
+    )
+    base = commit(repo)
+    cache.snapshot(repo, base, config)
+    expected = ["tests/left/test_one.py"]
+    if change == "delete":
+        (repo / "tests/left/data/input.py").unlink()
+    elif change == "transitive":
+        write(repo, "src/pkg/leaf.py", "VALUE = 2")
+        if kind == "import":
+            expected.append("tests/right/test_two.py")
+    elif change == "rooted":
+        write(repo, "shared.json", "2")
+        expected.append("tests/right/test_two.py")
+    elif change == "unrelated":
+        write(repo, "tests/left/README.md", "Unconsumed documentation")
+        expected = []
+    else:
+        path = "input.py" if change == "edit" else "nested/new.py"
+        write(repo, f"tests/left/data/{path}", "VALUE = 2")
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == expected
+    cold = GraphCache(tmp_path / "reader-relative-cold.db")
+    try:
+        assert affected(repo, base, head, config, cold).selected == expected
+    finally:
+        cold.close()
+
+
+def test_reader_relative_rule_expands_new_readers_and_preserves_removed_readers(
+    repo: Path, config: ImpactConfig, cache: GraphCache
+) -> None:
+    manifest = "tests/.gv-dependencies.yaml"
+    write(repo, "tests/left/input.json", "1")
+    write(
+        repo,
+        manifest,
+        'dependencies: [{readers: ["left/test_*.py"], relative_to: reader, inputs: ["input.json"]}]',
+    )
+    base = commit(repo)
+    cache.snapshot(repo, base, config)
+    write(repo, "tests/right/input.json", "1")
+    write(repo, "tests/right/deep/test_new.py", "def test_new(): pass")
+    write(repo, "tests/right/deep/input.json", "1")
+    write(repo, manifest, (repo / manifest).read_text().replace("left/test_*.py", "**/test_*.py"))
+    expanded = commit(repo)
+    assert affected(repo, expanded, expanded, config, cache, ["tests/right/deep/input.json"]).selected == [
+        "tests/right/deep/test_new.py"
+    ]
+    (repo / manifest).unlink()
+    removed = commit(repo)
+    assert affected(repo, expanded, removed, config, cache).selected == [
+        "tests/left/test_one.py",
+        "tests/right/deep/test_new.py",
+        "tests/right/test_two.py",
+    ]
+
+
+@pytest.mark.parametrize("inputs", ["missing.json", "../escape.json", "//missing.json"])
+def test_reader_relative_rule_validates_inputs_for_every_matched_reader(
+    repo: Path, config: ImpactConfig, cache: GraphCache, inputs: str
+) -> None:
+    # A match beside one reader must not conceal a broken sibling's declaration.
+    write(repo, "tests/left/missing.json", "1")
+    write(
+        repo,
+        "tests/.gv-dependencies.yaml",
+        f'dependencies: [{{readers: ["**/test_*.py"], relative_to: reader, inputs: ["{inputs}"]}}]',
+    )
+    head = commit(repo)
+    with pytest.raises(DependencyDeclarationError, match="rule 1.*reader tests/"):
+        cache.snapshot(repo, head, config)
+
+
 def test_nested_manifests_are_additive_and_exclude_metadata_readers(
     repo: Path, config: ImpactConfig, cache: GraphCache
 ) -> None:

@@ -172,6 +172,36 @@ are relative to its directory. `//` anchors either pattern at the repository
 root, for example `//schemas/receipt.json`. Do not use `../` to reach another
 directory.
 
+### Share a convention without sharing every input
+
+When each reader consumes files beside itself, use `relative_to: reader` in a
+directory manifest. For example, `contracts/.gv-dependencies.yaml` can replace
+one sidecar per contract:
+
+```yaml
+dependencies:
+  - readers: ["**/test_*_contract.py"]
+    relative_to: reader
+    inputs: ["model.qnt", "quint-connect.json", "history/**", "//contracts/quint.ini"]
+    kind: content
+    reason: Each contract reads its own model, manifest and history under the shared pytest configuration.
+```
+
+The `readers` pattern is still relative to the manifest. Each unanchored input
+is resolved separately beside each matched reader; `//` still means the repository
+root. Changing one contract's model selects its readers, without connecting sibling
+contracts to that model. New matching readers inherit the same convention. Every
+input pattern must match for **each** reader; a missing history directory in one
+contract is an error even if a sibling has one. Omit inputs your convention does
+not require, or put distinct conventions in separate rules.
+
+The default, `relative_to: manifest`, preserves existing behavior. Both modes
+support `content` and `import`; a file sidecar has the same directory as its reader,
+so either mode means the same thing there. Expansion is reused for readers in the
+same directory within a rule and rebuilt against each Git tree, including added
+files and deleted inputs. Editing the shared manifest selects all its readers;
+keep unrelated conventions in separate manifests.
+
 ### Reading content versus executing Python
 
 | Input use | Kind | What changes can select the reader |

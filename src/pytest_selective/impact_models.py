@@ -52,6 +52,8 @@ class DependencyRule(DependencyInputs):
 class ManifestDependencyRule(DependencyInputs):
     inputs: list[str] = Field(min_length=1)
     readers: list[str] | None = Field(default=None, min_length=1)
+    #: Reader patterns stay manifest-relative; only unanchored inputs change their base.
+    relative_to: Literal["manifest", "reader"] = "manifest"
 
 
 class DependencyManifest(ImpactModel):
