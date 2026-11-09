@@ -12,7 +12,7 @@ from pytest_selective.test_inventory import TEST_FILE_PATTERNS
 
 #: pytest reads these only when they hold a pytest section; without one they configure nothing.
 SECTION_ONLY_PYTEST_CONFIG = frozenset({"tox.ini", "setup.cfg"})
-#: The fingerprint releases up to 1.1.0 recorded for such a file without a pytest section.
+#: The fingerprint releases up to 1.1.1 recorded for such a file without a pytest section.
 EMPTY_SECTIONS_FINGERPRINT = hashlib.sha256(json.dumps({}).encode()).hexdigest()
 
 #: Marks a graph node that stands for a file's bytes: its readers inspect it without executing it.

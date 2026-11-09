@@ -176,7 +176,7 @@ uv run --no-project --with "pytest-selective==$VERSION" \
   pytest-selective fingerprints --config .test-impact/graph.json --head HEAD
 ```
 
-Copy the printed object into `graph.pytest_policy` and commit. Releases up to 1.1.0 also print a `tox.ini` or
+Copy the printed object into `graph.pytest_policy` and commit. Releases up to 1.1.1 also print a `tox.ini` or
 `setup.cfg` that has no pytest section (pytest ignores it); keeping that entry is harmless. Without uv, run the same
 commands in a virtual environment after `python -m pip install "pytest-selective==$VERSION"`. When pytest settings
 change later, the planner falls back to every lane until someone reviews and refreshes the fingerprints.

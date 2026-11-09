@@ -2495,7 +2495,7 @@ def test_a_sectionless_fingerprint_recorded_by_an_older_release_still_matches(
 ) -> None:
     write(repo, "tox.ini", "[tox]\nenvlist = py\n")
     base = commit(repo)
-    # Up to 1.1.0, `fingerprints` recorded this file as the hash of its empty pytest policy.
+    # Up to 1.1.1, `fingerprints` recorded this file as the hash of its empty pytest policy.
     recorded = {**policy_fingerprints(repo, inventory(repo, base)), "tox.ini": hashlib.sha256(b"{}").hexdigest()}
     config = ImpactConfig.model_validate({**config.model_dump(), "pytest_policy": recorded})
     write(repo, "tox.ini", "[tox]\nenvlist = py311\n")

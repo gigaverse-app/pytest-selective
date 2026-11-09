@@ -139,7 +139,7 @@ The policy fingerprints cover conventional pytest configuration names, including
 are included because their presence can change pytest's root and precedence. A
 `tox.ini` without `[pytest]` and a `setup.cfg` without `[tool:pytest]` are not: pytest
 skips them. Adding that section later changes the fingerprints and needs a review.
-Releases up to 1.1.0 recorded such a file as the hash of an empty policy; that entry
+Releases up to 1.1.1 recorded such a file as the hash of an empty policy; that entry
 is still accepted and needs no refresh.
 Changes require reviewing and refreshing `pytest_policy`; until then planning
 fails safely and the CI action runs the complete configured roots.
