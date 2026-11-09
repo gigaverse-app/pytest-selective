@@ -1,7 +1,8 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
-    directory: /
+    # The published composite actions pin commit SHAs with `# vX.Y.Z` comments; update them too.
+    directories: [/, /actions/*]
     commit-message:
       prefix: ci
     schedule:

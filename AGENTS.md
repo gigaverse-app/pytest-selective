@@ -76,4 +76,9 @@ remain complete checkpoints.
 ## GitHub Actions versions
 
 - ALWAYS use published major-version tags for established GitHub Actions, for example `actions/checkout@v7` and `actions/upload-artifact@v7`, so compatible fixes arrive without per-commit maintenance. NEVER replace those tags with commit hashes unless the user explicitly requests that exact exception. If a publisher has no major-version tag, use its published release tag rather than inventing a ref or substituting a hash.
+- Exception, decided for the published composite actions under `actions/`: ALWAYS pin every action they call to a
+  40-character commit SHA with its full release in a comment (`actions/cache@<sha> # v5.1.0`). Adopting repositories
+  that pin every action and lint with zizmor run these steps inside their own pinned step, so a moving tag there
+  would change what they reviewed. Dependabot updates the SHA and the comment together;
+  `tests/test_public_actions.py` rejects a moving tag. Workflows under `.github/workflows/` keep major-version tags.
 - ALWAYS use `gigaverse-app/dry-lint@main` until its v1 launch, then use `@v1`. Apply the same ref in workflow examples and adoption instructions.

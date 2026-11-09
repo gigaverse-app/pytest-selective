@@ -94,13 +94,13 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: astral-sh/setup-uv@v10.0.1
+    - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       with:
         enable-cache: false
     - name: Restore parsed imports and resolved graphs
       id: graph-cache
       continue-on-error: true
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
       with:
         path: .test-impact
         key: test-impact-v1-${{ runner.os }}-${{ github.sha }}-${{ github.run_attempt }}
@@ -190,7 +190,7 @@ runs:
     - name: Upload selection explanation
       if: ${{ inputs.warm-only != 'true' && inputs.explanation-artifact != '' && hashFiles('test-impact-explanation.json') != '' }}
       continue-on-error: true
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: ${{ inputs.explanation-artifact }}
         path: test-impact-explanation.json
@@ -199,7 +199,7 @@ runs:
     - name: Save graph cache
       if: ${{ steps.graph-cache.outputs.cache-hit != 'true' && hashFiles('.test-impact/cache.sqlite3') != '' }}
       continue-on-error: true
-      uses: actions/cache/save@v5
+      uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
       with:
         path: .test-impact
         key: test-impact-v1-${{ runner.os }}-${{ github.sha }}-${{ github.run_attempt }}

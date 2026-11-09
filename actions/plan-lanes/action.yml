@@ -12,8 +12,10 @@ inputs:
     default: auto
   artifact-name:
     description: >
-      Upload the lane plan under this name, where CI-esta's report renders it as
-      the sticky's lane section. Empty skips the upload.
+      Upload the lane plan (test-lanes.json) as an artifact under this name, where
+      CI-esta's report renders it as the sticky's lane section. Give each planner job
+      in one workflow run its own name. Empty skips the upload; planning and the
+      outputs are unchanged.
     default: test-lane-selection
 outputs:
   lanes:
@@ -22,10 +24,10 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: astral-sh/setup-uv@v10.0.1
+    - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       with:
         enable-cache: false
-    - uses: actions/cache@v5
+    - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
       continue-on-error: true
       with:
         path: .test-impact
@@ -51,7 +53,7 @@ runs:
           echo '```'
         } >> "$GITHUB_STEP_SUMMARY"
     - if: ${{ inputs.artifact-name != '' }}
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: ${{ inputs.artifact-name }}
         path: test-lanes.json
