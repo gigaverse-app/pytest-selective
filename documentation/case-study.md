@@ -9,10 +9,10 @@ hide:
 <style>
 .tt{--tt-surface:var(--md-default-bg-color);--tt-ink:var(--md-default-fg-color);--tt-ink-2:var(--md-default-fg-color--light);
 --tt-rule:var(--md-default-fg-color--lightest);--tt-accent:var(--md-typeset-a-color);
---tt-accent-soft:color-mix(in srgb,var(--md-typeset-a-color) 14%,transparent);--tt-good:#047857;--tt-bad:#B91C1C;
+--tt-accent-soft:color-mix(in srgb,var(--md-typeset-a-color) 14%,transparent);--tt-good:#047857;--tt-on-good:#FFFFFF;--tt-bad:#B91C1C;
 --tt-sans:var(--md-text-font-family,ui-sans-serif),ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
 --tt-mono:var(--md-code-font-family,ui-monospace),ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin-top:8px}
-[data-md-color-scheme="slate"] .tt{--tt-good:#34D399;--tt-bad:#F87171}
+[data-md-color-scheme="slate"] .tt{--tt-good:#34D399;--tt-on-good:#06231A;--tt-bad:#F87171}
 .tt .card,.tt .tile,.tt .tbl,.tt .ch,.tt .tool,.tt .repo,.tt .term{background:color-mix(in srgb,var(--md-default-fg-color) 2.5%,var(--md-default-bg-color))}
 .md-content__inner > .tt:first-child{margin-top:8px}
 .tt{color:var(--tt-ink);font-family:var(--tt-sans);font-size:16.5px;line-height:1.6;display:grid;gap:0}
@@ -104,7 +104,7 @@ hide:
 .tt .win .v{font-size:28px;font-weight:850;letter-spacing:-.02em;color:var(--tt-good);font-variant-numeric:tabular-nums;white-space:nowrap}
 .tt .win .v small{font-size:16px;font-weight:750;margin-left:4px}
 .tt .win .d{font-size:14px;color:var(--tt-ink-2);line-height:1.4}
-.tt .win .save{flex:none;font-family:var(--tt-mono);font-size:12.5px;font-weight:700;color:var(--tt-good);background:color-mix(in srgb,var(--tt-good) 14%,transparent);border-radius:999px;padding:2px 9px}
+.tt .win .save{flex:none;font-family:var(--tt-mono);font-size:12.5px;font-weight:700;color:var(--tt-on-good);background:var(--tt-good);border-radius:999px;padding:3px 10px;letter-spacing:.02em}
 </style>
 
 <div class="tt">
