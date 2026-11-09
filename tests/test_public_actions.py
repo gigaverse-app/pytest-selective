@@ -3,7 +3,6 @@
 # gv:test-dependency: action.yml
 # gv:test-dependency: actions/*/action.yml
 
-import re
 from pathlib import Path
 
 import pytest
@@ -43,19 +42,6 @@ def test_metadata_text_has_no_expressions_the_runner_would_evaluate(source):
     for kind in ("inputs", "outputs"):
         for name, spec in (action.get(kind) or {}).items():
             assert "${{" not in spec.get("description", ""), (kind, name)
-
-
-@pytest.mark.parametrize("source", [*SOURCES, ROOT / "action.yml"], ids=lambda p: p.relative_to(ROOT).as_posix())
-def test_published_actions_pin_every_action_they_call_to_a_release_commit(source):
-    # Repositories that pin every action to a SHA (zizmor's unpinned-uses) run these steps too: a moving
-    # tag inside would change what their pinned step executes. The comment is what Dependabot updates.
-    text = source.read_text()
-    for step in yaml.safe_load(text)["runs"]["steps"]:
-        uses = step.get("uses", "")
-        if not uses or uses.startswith(("./", "$/")):
-            continue
-        assert re.fullmatch(r"[\w.-]+/[\w./-]+@[0-9a-f]{40}", uses), uses
-        assert re.search(rf"uses: {re.escape(uses)} # v\d+\.\d+\.\d+\n", text), f"{uses} needs a # vX.Y.Z comment"
 
 
 def test_plan_lanes_uploads_its_plan_unless_the_artifact_name_is_empty():

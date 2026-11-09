@@ -28,10 +28,6 @@ supported on GitHub.com with runner 2.336.0 or newer. Individual `actions/NAME`
 entry points call the implementations directly and do not require that syntax.
 [GitHub reference documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax).
 
-The composite actions pin every action they call to a commit SHA with its release in a
-comment, such as `actions/cache@<sha> # v5.1.0`. A repository that pins its own actions to
-SHAs and lints them with zizmor therefore runs no moving tag through them.
-
 `plan-lanes` uploads its plan as the `test-lane-selection` artifact by default. Set
 `artifact-name` to rename it, which a second planner job in the same workflow run needs, or to
 `''` to skip the upload.

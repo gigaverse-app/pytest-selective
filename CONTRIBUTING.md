@@ -83,9 +83,7 @@ environment on both Python versions. Evidence artifacts carry coverage and tutor
 
 Use `uv lock --upgrade-package NAME` for a targeted dependency update and run the
 affected checks. Dependabot proposes weekly uv and GitHub Actions updates.
-Workflows use published major-version tags for established Actions; use a published release tag when no major tag
-exists. The published composite actions under `actions/` are the exception: they pin what they call to commit SHAs
-with `# vX.Y.Z` comments, because repositories that pin every action run them, and Dependabot updates both.
+Established Actions use published major-version tags; use a published release tag when no major tag exists.
 Review release notes when upgrading a major version.
 
 ## Pull requests
