@@ -36,7 +36,14 @@ PR, on a version-only release PR, and on a PR push that changes nothing the
 tests read. A `PR evidence #N head SHA` step ties each PR run to its pull
 request, because GitHub often leaves that link out. The distribution smoke test
 still follows the plan before reuse (`planned`), and partial proof runs the
-whole lane.
+whole lane. The contract lane works the same way with its own receipt and inputs
+(including `README.md`, which its README check reads).
+
+CI-esta decides admission: each evidence step gets the planned lanes and
+`lane-keys`, the keys of every job a lane gates, and reports `admitted-lanes`.
+The contract step chains on the tests step's result. `ci-esta check-workflow`
+then proves `lane-keys` name every job each lane gates, matrix cells included,
+so a newly added cell can never be skipped as proven.
 
 The unconditional CI job runs `ci-esta check-workflow` against this workflow and
 lane configuration, so renamed lanes or omitted metadata prerequisites cannot

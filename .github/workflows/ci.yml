@@ -34,7 +34,7 @@ jobs:
       CONTRACT_LANE_JOBS: '{"selection":"Selection contract (Quint)"}'
     outputs:
       # Planned lanes after reuse: a reusing lane is false only when every one of its jobs is proven by a receipt.
-      lanes: ${{ steps.admit.outputs.lanes }}
+      lanes: ${{ steps.contract-evidence.outputs.admitted-lanes || steps.plan.outputs.lanes }}
       # The plan before reuse, for steps that follow changed runtime inputs rather than test execution.
       planned: ${{ steps.plan.outputs.lanes }}
       mode: ${{ steps.files.outputs.mode }}
@@ -86,6 +86,8 @@ jobs:
           input-paths: ${{ steps.inputs.outputs.tests }}
           reuse-after-merge: 'true'
           reuse-version-only-release: 'true'
+          planned-lanes: ${{ steps.plan.outputs.lanes }}
+          lane-keys: '{"tests":["py311-ubuntu","py311-windows","py311-macos","py314-ubuntu","py314-windows","py314-macos","minimum"]}'
       - id: contract-evidence
         if: >-
           ${{ (github.event_name == 'pull_request' || github.event_name == 'push') &&
@@ -97,21 +99,9 @@ jobs:
           input-paths: ${{ steps.inputs.outputs.contracts }}
           reuse-after-merge: 'true'
           reuse-version-only-release: 'true'
-      - id: admit
-        name: Admit each reusing lane unless every job is proven
-        env:
-          PLANNED_LANES: ${{ steps.plan.outputs.lanes }}
-          REUSED: ${{ steps.evidence.outputs.reused || '{}' }}
-          CONTRACT_REUSED: ${{ steps.contract-evidence.outputs.reused || '{}' }}
-        run: |
-          admitted=$(jq -c \
-            --argjson tests "$TEST_LANE_JOBS" --argjson reused "$REUSED" \
-            --argjson contracts "$CONTRACT_LANE_JOBS" --argjson contract_reused "$CONTRACT_REUSED" '
-              def proven($jobs; $proof): [$jobs | keys[] | $proof[.] == true] | all;
-              (if proven($tests; $reused) then .tests = false else . end)
-              | (if proven($contracts; $contract_reused) then .contracts = false else . end)' <<<"$PLANNED_LANES")
-          echo "reused=$REUSED contracts=$CONTRACT_REUSED"
-          echo "lanes=$admitted" | tee -a "$GITHUB_OUTPUT"
+          # Chained: the tests step already admitted its lane; this step admits the contracts lane on top.
+          planned-lanes: ${{ steps.evidence.outputs.admitted-lanes }}
+          lane-keys: '{"contracts":["selection"]}'
   quality:
     runs-on: ubuntu-latest
     steps:
@@ -127,13 +117,13 @@ jobs:
       - name: Check aggregate gate against the execution lanes
         run: >-
           uv run --no-project --python 3.14
-          --with "ci-esta[selection]>=1.12.0,<2.0.0"
+          --with "ci-esta[selection]>=1.13.0,<2.0.0"
           ci-esta check-workflow --workflow .github/workflows/ci.yml --lanes .github/test-lanes.json
       # Plans one-file changes with CI-esta against real commits and fails on any lane a change should not run.
       - name: Check the lane routing
         run: >-
           uv run --no-project --python 3.14
-          --with "ci-esta[selection]>=1.12.0,<2.0.0"
+          --with "ci-esta[selection]>=1.13.0,<2.0.0"
           python scripts/check_lane_routing.py
       - name: Validate GitHub Actions
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color

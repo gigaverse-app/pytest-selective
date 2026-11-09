@@ -75,7 +75,7 @@ def test_quality_checks_the_lane_routing_and_wiring_with_ci_esta():
     assert "if" not in quality and "needs" not in quality
     commands = [step.get("run", "") for step in quality["steps"]]
     routing = next(command for command in commands if "scripts/check_lane_routing.py" in command)
-    assert "ci-esta[selection]>=1.12.0" in routing
+    assert "ci-esta[selection]>=1.13.0" in routing
     check = next(command for command in commands if "ci-esta check-workflow" in command)
     assert "--lanes .github/test-lanes.json" in check
 
