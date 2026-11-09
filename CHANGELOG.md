@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.2.0...v1.3.0) (2026-11-09)
+
+
+### Features
+
+* **audit:** show how many tests each written declaration selects ([#124](https://github.com/gigaverse-app/pytest-selective/issues/124)) ([b660301](https://github.com/gigaverse-app/pytest-selective/commit/b660301be82aefb04fdc79202dc83067c28d7eb1))
+
+
+### Bug fixes
+
+* agent setup round 3, from a third adoption trial ([#127](https://github.com/gigaverse-app/pytest-selective/issues/127)) ([a82bea9](https://github.com/gigaverse-app/pytest-selective/commit/a82bea9f607abcb3ed68009571202ad8b7726c7e))
+* **selection:** keep every module a pytest11 entry-point name maps to ([#122](https://github.com/gigaverse-app/pytest-selective/issues/122)) ([acb6649](https://github.com/gigaverse-app/pytest-selective/commit/acb66492c6440621387e0506c1d0071a5a48979c))
+* **selection:** plan a pull request against its merge commit's actual base ([#119](https://github.com/gigaverse-app/pytest-selective/issues/119)) ([276cec8](https://github.com/gigaverse-app/pytest-selective/commit/276cec84f65c889a1820fd5a001a3a4aca8b7e0d))
+
 ## [1.2.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.1.2...v1.2.0) (2026-11-09)
 
 
