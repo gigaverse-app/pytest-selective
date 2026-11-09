@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.1.0...v1.1.1) (2026-11-09)
+
+
+### Bug fixes
+
+* **selection:** follow file reads that name a tracked file by literal path ([#106](https://github.com/gigaverse-app/pytest-selective/issues/106)) ([5c534c4](https://github.com/gigaverse-app/pytest-selective/commit/5c534c48d3d098fb0e659973e2e40b410198af19))
+
 ## [1.1.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.0.0...v1.1.0) (2026-11-09)
 
 
