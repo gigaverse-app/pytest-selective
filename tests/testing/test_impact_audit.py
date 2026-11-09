@@ -32,7 +32,7 @@ READERS = {
         "# gv:test-dependency: data/declared.json\n"
         "from pathlib import Path\n"
         "def declared(): return Path('data/declared.json').read_text()\n"
-        "def hidden(): return Path('data/hidden.json').read_text()\n"
+        "def hidden(): return Path('data', 'hidden.json').read_text()\n"
     ),
     "tests/conftest.py": (
         "# gv:test-dependency: data/fixture.txt\n"
@@ -42,7 +42,7 @@ READERS = {
         "def fixture_text(): return Path('data/fixture.txt').read_text()\n"
     ),
     "tests/test_module_level.py": (
-        "from pathlib import Path\nDATA = Path('data/module_level.txt').read_text()\ndef test_data(): assert DATA\n"
+        "from pathlib import Path\nDATA = Path('data', 'module_level.txt').read_text()\ndef test_data(): assert DATA\n"
     ),
     "tests/test_helper.py": (
         "from pkg.loader import declared, hidden\n"
@@ -62,10 +62,12 @@ READERS = {
         "    assert (tmp_path / 'scratch.txt').read_text()\n"
         "    with open('data/written.txt', 'a') as output: output.write('x')\n"
     ),
-    "tests/test_exempt.py": "from pathlib import Path\ndef test_exempt(): assert Path('data/exempt.txt').read_text()\n",
+    "tests/test_exempt.py": "from pathlib import Path\ndef test_exempt(): assert Path('data', 'exempt.txt').read_text()\n",
+    # A literal tracked path is a graph edge, so this read needs no declaration.
+    "tests/test_literal.py": "from pathlib import Path\ndef test_literal(): assert Path('data/literal.txt').read_text()\n",
     "scripts/tool.py": "print('ok')\n",
     **{f"data/{name}": "1" for name in ["declared.json", "hidden.json", "fixture.txt", "module_level.txt"]},
-    **{f"data/{name}": "1" for name in ["content.txt", "written.txt", "exempt.txt"]},
+    **{f"data/{name}": "1" for name in ["content.txt", "written.txt", "exempt.txt", "literal.txt"]},
 }
 UNDECLARED = [
     UndeclaredRead(test="tests/test_exempt.py", input="data/exempt.txt"),
@@ -158,8 +160,8 @@ def test_audit_fails_on_exactly_the_reads_the_graph_cannot_reach(
     """
     INVARIANT: a recorded read fails the audit iff the reading test's closure lacks the input.
 
-    Inline, conftest and content-sidecar declarations reach their inputs; module-level reads,
-    helper reads and executed scripts without one do not. Temporary files and write-only opens
+    Inline, conftest and content-sidecar declarations and literal tracked paths reach their inputs;
+    module-level and helper reads of computed paths, and executed scripts, without a declaration do not. Temporary files and write-only opens
     of tracked files are never inputs.
     """
     report_path = tmp_path / "report.json"

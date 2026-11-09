@@ -102,6 +102,10 @@
     {
       "name": "prepend-roots-ignored",
       "description": "Reintroduces the import-mode bug: imports no longer resolve from the directories pytest prepends to sys.path."
+    },
+    {
+      "name": "literal-reads-ignored",
+      "description": "Reintroduces the literal-read bug: open('data/table.json') no longer makes the reader depend on that file."
     }
   ],
   "bounds": {"seed": 11, "max_samples": 800, "max_steps": 8, "n_traces": 24},
@@ -144,6 +148,13 @@
       "found_by": "the runtime check (pytest loaded the changed file, the planner skipped the test), after an adversarial review reported it; witness bareTestImportFollowsPrependModeTest",
       "regression_test": "tests/testing/test_impact_graph.py::test_bare_import_resolves_from_the_importers_prepend_mode_base_directory",
       "mutant": "prepend-roots-ignored"
+    },
+    {
+      "summary": "A test that read a tracked file with open() and a literal path was not selected when that file changed.",
+      "fixed_in": "#106",
+      "found_by": "the runtime check (pytest opened the changed file, the planner skipped the test), after an adversarial review reported it; witness literalPathReadTest",
+      "regression_test": "tests/testing/test_impact_graph.py::test_reading_a_tracked_file_by_literal_path_selects_the_reader",
+      "mutant": "literal-reads-ignored"
     }
   ]
 }

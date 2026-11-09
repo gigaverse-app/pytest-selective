@@ -217,6 +217,56 @@ def test_bare_import_does_not_resolve_inside_a_test_package(
     assert affected(repo, base, head, config, cache).selected == []
 
 
+@pytest.mark.parametrize(
+    "reader, read",
+    [
+        ("tests/right/test_two.py", 'DATA = open("data/prices.json").read()'),
+        ("tests/right/test_two.py", 'DATA = open("./data/prices.json", encoding="utf-8").read()'),
+        ("tests/right/test_two.py", 'from pathlib import Path\nDATA = Path("data/prices.json").read_text()'),
+        ("tests/right/test_two.py", 'from pathlib import Path\nDATA = (Path(".") / "data/prices.json").read_bytes()'),
+        # Relative to the reading file's own directory.
+        (
+            "tests/right/test_two.py",
+            'from pathlib import Path\nDATA = (Path(__file__).parent / "prices.json").read_text()',
+        ),
+        # The reader is a helper; the test that imports it is selected.
+        ("src/pkg/loader.py", 'DATA = open("data/prices.json").read()'),
+    ],
+)
+def test_reading_a_tracked_file_by_literal_path_selects_the_reader(
+    repo: Path, config: ImpactConfig, cache: GraphCache, reader: str, read: str
+) -> None:
+    write(repo, "data/prices.json", "{}")
+    write(repo, "tests/right/prices.json", "{}")
+    target = "tests/right/prices.json" if "__file__" in read else "data/prices.json"
+    write(repo, reader, f"{read}\ndef test_two(): pass\n")
+    if reader == "src/pkg/loader.py":
+        write(repo, "tests/right/test_two.py", "import pkg.loader\ndef test_two(): pass")
+    base = commit(repo)
+    write(repo, target, '{"changed": true}')
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == ["tests/right/test_two.py"]
+
+
+@pytest.mark.parametrize(
+    "mention",
+    [
+        'PATHS = ["data/prices.json"]',  # named, not read
+        'open("data/prices.json", "w").write("{}")',  # written, not read
+        'DATA = open("data/missing.json").read() if False else None',  # no such tracked file
+    ],
+)
+def test_a_path_that_is_not_read_from_a_tracked_file_adds_no_edge(
+    repo: Path, config: ImpactConfig, cache: GraphCache, mention: str
+) -> None:
+    write(repo, "data/prices.json", "{}")
+    write(repo, "tests/right/test_two.py", f"{mention}\ndef test_two(): pass\n")
+    base = commit(repo)
+    write(repo, "data/prices.json", '{"changed": true}')
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == []
+
+
 def test_declared_dynamic_import_reaches_reader_and_its_importers(
     repo: Path, config: ImpactConfig, cache: GraphCache
 ) -> None:

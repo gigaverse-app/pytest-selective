@@ -193,6 +193,9 @@ MUTANTS: dict[str, Callable[[], list[tuple[str, object]]]] = {
     ],
     "addopts-plugins-ignored": lambda: [("pytest_selective.impact_graph.command_line_plugins", lambda policies: set())],
     "prepend-roots-ignored": lambda: [("pytest_selective.impact_graph.prepend_roots", lambda python_files, config: [])],
+    "literal-reads-ignored": lambda: [
+        ("pytest_selective.impact_graph.literal_read_targets", lambda reader, literal, files: set())
+    ],
 }
 
 
