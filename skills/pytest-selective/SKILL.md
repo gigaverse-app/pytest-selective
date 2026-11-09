@@ -75,8 +75,8 @@ selection saves little there. Continue only if the human's request still stands.
 ### Which version
 
 Reference the actions by the moving major tag, `gigaverse-app/pytest-selective/actions/NAME@v1`: planner fixes reach
-the repository without a pull request per release. Resolve the latest release once for the package and the
-measurement script:
+the repository without a pull request per release. The measurement script (step 8) comes from `v1` too. Resolve the
+latest release once for the package:
 
 ```bash
 TAG=$(gh release view --repo gigaverse-app/pytest-selective --json tagName -q .tagName)   # for example v1.1.0
@@ -177,9 +177,9 @@ uv run --no-project --with "pytest-selective==$VERSION" \
 ```
 
 Copy the printed object into `graph.pytest_policy` and commit. Releases up to 1.1.0 also print a `tox.ini` or
-`setup.cfg` that has no pytest section (pytest ignores it); keeping that entry is harmless. Without uv, run the same commands in a virtual
-environment after `python -m pip install "pytest-selective==$VERSION"`. When pytest settings change later, the planner
-falls back to every lane until someone reviews and refreshes the fingerprints.
+`setup.cfg` that has no pytest section (pytest ignores it); keeping that entry is harmless. Without uv, run the same
+commands in a virtual environment after `python -m pip install "pytest-selective==$VERSION"`. When pytest settings
+change later, the planner falls back to every lane until someone reviews and refreshes the fingerprints.
 
 ### Prove the config locally
 
@@ -310,7 +310,8 @@ check:
 
 It passes only when every prerequisite succeeded, or was skipped while the planner succeeded and every lane mapped to
 that job is `false`. A failed, cancelled or skipped planner, a failed job, or a skip of an unmapped job fails it. It
-installs nothing. If the repository already has an aggregate job, keep its name and replace its logic with this step.
+installs nothing. If the repository already has an aggregate job, keep its job id and name and replace its logic with
+this step; the routing test's `GATE` names that id (step 6).
 
 ## 6. Add routing tests
 
@@ -478,17 +479,17 @@ commit it.
 Compare a selected run with a full control **at the same head**:
 
 - Selected: the docs-only probe's `pull_request` runs.
-- Full control: dispatch every workflow the selected side ran, on the probe branch. `workflow_dispatch` plans a full
-  checkpoint, so every lane runs:
+- Full control: if the probe branch's push runs already ran every lane at the probe head (4.3), use them. Otherwise
+  dispatch every workflow the selected side ran, on the probe branch; `workflow_dispatch` plans a full checkpoint, so
+  every lane runs:
 
   ```bash
   gh workflow run WORKFLOW --repo "$REPO" --ref PROBE_BRANCH      # once per workflow
   ```
 
   GitHub dispatches only workflows whose file exists on DEFAULT, and may read the trigger from there: if a workflow
-  gains `workflow_dispatch:` only in your adoption and the dispatch is refused, use the probe's own push runs (4.3)
-  as the control, or measure after the merge. A rerun is not a control: it keeps the selection. Do not wait on a
-  `test:full` label; creating one is the human's step 9.
+  gains `workflow_dispatch:` only in your adoption and the dispatch is refused, measure after the merge. A rerun is
+  not a control: it keeps the selection. Do not wait on a `test:full` label; creating one is the human's step 9.
 
 Both sides then share a head SHA: a `pull_request` run records the branch head as its `head_sha`, although it checks
 out the merge commit, and a dispatch or push run on the branch records the same commit. Record both checked-out SHAs.
@@ -524,7 +525,8 @@ Use this in the pull request body, filled in:
 ```markdown
 ## pytest-selective adoption
 
-pytest-selective vX.Y.Z: actions at `@v1` (or `@<sha> # vX.Y.Z` where tags are rejected), routing tests install `pytest-selective>=X.Y.Z,<2`.
+pytest-selective vX.Y.Z: actions at `@v1` (or `@<sha> # vX.Y.Z` where tags are rejected), routing tests install
+`pytest-selective>=X.Y.Z,<2`.
 
 | Lane | Jobs it admits | Roots and inputs |
 | --- | --- | --- |
