@@ -97,7 +97,7 @@ patterns to your actual inventory. Central-rule reader patterns use shell-style
 matching: here `*` also covers nested paths under `tests/`. Common lockfiles, dependency manifests and pytest configuration already belong
 to the default `global_inputs`. Keep those defaults unless you have reviewed a
 narrower environment contract; these reader-specific rules are for additional
-inputs. Other non-Python files are not automatically global inputs. Plugins named by `-p NAME` in a pytest configuration's `addopts` are global modules automatically; plugins passed only on the command line or in `PYTEST_ADDOPTS` are not visible to the planner. Use `global_modules` for those and other modules loaded by every test and
+inputs. Other non-Python files are not automatically global inputs. Plugins named by `-p NAME` in a pytest configuration's `addopts` are global modules automatically, and so are the project's own `pytest11` entry points (`[project.entry-points.pytest11]` or `[tool.poetry.plugins.pytest11]` in any tracked `pyproject.toml`) whose module is a tracked file. An entry point stays global unless every pytest configuration disables it, with `-p no:NAME` (`NAME` is the entry point's name) or `--disable-plugin-autoload` in `addopts`. Plugins passed only on the command line or in `PYTEST_ADDOPTS`, and `PYTEST_DISABLE_PLUGIN_AUTOLOAD`, are not visible to the planner. Use `global_modules` for those and other modules loaded by every test and
 `always_run` for explicit canary test paths. Retain full-suite checkpoints.
 
 ## Explain and audit
@@ -120,6 +120,49 @@ pytest-selective audit --config .github/test-impact.json --records impact-audit
 
 Audit results cover executed paths, not every possible execution. Declare missing
 edges at their readers. See [evidence and limitations](evidence.md).
+
+### Write the missing declarations
+
+`audit --write-declarations` writes a rule for every undeclared read into the
+reading test's sidecar, `<test>.gv-dependency.yaml`, creating it or appending to
+the one it already has:
+
+```bash
+pytest-selective audit --config .github/test-impact.json --records impact-audit   --write-declarations
+pytest-selective audit --config .github/test-impact.json --records impact-audit   --working-tree   # confirms nothing is left before you commit
+```
+
+```yaml
+dependencies:
+  - inputs:
+      - "//examples/backgrounds/**"
+      - "//examples/gold.toml"
+    kind: content
+    reason: "Read at runtime; recorded by pytest-selective audit --write-declarations."
+  - inputs:
+      - "//scripts/replay_coverage.py"
+    kind: import
+    reason: "Loaded or run outside the test's imports; recorded by pytest-selective audit --write-declarations."
+```
+
+- A Python input becomes an `import` rule: a test that runs a script in a
+  subprocess also depends on what the script imports. Any other input becomes a
+  `content` rule. Review the kind where the test only reads Python as text.
+- Several reads in one directory become `<directory>/**` only when the test read
+  every tracked file under it, so the glob claims nothing the run did not see.
+  It also covers files added there later.
+- Every pattern must match a tracked file at the audited revision. A path the
+  pattern language cannot express (for example one containing `[`) is printed as
+  `not declared` and the command exits 2.
+- Appending keeps an existing sidecar's text and comments. When the result would
+  not parse to exactly the old rules plus the new ones, the file is left alone
+  and the rules are printed for you to add by hand.
+
+The command prints each sidecar and pattern it wrote and exits 0 when every
+undeclared read was declared. The files are in the working tree, so the plain
+audit (which reads `--head`) still reports them until you commit; use
+`--working-tree` to check first. Prefer a hand-written comment or directory
+manifest where it reads better; the writer only removes the transcription step.
 
 Audit discovery uses the requested repository even when a calling Git hook exports
 location variables for another checkout. It shares repository isolation with the

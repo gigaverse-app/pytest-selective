@@ -12,6 +12,7 @@ import yaml
 from pydantic import Field, field_validator, model_validator
 
 from pytest_selective.checkpoint import full_checkpoint_reason
+from pytest_selective.git_operations import pull_request_merge_base
 from pytest_selective.impact_graph import DependencyDeclarationError, GraphCache, git, matches, within
 from pytest_selective.impact_models import ImpactConfig, ImpactModel
 from pytest_selective.impact_selection import affected
@@ -254,6 +255,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo", type=Path, default=Path("."))
     parser.add_argument("--base", required=True)
     parser.add_argument("--head", default="HEAD")
+    # A pull request's head: when `--head` is GitHub's merge of it, plan against the merge's actual base.
+    parser.add_argument("--pr-head", default="")
     parser.add_argument(
         "--full", nargs="?", const="true", default="false", type=full_checkpoint_reason, metavar="auto|true|false"
     )
@@ -261,7 +264,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         config = LaneConfig.model_validate_json(args.config.read_text(encoding="utf-8"))
-        result = plan(args.repo, config, args.base, args.head, full=args.full is not None)
+        base = pull_request_merge_base(args.repo, args.base, args.head, args.pr_head)
+        if base != args.base:
+            print(
+                f"Planning against the tested merge's base {base}; the event's base {args.base} is behind it.",
+                file=sys.stderr,
+            )
+        result = plan(args.repo, config, base, args.head, full=args.full is not None)
         if args.full is not None:
             result.reason = args.full
     except (ValueError, OSError, DependencyDeclarationError) as error:
