@@ -47,8 +47,11 @@ def match_inputs(pattern: str, files: set[str], location: str, directory: str = 
     ):
         raise DependencyDeclarationError(f"{location}: invalid repository-relative dependency pattern {pattern!r}")
     rooted = pattern if directory == "." else f"{directory}/{pattern}"
-    matcher = _path_pattern(rooted)
-    targets = {path for path in files if matcher.fullmatch(path)}
+    if "*" not in rooted and "?" not in rooted:
+        targets = {rooted} if rooted in files else set()
+    else:
+        matcher = _path_pattern(rooted)
+        targets = {path for path in files if matcher.fullmatch(path)}
     if not targets:
         raise DependencyDeclarationError(f"{location}: test dependency {pattern!r} matches no tracked files")
     return targets

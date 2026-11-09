@@ -1835,6 +1835,51 @@ def test_reader_relative_rule_expands_new_readers_and_preserves_removed_readers(
     ]
 
 
+@pytest.mark.parametrize("kind", ["content", "import"])
+def test_shared_convention_is_equivalent_to_individual_sidecars(
+    repo: Path, config: ImpactConfig, cache: GraphCache, kind: str
+) -> None:
+    readers = ["tests/left/test_one.py", "tests/left/test_extra.py", "tests/right/test_two.py"]
+    write(repo, readers[1], "def test_extra(): pass")
+    write(repo, "shared.json", "1")
+    for directory in ("left", "right"):
+        write(repo, f"tests/{directory}/data/input.py", "from pkg.leaf import VALUE")
+    rule = f'inputs: ["data/**/*.py", "//shared.json"], kind: {kind}'
+    for reader in readers:
+        write(repo, reader + ".gv-dependency.yaml", f"dependencies: [{{{rule}}}]")
+    before = commit(repo)
+    inputs = set(cache.snapshot(repo, before, config).files) - {r + ".gv-dependency.yaml" for r in readers}
+    for reader in readers:
+        (repo / (reader + ".gv-dependency.yaml")).unlink()
+    write(
+        repo,
+        "tests/.gv-dependencies.yaml",
+        f'dependencies: [{{readers: ["**/test_*.py"], relative_to: reader, {rule}}}]',
+    )
+    after = commit(repo)
+    for path in sorted(inputs):
+        expected = affected(repo, before, before, config, cache, [path]).selected
+        assert affected(repo, after, after, config, cache, [path]).selected == expected, path
+
+
+def test_reader_relative_non_python_helpers_reach_only_their_importers(
+    repo: Path, config: ImpactConfig, cache: GraphCache
+) -> None:
+    for directory in ("left", "right"):
+        write(repo, f"scripts/{directory}/run.sh", "cat input.json")
+        write(repo, f"scripts/{directory}/input.json", "1")
+        write(repo, f"tests/{directory}/test_script.py", f"# gv:test-dependency: scripts/{directory}/run.sh")
+    write(
+        repo,
+        "scripts/.gv-dependencies.yaml",
+        'dependencies: [{readers: ["**/run.sh"], relative_to: reader, inputs: ["input.json"], kind: content}]',
+    )
+    base = commit(repo)
+    write(repo, "scripts/left/input.json", "2")
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == ["tests/left/test_script.py"]
+
+
 @pytest.mark.parametrize("inputs", ["missing.json", "../escape.json", "//missing.json"])
 def test_reader_relative_rule_validates_inputs_for_every_matched_reader(
     repo: Path, config: ImpactConfig, cache: GraphCache, inputs: str
@@ -1886,6 +1931,7 @@ def test_nested_manifests_are_additive_and_exclude_metadata_readers(
         'dependencies: [{readers: ["../*.py"], inputs: ["//src/pkg/leaf.py"]}]',
         'dependencies: [{readers: ["**/*.py"], inputs: ["/src/pkg/leaf.py"]}]',
         'dependencies: [{readers: ["**/*.py"], inputs: ["//src/pkg/leaf.py"], expensive: true}]',
+        'dependencies: [{readers: ["**/*.py"], inputs: ["//src/pkg/leaf.py"], relative_to: unknown}]',
         "dependencies: []\ndependencies: []",
         'dependencies: [{readers: &paths ["**/*.py"], inputs: *paths}]',
     ],

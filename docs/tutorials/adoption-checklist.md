@@ -100,6 +100,9 @@ dependencies:
 - [ ] Use `content` for bytes read as data, and `import` when the reader executes
   Python and needs that module's transitive dependencies.
 - [ ] Keep declarations beside readers; use central rules for actual shared policy.
+- [ ] Replace repeated per-reader layouts with directory manifest rules using
+  `relative_to: reader`; compare affected readers and lanes before and after,
+  including sibling inputs, new matching files and deletions.
 - [ ] Review locks, environment configuration, external checkout pins and plugin startup.
 - [ ] Retain default global inputs until a narrower environment contract is verified.
 - [ ] Review nested/custom pytest configuration before refreshing fingerprints.
