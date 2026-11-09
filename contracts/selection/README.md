@@ -1,5 +1,13 @@
 # Selection contract
 
+The contract checks the planner two ways. The Quint model states which tests a change
+should select. Independently of the model, the driver also runs pytest's collection on both
+trees of every comparison ([runtime_deps.py](runtime_deps.py)), records which repository
+files each test file really imports or opens, and requires every test that loaded a changed
+file to be selected (`missed` must stay empty). The runtime check can fail even where the
+model and the planner agree, which is the point: it is how a rule both of them leave out
+shows up.
+
 pytest-selective's central promise, as a [Quint](https://quint.sh) model. After a commit,
 the selected tests are exactly the tests that reach a changed file, in the base or the head
 tree, through imports, an ancestor `conftest.py` or a `# gv:test-dependency:` comment
