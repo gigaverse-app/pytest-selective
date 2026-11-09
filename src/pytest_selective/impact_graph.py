@@ -58,7 +58,7 @@ from pytest_selective.impact_models import (
 from pytest_selective.parse_batch import parse_records
 from pytest_selective.pytest_plugins import declared_plugins
 
-VERSION = "25"
+VERSION = "26"
 OPAQUE_CALLS = {
     "__import__",
     "import_module",
@@ -369,6 +369,18 @@ def parse_source(source: bytes) -> ParsedSource:
             for alias in statement.names:
                 aliases[alias.asname or alias.name] = f"{statement.module}.{alias.name}"
     local_functions = {node.name for node in nodes if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    # A path joined to a function parameter (pytest's tmp_path, say) is a runtime location, not the repository.
+    parameters = {
+        argument.arg
+        for node in nodes
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda))
+        for argument in (
+            *node.args.posonlyargs,
+            *node.args.args,
+            *node.args.kwonlyargs,
+            *filter(None, (node.args.vararg, node.args.kwarg)),
+        )
+    }
     for node in nodes:
         if isinstance(node, ast.Constant) and isinstance(node.value, str) and node is not registration:
             if is_module_string(node.value):
@@ -410,14 +422,7 @@ def parse_source(source: bytes) -> ParsedSource:
             continue
         if qualified in {"open", "builtins.open", "io.open"} or name in {"read_text", "read_bytes"}:
             # The path may be an argument (open("x")) or part of the receiver (Path("x").read_text()).
-            read_paths.update(
-                literal.value
-                for literal in ast.walk(node)
-                if isinstance(literal, ast.Constant)
-                and isinstance(literal.value, str)
-                and 0 < len(literal.value) < 300
-                and "\n" not in literal.value
-            )
+            read_paths.update(_read_call_literals(node, parameters))
         if (
             (name in OPAQUE_CALLS or subprocess_run)
             and not is_ast_walk
@@ -464,6 +469,43 @@ def literal_read_targets(reader: str, literal: str, files: dict[str, str]) -> se
         if normalized != reader and normalized in files:
             found.add(normalized)
     return found
+
+
+def _path_root(expression: ast.expr) -> ast.expr:
+    """The base of a path expression: ``tmp_path`` in ``(tmp_path / "a").joinpath("b")``."""
+    while True:
+        if isinstance(expression, ast.BinOp) and isinstance(expression.op, ast.Div):
+            expression = expression.left
+        elif isinstance(expression, ast.Call) and isinstance(expression.func, ast.Attribute):
+            expression = expression.func.value
+        elif isinstance(expression, ast.Attribute):
+            expression = expression.value
+        else:
+            return expression
+
+
+def _read_call_literals(call: ast.Call, parameters: set[str]) -> set[str]:
+    """String literals a read call may name as a path, except those joined to a function parameter."""
+    excluded: set[int] = set()
+    for part in ast.walk(call):
+        if part is call or not isinstance(part, (ast.BinOp, ast.Call)):
+            continue
+        root = _path_root(part)
+        if isinstance(root, ast.Name) and root.id in parameters:
+            excluded.update(id(inner) for inner in ast.walk(part))
+    # The read call's own receiver chain, as in tmp_path.joinpath("x").read_text().
+    root = _path_root(call.func.value) if isinstance(call.func, ast.Attribute) else None
+    if isinstance(root, ast.Name) and root.id in parameters:
+        excluded.update(id(inner) for inner in ast.walk(call.func.value))
+    return {
+        literal.value
+        for literal in ast.walk(call)
+        if id(literal) not in excluded
+        and isinstance(literal, ast.Constant)
+        and isinstance(literal.value, str)
+        and 0 < len(literal.value) < 300
+        and "\n" not in literal.value
+    }
 
 
 def _literal_exports(tree: ast.Module) -> set[str]:
