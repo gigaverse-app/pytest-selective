@@ -253,11 +253,10 @@ job per workflow the required check and run
 gated job to its lanes. It fails unless each prerequisite succeeded or was skipped while
 the planner succeeded and every mapped lane is `false`; a failed planner fails it.
 
-Do not gate a job that a publish or deploy job `needs:` on pull-request-only logic:
-skipping it skips publishing. Keep it running on other events
-(`github.event_name != 'pull_request' || ...`), or plan inside the job with
+Never gate a job that a publish or deploy job `needs:`, directly or transitively:
+skipping it skips publishing. Leave it ungated, or plan inside the job with
 `continue-on-error: true` and admit only its expensive steps, as the `distributions`
-job in this repository's CI does. A branch's first push has no previous commit, so
+job in this repository's CI does. Gate every other job that installs, builds or tests. A branch's first push has no previous commit, so
 `on: push` for every branch runs every lane once per new branch; prefer pull-request
 triggers plus pushes to the default branch.
 The default event policy handles manual/release checkpoints, schedules and

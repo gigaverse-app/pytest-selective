@@ -5,6 +5,10 @@ head. A side may hold several workflow runs (for example CI and Docs triggered b
 push): runner-seconds add up and elapsed runs from the first run's creation to the last job's
 completion. `--expected-failure JOB` accepts that job's deliberate failure (a probe) as executed
 work instead of rejecting the run; any other failed, cancelled or unfinished job still does.
+
+The sides may come from different events. A `pull_request` run records the branch head as its
+`head_sha` (although it checks out the merge commit), so a `workflow_dispatch` or `push` run on
+that branch is the same head: the usual full control beside a selected pull-request run.
 """
 
 import argparse
