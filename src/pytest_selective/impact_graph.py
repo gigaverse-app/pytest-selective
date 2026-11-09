@@ -718,7 +718,8 @@ class GraphCache:
         current = policy_fingerprints(repo, git_tree, tuple(config.pytest_config_files))
         if current != config.pytest_policy:
             changed = sorted(
-                name for name in current.keys() | config.pytest_policy.keys()
+                name
+                for name in current.keys() | config.pytest_policy.keys()
                 if current.get(name) != config.pytest_policy.get(name)
             )
             raise ValueError(
