@@ -29,8 +29,10 @@ jobs:
         "py311-macos":"tests (3.11, macos-latest)","py314-ubuntu":"tests (3.14, ubuntu-latest)",
         "py314-windows":"tests (3.14, windows-latest)","py314-macos":"tests (3.14, macos-latest)",
         "minimum":"pytest-minimum"}
+      # The contracts lane's one job. It reads README.md, so it keeps its own inputs and receipt.
+      CONTRACT_LANE_JOBS: '{"selection":"Selection contract (Quint)"}'
     outputs:
-      # Planned lanes after reuse: the tests lane is false only when every one of its jobs is proven by a receipt.
+      # Planned lanes after reuse: a reusing lane is false only when every one of its jobs is proven by a receipt.
       lanes: ${{ steps.admit.outputs.lanes }}
       # The plan before reuse, for steps that follow changed runtime inputs rather than test execution.
       planned: ${{ steps.plan.outputs.lanes }}
@@ -38,6 +40,7 @@ jobs:
       files: ${{ steps.files.outputs.test_roots_json }}
       receipt: ${{ steps.evidence.outputs.receipt }}
       reused: ${{ steps.evidence.outputs.reused }}
+      contract-receipt: ${{ steps.contract-evidence.outputs.receipt }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -62,9 +65,11 @@ jobs:
         with:
           config: ${{ runner.temp }}/test-impact.json
           full-roots: tests
-      # Everything the tests lane executes or reads, bound into each receipt.
+      # Everything each reusing lane executes or reads, bound into its receipts.
       - id: inputs
-        run: echo "paths=$(jq -c . .github/validation-inputs.json)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "tests=$(jq -c .tests .github/validation-inputs.json)" >> "$GITHUB_OUTPUT"
+          echo "contracts=$(jq -c .contracts .github/validation-inputs.json)" >> "$GITHUB_OUTPUT"
       # CI-esta reuses a passing first attempt of the same job when its inputs and selected files are identical:
       # after a squash merge, on a version-only release PR, and on a PR push that changes nothing the tests read.
       # Release (workflow_call), schedules, manual runs and the test:full label always execute.
@@ -76,17 +81,34 @@ jobs:
         with:
           lanes: ${{ env.TEST_LANE_JOBS }}
           execution-context: ${{ steps.files.outputs.mode }} ${{ steps.files.outputs.test_roots_json }}
-          input-paths: ${{ steps.inputs.outputs.paths }}
+          input-paths: ${{ steps.inputs.outputs.tests }}
+          reuse-after-merge: 'true'
+          reuse-version-only-release: 'true'
+      - id: contract-evidence
+        if: >-
+          ${{ (github.event_name == 'pull_request' || github.event_name == 'push') &&
+              !contains(github.event.pull_request.labels.*.name, 'test:full') }}
+        uses: gigaverse-app/ci-esta/actions/resolve-lane-evidence@v1
+        with:
+          lanes: ${{ env.CONTRACT_LANE_JOBS }}
+          execution-context: selection contract
+          input-paths: ${{ steps.inputs.outputs.contracts }}
           reuse-after-merge: 'true'
           reuse-version-only-release: 'true'
       - id: admit
-        name: Admit the tests lane unless every job is proven
+        name: Admit each reusing lane unless every job is proven
         env:
           PLANNED_LANES: ${{ steps.plan.outputs.lanes }}
           REUSED: ${{ steps.evidence.outputs.reused || '{}' }}
+          CONTRACT_REUSED: ${{ steps.contract-evidence.outputs.reused || '{}' }}
         run: |
-          admitted=$(jq -c --argjson jobs "$TEST_LANE_JOBS" --argjson reused "$REUSED" 'if [$jobs | keys[] | $reused[.] == true] | all then .tests = false else . end' <<<"$PLANNED_LANES")
-          echo "reused=$REUSED"
+          admitted=$(jq -c \
+            --argjson tests "$TEST_LANE_JOBS" --argjson reused "$REUSED" \
+            --argjson contracts "$CONTRACT_LANE_JOBS" --argjson contract_reused "$CONTRACT_REUSED" '
+              def proven($jobs; $proof): [$jobs | keys[] | $proof[.] == true] | all;
+              (if proven($tests; $reused) then .tests = false else . end)
+              | (if proven($contracts; $contract_reused) then .contracts = false else . end)' <<<"$PLANNED_LANES")
+          echo "reused=$REUSED contracts=$CONTRACT_REUSED"
           echo "lanes=$admitted" | tee -a "$GITHUB_OUTPUT"
   quality:
     runs-on: ubuntu-latest
@@ -231,6 +253,9 @@ jobs:
         if: ${{ always() }}
         with:
           readme-mode: 'off'
+      - name: ${{ needs.select-tests.outputs.contract-receipt || 'No execution receipt' }}
+        if: ${{ needs.select-tests.result == 'success' && needs.select-tests.outputs.contract-receipt != '' }}
+        run: echo 'Recording a completed contract run for this tested tree.'
 
   validation-gate:
     name: Validation gate
