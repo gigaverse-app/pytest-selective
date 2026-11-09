@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.1.2...v1.2.0) (2026-11-09)
+
+
+### Features
+
+* **ci:** share plan execution and reduce matrix instrumentation ([1fe0f36](https://github.com/gigaverse-app/pytest-selective/commit/1fe0f36463d4354a99ea3f45406825fa728a12c2))
+
 ## [1.1.2](https://github.com/gigaverse-app/pytest-selective/compare/v1.1.1...v1.1.2) (2026-11-09)
 
 
