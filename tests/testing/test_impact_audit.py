@@ -1,4 +1,6 @@
+import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -7,6 +9,7 @@ import pytest
 from pydantic import BaseModel
 
 from pytest_selective.impact_audit import audit, load_records, summary
+from pytest_selective.impact_audit_declarations import IMPORT_REASON
 from pytest_selective.impact_audit_plugin import ReadRecorder
 from pytest_selective.impact_cli import main
 from pytest_selective.impact_graph import GraphCache
@@ -238,6 +241,37 @@ def test_editing_exemptions_reuses_the_resolved_graph(audited_run: AuditedRun, t
     cache.snapshot(audited_run.repo, "HEAD", repo_config(EXEMPTION))
     assert cache.snapshot_hits == 1
     cache.close()
+
+
+def test_written_declarations_leave_no_undeclared_read(
+    audited_run: AuditedRun, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """
+    INVARIANT: after --write-declarations, the audit of the working tree finds no undeclared read.
+
+    The executed script becomes an `import` rule (the script's own imports are dependencies too);
+    data files become `content` rules. Tests without undeclared reads get no sidecar.
+    """
+    repo = tmp_path / "repo"
+    shutil.copytree(audited_run.repo, repo, ignore=shutil.ignore_patterns(".audit-pytest-tmp", "audit-records"))
+    run = AuditedRun(repo=repo, records=audited_run.records)
+    assert audit_cli(run, tmp_path, repo_config(), "--write-declarations") == 0
+    written = sorted(path.relative_to(repo).as_posix() for path in repo.rglob("*.gv-dependency.yaml"))
+    assert written == sorted(
+        {f"{read.test}.gv-dependency.yaml" for read in UNDECLARED} | {"tests/test_content.py.gv-dependency.yaml"}
+    )
+    assert (repo / "tests/test_subprocess.py.gv-dependency.yaml").read_text(encoding="utf-8") == (
+        "dependencies:\n"
+        "  - inputs:\n"
+        '      - "//scripts/tool.py"\n'
+        "    kind: import\n"
+        f"    reason: {json.dumps(IMPORT_REASON)}\n"
+    )
+    assert "kind: content" in (repo / "tests/test_helper.py.gv-dependency.yaml").read_text(encoding="utf-8")
+    printed = capsys.readouterr().out
+    assert "wrote tests/test_subprocess.py.gv-dependency.yaml\n  import: //scripts/tool.py" in printed
+    assert f"Declared {len(UNDECLARED)} of {len(UNDECLARED)} undeclared reads" in printed
+    assert audit_cli(run, tmp_path, repo_config(), "--working-tree") == 0
 
 
 def test_summary_without_findings_has_no_table() -> None:

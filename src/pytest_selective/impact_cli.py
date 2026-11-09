@@ -16,6 +16,7 @@ from pathlib import Path
 
 from pytest_selective.checkpoint import full_checkpoint_reason
 from pytest_selective.impact_audit import audit, load_records, summary
+from pytest_selective.impact_audit_declarations import plan_declarations, write_sidecar
 from pytest_selective.impact_explanation import dependent_tests, explain
 from pytest_selective.impact_graph import (
     DependencyDeclarationError,
@@ -27,10 +28,13 @@ from pytest_selective.impact_graph import (
     reachable,
 )
 from pytest_selective.impact_models import (
+    AuditRecord,
+    AuditReport,
     GraphAnalysisReport,
     ImpactConfig,
     ImpactReport,
     SelectionExplanation,
+    Snapshot,
 )
 from pytest_selective.impact_selection import affected, base_snapshot
 from pytest_selective.pytest_sharding import (
@@ -200,7 +204,9 @@ def _audit(args: argparse.Namespace, config: ImpactConfig, cache: GraphCache) ->
 
     A missing or unreadable record raises, which is operational (exit 1): the audit proved nothing.
     """
-    report = audit(cache.snapshot(args.repo, args.head, config), load_records(args.records), config)
+    snapshot = cache.snapshot(args.repo, args.head, config)
+    records = load_records(args.records)
+    report = audit(snapshot, records, config)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
@@ -215,7 +221,30 @@ def _audit(args: argparse.Namespace, config: ImpactConfig, cache: GraphCache) ->
         print(f"{read.test} -> {read.input}")
     for error in report.recorder_errors:
         print(f"recorder error: {error}", file=sys.stderr)
+    if args.write_declarations and report.undeclared:
+        return _write_declarations(args.repo, report, snapshot, records)
     return 2 if report.undeclared else 0
+
+
+def _write_declarations(repo: Path, report: AuditReport, snapshot: Snapshot, records: list[AuditRecord]) -> int:
+    """Write a sidecar rule for every undeclared read; exit 2 only when some read could not be declared."""
+    plan = plan_declarations(report, snapshot, records)
+    for sidecar in plan.sidecars:
+        write_sidecar(repo, sidecar)
+        print(f"wrote {sidecar.sidecar}")
+        for rule in sidecar.rules:
+            for pattern in rule.inputs:
+                covered = sidecar.covers[pattern]
+                detail = f" ({len(covered)} reads)" if len(covered) > 1 else ""
+                print(f"  {rule.kind}: {pattern}{detail}")
+    declared = sum(len(covered) for sidecar in plan.sidecars for covered in sidecar.covers.values())
+    print(
+        f"Declared {declared} of {len(report.undeclared)} undeclared reads in {len(plan.sidecars)} sidecars. "
+        "Review and commit them, then re-run audit (or audit --working-tree) to confirm."
+    )
+    for skipped in plan.skipped:
+        print(f"not declared: {skipped}", file=sys.stderr)
+    return 2 if plan.skipped else 0
 
 
 #: Files that joined the floor named in the budget error before the rest are counted.
@@ -322,14 +351,26 @@ def main(argv: list[str] | None = None) -> int:
     # audit: the directory of pytest read records, and a markdown summary (GITHUB_STEP_SUMMARY) to append to.
     parser.add_argument("--records", type=Path, default=Path("impact-audit"))
     parser.add_argument("--summary", type=Path)
+    parser.add_argument(
+        "--write-declarations",
+        action="store_true",
+        help="audit: write a <test>.gv-dependency.yaml rule for every undeclared read",
+    )
     # floor-budget: the explanation `affected --explanation-output` wrote for this plan.
     parser.add_argument("--explanation", type=Path, default=Path("test-impact-explanation.json"))
     args = parser.parse_args(argv)
     full_reason = args.full
     args.full = full_reason is not None
     args.base = args.base or ("HEAD" if args.working_tree else "HEAD^")
-    if args.working_tree and args.command not in {"affected", "warm", "dependencies", "explain", "conftest-impact"}:
-        parser.error("--working-tree is supported for affected, warm, dependencies, explain and conftest-impact")
+    if args.working_tree and args.command not in {
+        "affected",
+        "audit",
+        "warm",
+        "dependencies",
+        "explain",
+        "conftest-impact",
+    }:
+        parser.error("--working-tree is supported for affected, audit, warm, dependencies, explain and conftest-impact")
     if args.command == "typecheck-scope":
         return _typecheck_scope(args)
     if args.command == "floor-budget":
