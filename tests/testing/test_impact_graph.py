@@ -224,6 +224,11 @@ def test_bare_import_does_not_resolve_inside_a_test_package(
         ("tests/right/test_two.py", 'DATA = open("./data/prices.json", encoding="utf-8").read()'),
         ("tests/right/test_two.py", 'from pathlib import Path\nDATA = Path("data/prices.json").read_text()'),
         ("tests/right/test_two.py", 'from pathlib import Path\nDATA = (Path(".") / "data/prices.json").read_bytes()'),
+        # A module-level root, as most repositories spell it, still anchors the literal.
+        (
+            "tests/right/test_two.py",
+            'from pathlib import Path\nROOT = Path(".")\nDATA = (ROOT / "data/prices.json").read_text()',
+        ),
         # Relative to the reading file's own directory.
         (
             "tests/right/test_two.py",
@@ -254,6 +259,11 @@ def test_reading_a_tracked_file_by_literal_path_selects_the_reader(
         'PATHS = ["data/prices.json"]',  # named, not read
         'open("data/prices.json", "w").write("{}")',  # written, not read
         'DATA = open("data/missing.json").read() if False else None',  # no such tracked file
+        # Joined to a function parameter, such as pytest's tmp_path: a runtime location, not the repository.
+        'def test_copy(tmp_path):\n    (tmp_path / "data/prices.json").read_text()',
+        'def test_copy(tmp_path):\n    tmp_path.joinpath("data/prices.json").read_text()',
+        'def test_copy(tmp_path):\n    open(tmp_path / "data/prices.json").read()',
+        'def test_copy(workdir):\n    (workdir / "data" / "prices.json").read_bytes()',
     ],
 )
 def test_a_path_that_is_not_read_from_a_tracked_file_adds_no_edge(
