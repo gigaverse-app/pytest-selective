@@ -285,3 +285,5 @@ The action also uploads the report as the `test-lane-selection` artifact; set
 pull-request sticky's lane section: which lanes ran and why, and the runner time
 the skipped jobs took on the default branch's last full run. See
 [how the two fit together in a Python project](https://github.com/gigaverse-app/ci-esta/blob/main/docs/integrations.md#getting-the-most-from-both-in-a-python-project).
+
+<!-- probe -->
