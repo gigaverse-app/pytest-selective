@@ -97,7 +97,7 @@ patterns to your actual inventory. Central-rule reader patterns use shell-style
 matching: here `*` also covers nested paths under `tests/`. Common lockfiles, dependency manifests and pytest configuration already belong
 to the default `global_inputs`. Keep those defaults unless you have reviewed a
 narrower environment contract; these reader-specific rules are for additional
-inputs. Other non-Python files are not automatically global inputs. Plugins named by `-p NAME` in a pytest configuration's `addopts` are global modules automatically; plugins passed only on the command line or in `PYTEST_ADDOPTS` are not visible to the planner. Use `global_modules` for those and other modules loaded by every test and
+inputs. Other non-Python files are not automatically global inputs. Plugins named by `-p NAME` in a pytest configuration's `addopts` are global modules automatically, and so are the project's own `pytest11` entry points (`[project.entry-points.pytest11]` or `[tool.poetry.plugins.pytest11]` in any tracked `pyproject.toml`) whose module is a tracked file. An entry point stays global unless every pytest configuration disables it, with `-p no:NAME` (`NAME` is the entry point's name) or `--disable-plugin-autoload` in `addopts`. Plugins passed only on the command line or in `PYTEST_ADDOPTS`, and `PYTEST_DISABLE_PLUGIN_AUTOLOAD`, are not visible to the planner. Use `global_modules` for those and other modules loaded by every test and
 `always_run` for explicit canary test paths. Retain full-suite checkpoints.
 
 ## Explain and audit

@@ -206,7 +206,7 @@ skip pytest, because invoking pytest without paths runs the whole suite.
 | --- | --- |
 | A transitive dependency | Import chains and package initialization |
 | A deleted or renamed module | Dependencies in both the base and head trees |
-| Fixtures or startup code | Ancestor conftests, plugins named by `-p` in `addopts`, and configured global modules |
+| Fixtures or startup code | Ancestor conftests, plugins named by `-p` in `addopts`, the project's own `pytest11` entry points, and configured global modules |
 | Templates, schemas, or data files | [Reader-owned declarations and YAML sidecars](docs/tutorials/sidecar-dependencies.md) |
 | A surprisingly large selection | Dependency paths, startup-floor and blast-radius explanations |
 | A large CI suite | Cached parsing, graph reuse, and duration-based shard planning |
