@@ -141,7 +141,14 @@ def test_pytest_jobs_consume_the_public_actions_shared_file_plan():
     assert planner["outputs"]["mode"] == "${{ steps.files.outputs.mode }}"
     assert planner["outputs"]["files"] == "${{ steps.files.outputs.test_roots_json }}"
     for job in ("tests", "pytest-minimum"):
-        execution = next(step for step in jobs[job]["steps"] if "scripts/run_ci_tests.py" in step.get("run", ""))
+        execution = next(
+            step
+            for step in jobs[job]["steps"]
+            if any(
+                command in step.get("run", "")
+                for command in ("scripts/run_ci_tests.py", "pytest-selective execute-plan")
+            )
+        )
         assert execution["env"]["CI_PLANNER_RESULT"] == "${{ needs.select-tests.result }}"
         assert execution["env"]["CI_TEST_MODE"] == "${{ needs.select-tests.outputs.mode }}"
         assert execution["env"]["CI_TEST_FILES"] == "${{ needs.select-tests.outputs.files }}"
@@ -161,7 +168,7 @@ def test_self_adoption_keeps_weekly_full_checkpoints(name):
 def test_tutorial_executes_through_selected_pytest_without_a_second_matrix_run():
     jobs = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())["jobs"]
     commands = [step.get("run", "") for step in jobs["tests"]["steps"]]
-    assert any("scripts/run_ci_tests.py" in command for command in commands)
+    assert any("pytest-selective execute-plan" in command for command in commands)
     assert not any("scripts/tutorial.py" in command for command in commands)
 
 
@@ -209,9 +216,27 @@ def test_subprocess_plugin_readers_declare_their_runtime(tmp_path, reader):
     write(tmp_path, reader, (ROOT / reader).read_text())
     write(tmp_path, "tests/test_unrelated.py", "def test_unrelated(): pass")
     base = commit(tmp_path)
-    write(tmp_path, "src/pytest_selective/plugin.py", "VALUE = 2")
+    # The CLI the readers run in a subprocess. The plugin itself reaches every test (below).
+    write(tmp_path, "src/pytest_selective/__main__.py", "VALUE = 2")
     head = commit(tmp_path)
     lanes = LaneConfig.model_validate_json((ROOT / ".github/test-lanes.json").read_text())
     with closing(GraphCache(tmp_path / "cache.sqlite3")) as cache:
         result = affected(tmp_path, base, head, file_config(lanes), cache)
     assert result.selected == [reader], result.reasons
+
+
+def test_the_repositorys_own_pytest_plugin_reaches_every_test(tmp_path):
+    # pyproject.toml registers pytest_selective.plugin as a pytest11 entry point, so the installed
+    # project loads it into every session, including tests that never import it.
+    init(tmp_path)
+    write(tmp_path, "pyproject.toml", (ROOT / "pyproject.toml").read_text())
+    write(tmp_path, "src/pytest_selective/__init__.py")
+    write(tmp_path, "src/pytest_selective/plugin.py", "VALUE = 1")
+    write(tmp_path, "tests/test_unrelated.py", "def test_unrelated(): pass")
+    base = commit(tmp_path)
+    write(tmp_path, "src/pytest_selective/plugin.py", "VALUE = 2")
+    head = commit(tmp_path)
+    lanes = LaneConfig.model_validate_json((ROOT / ".github/test-lanes.json").read_text())
+    with closing(GraphCache(tmp_path / "cache.sqlite3")) as cache:
+        result = affected(tmp_path, base, head, file_config(lanes), cache)
+    assert result.selected == ["tests/test_unrelated.py"], result.reasons

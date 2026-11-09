@@ -56,6 +56,14 @@ class LaneConfig(ImpactModel):
     # including after JSON serialization. Explicit declarations always win.
     global_inputs: list[str] | None = None
 
+    def file_config(self) -> ImpactConfig:
+        """File selection shares the lane graph and explicit execution-wide inputs."""
+        if self.global_inputs is None:
+            raise ValueError("Declare global_inputs before deriving a file-selection config")
+        return self.graph.model_copy(
+            update={"global_inputs": sorted(set(self.graph.global_inputs) | set(self.global_inputs))}
+        )
+
     def is_global_input(self, path: str) -> bool:
         if self.global_inputs is not None:
             return matches(path, self.global_inputs)

@@ -225,6 +225,11 @@ def test_bare_import_does_not_resolve_inside_a_test_package(
         ("tests/right/test_two.py", 'DATA = open("./data/prices.json", encoding="utf-8").read()'),
         ("tests/right/test_two.py", 'from pathlib import Path\nDATA = Path("data/prices.json").read_text()'),
         ("tests/right/test_two.py", 'from pathlib import Path\nDATA = (Path(".") / "data/prices.json").read_bytes()'),
+        # A module-level root, as most repositories spell it, still anchors the literal.
+        (
+            "tests/right/test_two.py",
+            'from pathlib import Path\nROOT = Path(".")\nDATA = (ROOT / "data/prices.json").read_text()',
+        ),
         # Relative to the reading file's own directory.
         (
             "tests/right/test_two.py",
@@ -255,6 +260,11 @@ def test_reading_a_tracked_file_by_literal_path_selects_the_reader(
         'PATHS = ["data/prices.json"]',  # named, not read
         'open("data/prices.json", "w").write("{}")',  # written, not read
         'DATA = open("data/missing.json").read() if False else None',  # no such tracked file
+        # Joined to a function parameter, such as pytest's tmp_path: a runtime location, not the repository.
+        'def test_copy(tmp_path):\n    (tmp_path / "data/prices.json").read_text()',
+        'def test_copy(tmp_path):\n    tmp_path.joinpath("data/prices.json").read_text()',
+        'def test_copy(tmp_path):\n    open(tmp_path / "data/prices.json").read()',
+        'def test_copy(workdir):\n    (workdir / "data" / "prices.json").read_bytes()',
     ],
 )
 def test_a_path_that_is_not_read_from_a_tracked_file_adds_no_edge(
@@ -1238,6 +1248,65 @@ def test_disabled_plugins_in_addopts_add_no_edges(repo: Path, config: ImpactConf
     write(repo, "plug/fixtures.py", "VALUE = 2\n")
     head = commit(repo)
     assert affected(repo, base, head, config, cache).selected == []
+
+
+PROJECT = '[project]\nname = "example"\nversion = "1"\n'
+ENTRY_POINT = '[project.entry-points.pytest11]\nplug = "plug.fixtures"\n'
+PREFIXED_ENTRY_POINT = '[project.entry-points.pytest11]\npytest_plug = "plug.fixtures"\n'
+
+
+def addopts(options: str) -> str:
+    return f'[tool.pytest.ini_options]\naddopts = "{options}"\n'
+
+
+@pytest.mark.parametrize(
+    "configuration, loaded",
+    [
+        ({"pyproject.toml": PROJECT + ENTRY_POINT}, True),
+        ({"pyproject.toml": PROJECT + '[project.entry-points.pytest11]\nplug = "plug.fixtures:register"\n'}, True),
+        ({"pyproject.toml": '[tool.poetry.plugins.pytest11]\nplug = "plug.fixtures"\n'}, True),
+        # A workspace member's entry points are installed with it.
+        ({"libs/member/pyproject.toml": PROJECT + ENTRY_POINT}, True),
+        # `-p no:NAME` blocks the entry point's name, and `pytest_NAME` with it.
+        ({"pyproject.toml": PROJECT + ENTRY_POINT + addopts("-p no:plug")}, False),
+        ({"pyproject.toml": PROJECT + PREFIXED_ENTRY_POINT + addopts("-p no:plug")}, False),
+        ({"pyproject.toml": PROJECT + PREFIXED_ENTRY_POINT + addopts("-p no:pytest_plug")}, False),
+        ({"pyproject.toml": PROJECT + ENTRY_POINT, "pytest.ini": "[pytest]\naddopts = -p no:plug\n"}, False),
+        # pytest registers an entry point under its name, so blocking the module name does nothing.
+        ({"pyproject.toml": PROJECT + ENTRY_POINT + addopts("-p no:plug.fixtures")}, True),
+        # A later `-p NAME` unblocks it again.
+        ({"pyproject.toml": PROJECT + ENTRY_POINT + addopts("-p no:plug -p plug")}, True),
+        ({"pyproject.toml": PROJECT + ENTRY_POINT + addopts("--disable-plugin-autoload")}, False),
+        ({"pyproject.toml": PROJECT + ENTRY_POINT + addopts("--disable-plugin-autoload -p plug")}, True),
+        # pytest reads one configuration, chosen at invocation, so one that loads it is enough.
+        ({"pyproject.toml": PROJECT + ENTRY_POINT + addopts("-p no:plug"), "sub/pytest.ini": "[pytest]\n"}, True),
+    ],
+)
+def test_project_pytest11_entry_point_reaches_every_test(
+    repo: Path, config: ImpactConfig, cache: GraphCache, configuration: dict[str, str], loaded: bool
+) -> None:
+    # Installing the project registers its pytest11 entry points; pytest loads them into every
+    # session although no test or conftest imports them.
+    write(repo, "plug/__init__.py")
+    write(repo, "plug/fixtures.py", "import pytest\n@pytest.fixture\ndef answer(): return 1\n")
+    for path, text in configuration.items():
+        write(repo, path, text)
+    base = commit(repo)
+    config.pytest_policy = policy_fingerprints(repo, inventory(repo, base))
+    write(repo, "plug/fixtures.py", "import pytest\n@pytest.fixture\ndef answer(): return 2\n")
+    head = commit(repo)
+    expected = ["tests/left/test_one.py", "tests/right/test_two.py"] if loaded else []
+    assert affected(repo, base, head, config, cache).selected == expected
+
+
+def test_third_party_pytest11_entry_point_adds_no_edges(repo: Path, config: ImpactConfig, cache: GraphCache) -> None:
+    # Only a module that resolves to a tracked file can be global; `xdist.plugin` is installed code.
+    write(repo, "pyproject.toml", PROJECT + '[project.entry-points.pytest11]\nxdist = "xdist.plugin"\n')
+    base = commit(repo)
+    config.pytest_policy = policy_fingerprints(repo, inventory(repo, base))
+    write(repo, "src/pkg/leaf.py", "VALUE = 2")
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == ["tests/left/test_one.py"]
 
 
 def test_cli_fingerprints_ini_policy_without_requiring_an_existing_review(

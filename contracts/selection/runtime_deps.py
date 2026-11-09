@@ -9,12 +9,16 @@ Modules and sys.path are restored between test files, so each file's dependencie
 import json
 import os
 import sys
+from functools import cache
 from pathlib import Path
 
 import pytest
 
 
+@cache
 def _under(root: Path, path: str | None) -> str | None:
+    # Each process inspects one immutable exported tree. Cache path resolution,
+    # never the per-test import/open observations, which remain isolated below.
     if not path:
         return None
     try:

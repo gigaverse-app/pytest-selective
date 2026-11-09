@@ -305,7 +305,8 @@ class RepositoryDriver(SelectionDriver):
         changed = set(git_text(self.root, "diff", "--name-only", "--no-renames", base, self.head).splitlines())
         tests = self._tests(self.head)
         at_head = self._runtime(self.head, tests)
-        at_base = self._runtime(base, [test for test in tests if test in set(self._tests(base))])
+        base_tests = set(self._tests(base))
+        at_base = self._runtime(base, [test for test in tests if test in base_tests])
         needed = {test for test in tests if (at_head[test] | at_base.get(test, frozenset())) & changed}
         return {NAMES[test] for test in needed} - set(selection["selected"])
 

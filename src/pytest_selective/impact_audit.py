@@ -45,15 +45,20 @@ def _exempt_pairs(snapshot: Snapshot, exemptions: list[AuditExemption]) -> list[
     return pairs
 
 
-def audit(snapshot: Snapshot, records: list[AuditRecord], config: ImpactConfig) -> AuditReport:
-    """Every recorded (test, input) pair the test's dependency closure does not contain."""
-    exempt = _exempt_pairs(snapshot, config.audit_exemptions)
+def tracked_reads(snapshot: Snapshot, records: list[AuditRecord]) -> dict[str, set[str]]:
+    """Each test file's recorded reads, across every process, of files tracked in the snapshot."""
     reads: dict[str, set[str]] = {}
     for record in records:
         for test, paths in record.inputs.items():
             reads.setdefault(test, set()).update(paths)
     # Only the committed tree can be declared against: a file absent from HEAD has no edge to add.
-    reads = {test: paths & snapshot.files.keys() for test, paths in reads.items() if test in snapshot.files}
+    return {test: paths & snapshot.files.keys() for test, paths in reads.items() if test in snapshot.files}
+
+
+def audit(snapshot: Snapshot, records: list[AuditRecord], config: ImpactConfig) -> AuditReport:
+    """Every recorded (test, input) pair the test's dependency closure does not contain."""
+    exempt = _exempt_pairs(snapshot, config.audit_exemptions)
+    reads = tracked_reads(snapshot, records)
     # An always-run test is selected by every change, so no input can skip it.
     always = {test for test in reads if matches(test, config.always_run)}
     undeclared: list[UndeclaredRead] = []

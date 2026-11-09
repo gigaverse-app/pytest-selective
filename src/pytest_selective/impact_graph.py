@@ -20,6 +20,7 @@ import sys
 import tokenize
 import tomllib
 from collections import Counter, deque
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import TypeVar
 
@@ -58,7 +59,7 @@ from pytest_selective.impact_models import (
 from pytest_selective.parse_batch import parse_records
 from pytest_selective.pytest_plugins import declared_plugins
 
-VERSION = "25"
+VERSION = "26"
 OPAQUE_CALLS = {
     "__import__",
     "import_module",
@@ -228,13 +229,25 @@ def pytest_policies(repo: Path, files: dict[str, str], extra_files: tuple[str, .
     return policies
 
 
-def command_line_plugins(policies: dict[str, str]) -> set[str]:
-    """Modules that ``-p NAME`` in an ``addopts`` setting loads into every session.
+@dataclass
+class PluginOptions:
+    """What the ``-p`` options in one configuration's ``addopts`` do, applied in pytest's order."""
 
-    ``-p no:NAME`` disables a plugin and loads nothing. Plugins given only on the command line or
-    in ``PYTEST_ADDOPTS`` are invisible here; configure those as ``global_modules``.
+    #: Names ``-p NAME`` loads: a module, or the name of an installed ``pytest11`` entry point.
+    loaded: set[str] = field(default_factory=set)
+    #: Plugin names ``-p no:NAME`` leaves blocked once every option is applied.
+    blocked: set[str] = field(default_factory=set)
+    #: ``--disable-plugin-autoload`` stops pytest loading entry points that ``-p`` does not name.
+    autoload: bool = True
+
+
+def plugin_options(policies: dict[str, str]) -> list[PluginOptions]:
+    """The ``-p`` options of every configuration that has pytest settings.
+
+    Plugins given only on the command line or in ``PYTEST_ADDOPTS`` are invisible here; configure
+    those as ``global_modules``.
     """
-    names: set[str] = set()
+    found: list[PluginOptions] = []
     for canonical in policies.values():
         policy = json.loads(canonical)
         if isinstance(policy, str):
@@ -245,18 +258,81 @@ def command_line_plugins(policies: dict[str, str]) -> set[str]:
             except configparser.Error:
                 continue
             policy = {section: dict(parser[section]) for section in parser.sections()}
+        if not policy:
+            # A pyproject.toml or setup.cfg without pytest settings is not a pytest configuration.
+            continue
+        options = PluginOptions()
         for value in _setting_values(policy, "addopts"):
             arguments = shlex.split(value) if isinstance(value, str) else [str(item) for item in value]
             for index, argument in enumerate(arguments):
+                if argument == "--disable-plugin-autoload":
+                    options.autoload = False
+                    continue
                 if argument == "-p" and index + 1 < len(arguments):
                     name = arguments[index + 1]
                 elif argument.startswith("-p") and len(argument) > 2:
                     name = argument[2:].removeprefix("=")
                 else:
                     continue
-                if not name.startswith("no:"):
-                    names.add(name)
-    return names
+                # pytest's consider_pluginarg: `no:X` blocks X and pytest_X; `-p X` unblocks both.
+                plain = name.removeprefix("no:")
+                aliases = {plain} if plain.startswith("pytest_") else {plain, f"pytest_{plain}"}
+                if name.startswith("no:"):
+                    options.blocked.update(aliases)
+                else:
+                    options.blocked.difference_update(aliases)
+                    options.loaded.add(name)
+        found.append(options)
+    return found
+
+
+def command_line_plugins(policies: dict[str, str]) -> set[str]:
+    """Modules that ``-p NAME`` in an ``addopts`` setting loads into every session.
+
+    ``-p no:NAME`` disables a plugin and loads nothing.
+    """
+    return set().union(*(options.loaded for options in plugin_options(policies)))
+
+
+def pytest11_entry_points(repo: Path, files: dict[str, str]) -> dict[str, str]:
+    """Entry-point name to module for every ``pytest11`` entry point a tracked ``pyproject.toml`` declares.
+
+    Installing the project registers them, and pytest then loads each one into every session
+    without any test importing it. A nested project is included: a workspace installs its members
+    too, and an entry point that is not installed can only over-select.
+    """
+    paths = {path: oid for path, oid in files.items() if PurePosixPath(path).name == "pyproject.toml"}
+    contents = blobs(repo, set(paths.values()))
+    entry_points: dict[str, str] = {}
+    for oid in paths.values():
+        try:
+            document = tomllib.loads(contents[oid].decode("utf-8-sig"))
+        except (UnicodeDecodeError, tomllib.TOMLDecodeError):
+            # The collection-policy check reports an unreadable pyproject.toml.
+            continue
+        project = document.get("project", {}).get("entry-points", {}).get("pytest11", {})
+        poetry = document.get("tool", {}).get("poetry", {}).get("plugins", {}).get("pytest11", {})
+        for name, value in {**project, **poetry}.items():
+            if isinstance(value, str):
+                # `module:attribute [extra]` imports `module`.
+                entry_points[name] = value.split("[", 1)[0].split(":", 1)[0].strip()
+    return entry_points
+
+
+def session_plugins(repo: Path, files: dict[str, str], policies: dict[str, str]) -> set[str]:
+    """Modules pytest loads into every session although no test or conftest imports them.
+
+    These are plugins named by ``-p`` in ``addopts`` and the project's own ``pytest11`` entry points.
+    pytest skips an entry point whose name ``-p no:NAME`` blocks, or every entry point not named by
+    ``-p`` under ``--disable-plugin-autoload``. Which configuration pytest picks depends on how it
+    is invoked, so an entry point is dropped only when every configuration disables it.
+    """
+    options = plugin_options(policies) or [PluginOptions()]
+    modules = command_line_plugins(policies)
+    for name, module in pytest11_entry_points(repo, files).items():
+        if any(name in option.loaded or (option.autoload and name not in option.blocked) for option in options):
+            modules.add(module)
+    return modules
 
 
 def _setting_values(policy: object, key: str) -> list[str | list[object]]:
@@ -369,6 +445,18 @@ def parse_source(source: bytes) -> ParsedSource:
             for alias in statement.names:
                 aliases[alias.asname or alias.name] = f"{statement.module}.{alias.name}"
     local_functions = {node.name for node in nodes if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    # A path joined to a function parameter (pytest's tmp_path, say) is a runtime location, not the repository.
+    parameters = {
+        argument.arg
+        for node in nodes
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda))
+        for argument in (
+            *node.args.posonlyargs,
+            *node.args.args,
+            *node.args.kwonlyargs,
+            *filter(None, (node.args.vararg, node.args.kwarg)),
+        )
+    }
     for node in nodes:
         if isinstance(node, ast.Constant) and isinstance(node.value, str) and node is not registration:
             if is_module_string(node.value):
@@ -410,14 +498,7 @@ def parse_source(source: bytes) -> ParsedSource:
             continue
         if qualified in {"open", "builtins.open", "io.open"} or name in {"read_text", "read_bytes"}:
             # The path may be an argument (open("x")) or part of the receiver (Path("x").read_text()).
-            read_paths.update(
-                literal.value
-                for literal in ast.walk(node)
-                if isinstance(literal, ast.Constant)
-                and isinstance(literal.value, str)
-                and 0 < len(literal.value) < 300
-                and "\n" not in literal.value
-            )
+            read_paths.update(_read_call_literals(node, parameters))
         if (
             (name in OPAQUE_CALLS or subprocess_run)
             and not is_ast_walk
@@ -464,6 +545,43 @@ def literal_read_targets(reader: str, literal: str, files: dict[str, str]) -> se
         if normalized != reader and normalized in files:
             found.add(normalized)
     return found
+
+
+def _path_root(expression: ast.expr) -> ast.expr:
+    """The base of a path expression: ``tmp_path`` in ``(tmp_path / "a").joinpath("b")``."""
+    while True:
+        if isinstance(expression, ast.BinOp) and isinstance(expression.op, ast.Div):
+            expression = expression.left
+        elif isinstance(expression, ast.Call) and isinstance(expression.func, ast.Attribute):
+            expression = expression.func.value
+        elif isinstance(expression, ast.Attribute):
+            expression = expression.value
+        else:
+            return expression
+
+
+def _read_call_literals(call: ast.Call, parameters: set[str]) -> set[str]:
+    """String literals a read call may name as a path, except those joined to a function parameter."""
+    excluded: set[int] = set()
+    for part in ast.walk(call):
+        if part is call or not isinstance(part, (ast.BinOp, ast.Call)):
+            continue
+        root = _path_root(part)
+        if isinstance(root, ast.Name) and root.id in parameters:
+            excluded.update(id(inner) for inner in ast.walk(part))
+    # The read call's own receiver chain, as in tmp_path.joinpath("x").read_text().
+    root = _path_root(call.func.value) if isinstance(call.func, ast.Attribute) else None
+    if isinstance(root, ast.Name) and root.id in parameters:
+        excluded.update(id(inner) for inner in ast.walk(call.func.value))
+    return {
+        literal.value
+        for literal in ast.walk(call)
+        if id(literal) not in excluded
+        and isinstance(literal, ast.Constant)
+        and isinstance(literal.value, str)
+        and 0 < len(literal.value) < 300
+        and "\n" not in literal.value
+    }
 
 
 def _literal_exports(tree: ast.Module) -> set[str]:
@@ -581,7 +699,9 @@ class GraphCache:
         except ValueError:
             # The collection-policy check below reports an unreadable configuration.
             policies = {}
-        snapshot = resolve_graph(tree, files, parsed, config, git_tree.links, deferred, command_line_plugins(policies))
+        snapshot = resolve_graph(
+            tree, files, parsed, config, git_tree.links, deferred, session_plugins(repo, files, policies)
+        )
         add_sidecar_edges(repo, tree, files, snapshot)
         # Declaration errors are actionable authoring failures, even when the
         # same tree also needs a collection-policy review/full-suite fallback.
@@ -814,7 +934,7 @@ def resolve_graph(
     config: ImpactConfig,
     links: list[str],
     deferred: list[DeferredRoute] | None = None,
-    plugins_from_options: set[str] | None = None,
+    plugins_from_session: set[str] | None = None,
 ) -> Snapshot:
     python_files = {path for path in files if path.endswith(".py")}
     index = ModuleIndex(python_files, config.module_roots, links)
@@ -897,8 +1017,9 @@ def resolve_graph(
 
     conftests = {path for path in python_files if PurePosixPath(path).name == "conftest.py"}
     globals_set = plugins | global_module_files(index, config)
-    # `-p NAME` in addopts loads the plugin into every session, as a global module does.
-    for name in plugins_from_options or ():
+    # `-p NAME` in addopts and the project's pytest11 entry points load into every session, as a
+    # global module does. A name that resolves to no tracked module (a third-party plugin) adds nothing.
+    for name in plugins_from_session or ():
         globals_set |= index.resolve(name)
     # Registration affects the whole session, including when a test module
     # loads the plugin. Follow nested declarations and retain the owner so
