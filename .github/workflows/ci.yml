@@ -6,8 +6,6 @@ on:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
   workflow_call:
-  schedule:
-    - cron: '13 3 * * 1'
 permissions:
   contents: read
 concurrency:
