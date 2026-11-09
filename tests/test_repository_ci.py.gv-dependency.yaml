@@ -1,0 +1,7 @@
+dependencies:
+  - inputs:
+      - "//tests/test_tutorial.py"
+      - "//tests/testing/test_pytest_plugin.py"
+      - "//tests/testing/test_working_tree.py"
+    kind: content
+    reason: "Copies each subprocess reader's source into a fixture repository to check its declarations; never imports it."

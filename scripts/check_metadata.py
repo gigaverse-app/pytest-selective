@@ -1,4 +1,5 @@
 """Prove both release archives contain the current package README as their description."""
+# gv:test-dependency: README.md
 
 import email.policy
 import tarfile
