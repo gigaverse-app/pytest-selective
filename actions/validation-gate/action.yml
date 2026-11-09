@@ -1,0 +1,32 @@
+name: Validate selected CI
+description: Fail unless every prerequisite succeeded or a successful lane plan skipped it; use as the one required check.
+inputs:
+  needs:
+    description: The gate job's direct prerequisites, serialized with the toJSON function applied to the needs context.
+    required: true
+  planner:
+    description: The prerequisite job that ran plan-lanes. Its failure fails the gate.
+    default: select-tests
+  lane-jobs:
+    description: >-
+      JSON object mapping each lane-gated job to the lanes that admit it, for example
+      '{"tests":["tests"],"build":["package"]}'. A mapped job may be skipped only when the
+      planner succeeded and every listed lane is false. Every unmapped prerequisite must succeed.
+    default: '{}'
+  lanes:
+    description: The planner's JSON lane map. Empty reads the planner job's `lanes` output from `needs`.
+    default: ''
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        VALIDATION_NEEDS: ${{ inputs.needs }}
+        VALIDATION_PLANNER: ${{ inputs.planner }}
+        VALIDATION_LANE_JOBS: ${{ inputs.lane-jobs }}
+        VALIDATION_LANES: ${{ inputs.lanes }}
+        GATE: ${{ github.action_path }}/../../src/pytest_selective/gate.py
+      run: |
+        # Standard library only, so no Python packages are installed for the gate.
+        python="$(command -v python3 || command -v python)"
+        "$python" "$GATE"

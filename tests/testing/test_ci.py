@@ -44,6 +44,30 @@ def test_changes_select_complete_affected_lanes(repository, path, content, expec
     assert plan(repo, config, base, commit(repo)).lanes == expected
 
 
+def test_a_lane_root_can_be_a_single_test_file(repository):
+    repo, config, base = repository
+    config.lanes = {
+        "unit": Lane(roots=["tests/unit/test_value.py"]),
+        "live": Lane(roots=["tests/live/test_other.py"]),
+    }
+    write(repo, "src/sample/value.py", "VALUE = 2")
+    assert plan(repo, config, base, commit(repo)).lanes == {"unit": True, "live": False}
+
+
+def test_overlapping_lane_roots_select_every_lane_holding_an_affected_test(repository):
+    # A benchmark lane over a subset of the test lane's files runs only when one of them is affected.
+    repo, config, base = repository
+    write(repo, "tests/unit/bench/test_speed.py", "from sample.value import VALUE\ndef test_speed(): assert VALUE")
+    write(repo, "tests/unit/test_plain.py", "def test_plain(): pass")
+    base = commit(repo)
+    config.lanes = {"unit": Lane(roots=["tests/unit"]), "bench": Lane(roots=["tests/unit/bench"])}
+    write(repo, "src/sample/value.py", "VALUE = 2")
+    source = commit(repo)
+    assert plan(repo, config, base, source).lanes == {"unit": True, "bench": True}
+    write(repo, "tests/unit/test_plain.py", "def test_plain(): assert True")
+    assert plan(repo, config, source, commit(repo)).lanes == {"unit": True, "bench": False}
+
+
 def test_missing_base_and_explicit_checkpoints_run_every_lane(repository):
     repo, config, base = repository
     fallback = plan(repo, config, "missing-ref", base)

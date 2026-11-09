@@ -37,6 +37,11 @@ ROOT = Path(__file__).resolve().parents[1]
         ("documentation/requirements.txt", False, False, False),
         ("documentation/requirements.in", False, False, False),
         ("mkdocs.yml", False, False, False),
+        # The one-prompt agent setup and llms.txt are published documentation.
+        ("skills/pytest-selective/SKILL.md", False, False, False),
+        ("documentation/llms.txt", False, False, False),
+        ("documentation/check_site.py", False, False, False),
+        ("actions/validation-gate/action.yml", True, True, True),
         (".github/dependabot.yml", False, False, False),
         (".github/pull_request_template.md", False, False, False),
         (".github/workflows/observe-ci.yml", False, False, False),

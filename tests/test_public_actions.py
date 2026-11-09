@@ -32,3 +32,13 @@ def test_root_action_forwards_the_complete_contract_at_the_same_revision():
         key: {"description": value["description"], "value": "${{ steps.action.outputs." + key + " }}"}
         for key, value in original.get("outputs", {}).items()
     }
+
+
+@pytest.mark.parametrize("source", SOURCES, ids=lambda p: p.parent.name)
+def test_metadata_text_has_no_expressions_the_runner_would_evaluate(source):
+    # The runner evaluates `${{ }}` while loading action.yml, even in descriptions; `needs` is
+    # undefined there, so the action fails to load (validation-gate's first CI run).
+    action = yaml.safe_load(source.read_text())
+    for kind in ("inputs", "outputs"):
+        for name, spec in (action.get(kind) or {}).items():
+            assert "${{" not in spec.get("description", ""), (kind, name)

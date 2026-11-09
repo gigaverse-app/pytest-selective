@@ -7,6 +7,19 @@ description: Run the tests your Python change can affect.
 
 # Run the tests your Python change can affect.
 
+## Set it up with your coding agent
+
+Give Claude Code, Codex, Cursor or any coding agent in your repository this one prompt:
+
+```text
+Set up pytest-selective in this repository. Fetch https://pytest-selective.readthedocs.io/en/latest/agent-setup.md and follow it.
+```
+
+The agent maps your CI jobs to lanes, adds the planner, a gate and routing tests, proves a docs-only pull request skips the expensive jobs while code changes keep full coverage, measures the difference and opens a pull request. Making the gate a required check, labels and merging stay with you. [Read the procedure it follows](../skills/pytest-selective/SKILL.md),
+or do it by hand with the [whole-lane tutorial](../docs/tutorials/skip-unrelated-ci.md).
+
+## What it does
+
 pytest-selective follows Python dependencies across Git revisions, explains why
 each test was selected, and falls back to full execution when scope cannot be
 established. Use it for the local edit/test loop or to skip entire unrelated CI
