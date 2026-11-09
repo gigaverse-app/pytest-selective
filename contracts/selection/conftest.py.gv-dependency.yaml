@@ -1,0 +1,5 @@
+dependencies:
+  - inputs:
+      - "//contracts/selection/runtime_deps.py"
+    kind: import
+    reason: "The runtime referee, run by path in a subprocess (python -I -B runtime_deps.py) for every history."

@@ -19,9 +19,10 @@ on pytest-selective itself.
 - Planning supports committed revisions and explicit working-tree snapshots. Preserve full execution on
   operational uncertainty and diagnostics for invalid declarations. An empty
   selection is not an empty pytest argument list.
-- Select consumer routing regressions by their declared execution/configuration inputs. Update
-  `.github/test-lanes.json` when adding execution inputs; preserve explicit full/manual
-  checkpoints and the `test:full` override.
+- Select consumer routing regressions by their declared execution/configuration inputs. Declare a
+  file a test or CI script reads by path next to its reader; `.github/test-lanes.json` holds only
+  what CI-esta cannot see in the workflow, and `scripts/check_lane_routing.py` pins the lanes. Preserve
+  explicit full/manual checkpoints and the `test:full` override.
 - The README's performance numbers are scenario-specific observations. Keep
   claims linked to [raw evidence](docs/benchmarks/2026-10-22-routing.md); distinguish
   runner-seconds, elapsed time and billing. Skill/example edits need usable links

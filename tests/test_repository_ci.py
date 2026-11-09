@@ -1,84 +1,83 @@
-"""Exercise this repository's actual routing policy against real Git changes."""
+"""Pin this repository's lane-file overrides and file selection; scripts/check_lane_routing.py pins the lanes."""
 
 # gv:test-dependency: .github/test-lanes.json
+# gv:test-dependency: .github/plan-lanes.json
 # gv:test-dependency: .github/workflows/ci.yml
 # gv:test-dependency: .github/workflows/observe-ci.yml
 # gv:test-dependency: .github/workflows/public-actions.yml
 # gv:test-dependency: .github/workflows/weekly-checkpoint.yml
 
 import json
+import tomllib
 from contextlib import closing
 from pathlib import Path
 
 import pytest
 import yaml
 
-from pytest_selective.ci import LaneConfig, plan
-from pytest_selective.impact_graph import GraphCache
+from pytest_selective.ci import Lane, LaneConfig
+from pytest_selective.impact_graph import GraphCache, matches
 from pytest_selective.impact_selection import affected
 from scripts.ci_file_config import file_config
 from tests.testing.git_repo import commit, init, write
 
 ROOT = Path(__file__).resolve().parents[1]
+# CI plans lanes with CI-esta from the workflow and this file, which extends it.
+LANE_FILE = ROOT / ".github/test-lanes.json"
+# The complete lane file: file selection's graph and global inputs, and public-actions.yml's plan-lanes planner.
+PLAN_LANES = ROOT / ".github/plan-lanes.json"
 
 
-@pytest.mark.parametrize(
-    "path, tests, contracts, package",
-    [
-        ("action.yml", True, True, True),
-        ("actions/plan-lanes/action.yml", True, True, True),
-        ("actions/plan-lanes/helper.py", True, True, True),
-        ("actions/helper.py", True, True, True),
-        ("actions/README.md", False, False, False),
-        # The distributions embed README.md and LICENSE, so only the package lane rebuilds them.
-        ("README.md", False, False, True),
-        ("LICENSE", False, False, True),
-        ("docs/ci.md", False, False, False),
-        ("docs/benchmarks/data.json", False, False, False),
-        # Read the Docs dependencies are not the test environment.
-        ("documentation/requirements.txt", False, False, False),
-        ("documentation/requirements.in", False, False, False),
-        ("mkdocs.yml", False, False, False),
-        # The one-prompt agent setup and llms.txt are published documentation.
-        ("skills/pytest-selective/SKILL.md", False, False, False),
-        ("documentation/llms.txt", False, False, False),
-        ("documentation/check_site.py", False, False, False),
-        ("actions/validation-gate/action.yml", True, True, True),
-        (".github/dependabot.yml", False, False, False),
-        (".github/pull_request_template.md", False, False, False),
-        (".github/workflows/observe-ci.yml", False, False, False),
-        (".github/test-lanes.json", True, True, True),
-        (".github/workflows/release.yml", True, True, True),
-        ("src/sample.py", True, True, True),
-        ("scripts/tutorial.py", True, True, True),
-        ("scripts/smoke_distribution.py", True, True, True),
-        ("pyproject.toml", True, True, True),
-        # The fixture's only test: every graph test is affected by imports, which admits only the
-        # lanes holding graph tests; the package and contract lanes hold none here.
-        ("tests/test_sample.py", True, False, False),
-        ("tests/testing/git_repo.py", True, True, False),
-        ("contracts/selection/selection.qnt", False, True, False),
-        ("contracts/selection/conftest.py", False, True, False),
-        (".github/workflows/ci.yml", True, True, True),
-        ("uv.lock", True, True, True),
-        (".pre-commit-config.yaml", True, True, True),
-        (".python-version", True, True, True),
-    ],
-)
-def test_repository_routes_prose_but_preserves_executable_inputs(tmp_path, path, tests, contracts, package):
-    init(tmp_path)
-    write(tmp_path, "pyproject.toml", (ROOT / "pyproject.toml").read_text())
-    write(tmp_path, "src/sample.py", "VALUE = 1")
-    write(tmp_path, "tests/test_sample.py", "from sample import VALUE\ndef test_value(): assert VALUE")
-    base = commit(tmp_path)
-    write(tmp_path, path, "# changed input\n")
-    head = commit(tmp_path)
-    config = LaneConfig.model_validate_json((ROOT / ".github/test-lanes.json").read_text())
-    result = plan(tmp_path, config, base, head)
-    assert result.lanes == {"tests": tests, "contracts": contracts, "package": package}, result.reason
-    every_lane = {"tests": True, "contracts": True, "package": True}
-    assert plan(tmp_path, config, base, head, full=True).lanes == every_lane
-    assert plan(tmp_path, config, "missing-base", head).lanes == every_lane
+def ci_jobs() -> dict:
+    return yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())["jobs"]
+
+
+def lane_rules() -> dict[str, dict]:
+    return {rule["name"]: rule for rule in json.loads(LANE_FILE.read_text())["rules"]}
+
+
+def test_lane_file_extends_the_workflow_and_names_the_tests_lanes_roots():
+    document = json.loads(LANE_FILE.read_text())
+    assert document["extends"] == "workflow"
+    # The tests lane's jobs run `pytest-selective execute-plan`, which collects pytest's testpaths. CI-esta reads roots
+    # only from pytest commands, so without this override a changed test would reach no lane.
+    testpaths = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["pytest"]["ini_options"]["testpaths"]
+    assert {name: Lane.model_validate(lane).roots for name, lane in document["lanes"].items()} == {"tests": testpaths}
+    jobs = ci_jobs()
+    for name in ("tests", "pytest-minimum"):
+        commands = [step.get("run", "") for step in jobs[name]["steps"]]
+        assert any("pytest-selective execute-plan" in command for command in commands), name
+
+
+def test_python_environment_rule_keeps_the_locked_environment_global_but_not_the_docs_site():
+    rule = lane_rules()["python-environment"]
+    assert rule["select"] == ["all"]
+    graph = LaneConfig.model_validate_json(PLAN_LANES.read_text()).graph
+    assert set(graph.global_inputs) <= set(rule["when"])
+    # Read the Docs dependencies are not the test environment (#70).
+    for path in ("documentation/requirements.txt", "documentation/requirements.in"):
+        assert not matches(path, rule["when"]), path
+
+
+def test_distribution_smoke_rule_follows_the_step_gated_on_the_planned_tests_lane():
+    rule = lane_rules()["distribution-smoke"]
+    steps = {step["run"]: step for step in ci_jobs()["distributions"]["steps"] if "run" in step}
+    smoke = steps["uv run --locked python scripts/smoke_distribution.py"]
+    # The step runs only when the tests lane is planned, so the script that is its only input must plan that lane.
+    assert "fromJSON(needs.select-tests.outputs.planned).tests" in smoke["if"]
+    assert rule["when"] == ["scripts/smoke_distribution.py"]
+    assert rule["select"] == ["lane:tests"]
+
+
+def test_quality_checks_the_lane_routing_and_wiring_with_ci_esta():
+    quality = ci_jobs()["quality"]
+    # Never lane-gated: the routing check runs on every change, including the documentation-only ones it pins.
+    assert "if" not in quality and "needs" not in quality
+    commands = [step.get("run", "") for step in quality["steps"]]
+    routing = next(command for command in commands if "scripts/check_lane_routing.py" in command)
+    assert "ci-esta[selection]>=1.12.0" in routing
+    check = next(command for command in commands if "ci-esta check-workflow" in command)
+    assert "--lanes .github/test-lanes.json" in check
 
 
 def test_distributions_follow_the_package_lane_and_smoke_follows_runtime_selection():
@@ -111,7 +110,7 @@ def test_distributions_follow_the_package_lane_and_smoke_follows_runtime_selecti
         assert "if" not in steps[command], command
 
 
-def test_documentation_only_commit_selects_no_lane_and_no_test_file(tmp_path):
+def test_documentation_only_commit_selects_no_test_file(tmp_path):
     init(tmp_path)
     write(tmp_path, "pyproject.toml", (ROOT / "pyproject.toml").read_text())
     write(tmp_path, "src/sample.py", "VALUE = 1")
@@ -127,10 +126,10 @@ def test_documentation_only_commit_selects_no_lane_and_no_test_file(tmp_path):
     # The package README is embedded in both distributions, so it rebuilds them without running tests.
     write(tmp_path, "README.md", "# changed package description\n")
     readme = commit(tmp_path)
-    lanes = LaneConfig.model_validate_json((ROOT / ".github/test-lanes.json").read_text())
-    assert plan(tmp_path, lanes, base, docs).lanes == dict.fromkeys(lanes.lanes, False)
-    assert plan(tmp_path, lanes, base, readme).lanes == {"tests": False, "contracts": False, "package": True}
+    # The lanes these commits plan are pinned by scripts/check_lane_routing.py.
+    lanes = LaneConfig.model_validate_json(PLAN_LANES.read_text())
     with closing(GraphCache(tmp_path / "cache.sqlite3")) as cache:
+        assert affected(tmp_path, base, docs, file_config(lanes), cache).selected == []
         files = affected(tmp_path, base, readme, file_config(lanes), cache)
     assert files.selected == [], files.reasons
 
@@ -158,8 +157,15 @@ def test_pytest_jobs_consume_the_public_actions_shared_file_plan():
     assert observer["jobs"]["report"]["with"]["test-selection-artifact"] == "test-impact-explanation"
 
 
-@pytest.mark.parametrize("name", ["ci.yml", "public-actions.yml"])
-def test_self_adoption_keeps_weekly_full_checkpoints(name):
+@pytest.mark.parametrize(
+    "name, planner",
+    [
+        ("ci.yml", "gigaverse-app/ci-esta/actions/plan-work@v1"),
+        # The public action smoke plans with the repository's own plan-lanes action, selectively on every change.
+        ("public-actions.yml", "./actions/plan-lanes"),
+    ],
+)
+def test_self_adoption_keeps_weekly_full_checkpoints(name, planner):
     workflow = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())
     assert "workflow_dispatch" in workflow[True]
     assert "schedule" not in workflow[True]
@@ -171,8 +177,7 @@ def test_self_adoption_keeps_weekly_full_checkpoints(name):
     action = checkpoint["jobs"]["dispatch"]["steps"][0]
     assert action["uses"] == "gigaverse-app/ci-esta/actions/weekly-checkpoint@v1"
     assert name in json.loads(action["with"]["workflows"])
-    planner = workflow["jobs"]["select-tests"]
-    selection = next(step for step in planner["steps"] if step.get("uses") == "./actions/plan-lanes")
+    selection = next(step for step in workflow["jobs"]["select-tests"]["steps"] if step.get("uses") == planner)
     assert selection.get("with", {}).get("full", "auto") == "auto"
 
 
@@ -207,7 +212,7 @@ def test_repository_file_plan_skips_docs_and_follows_imports(tmp_path, path, exp
     base = commit(tmp_path)
     write(tmp_path, path, "# changed input\n")
     head = commit(tmp_path)
-    lanes = LaneConfig.model_validate_json((ROOT / ".github/test-lanes.json").read_text())
+    lanes = LaneConfig.model_validate_json(PLAN_LANES.read_text())
     with closing(GraphCache(tmp_path / "cache.sqlite3")) as cache:
         result = affected(tmp_path, base, head, file_config(lanes), cache)
     assert result.selected == expected, result.reasons
@@ -230,7 +235,7 @@ def test_subprocess_plugin_readers_declare_their_runtime(tmp_path, reader):
     # The CLI the readers run in a subprocess. The plugin itself reaches every test (below).
     write(tmp_path, "src/pytest_selective/__main__.py", "VALUE = 2")
     head = commit(tmp_path)
-    lanes = LaneConfig.model_validate_json((ROOT / ".github/test-lanes.json").read_text())
+    lanes = LaneConfig.model_validate_json(PLAN_LANES.read_text())
     with closing(GraphCache(tmp_path / "cache.sqlite3")) as cache:
         result = affected(tmp_path, base, head, file_config(lanes), cache)
     assert result.selected == [reader], result.reasons
@@ -247,7 +252,7 @@ def test_the_repositorys_own_pytest_plugin_reaches_every_test(tmp_path):
     base = commit(tmp_path)
     write(tmp_path, "src/pytest_selective/plugin.py", "VALUE = 2")
     head = commit(tmp_path)
-    lanes = LaneConfig.model_validate_json((ROOT / ".github/test-lanes.json").read_text())
+    lanes = LaneConfig.model_validate_json(PLAN_LANES.read_text())
     with closing(GraphCache(tmp_path / "cache.sqlite3")) as cache:
         result = affected(tmp_path, base, head, file_config(lanes), cache)
     assert result.selected == ["tests/test_unrelated.py"], result.reasons

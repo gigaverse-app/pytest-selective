@@ -1,0 +1,6 @@
+dependencies:
+  - inputs:
+      - "//contracts/selection/quint-connect.json"
+      - "//contracts/selection/selection.qnt"
+    kind: content
+    reason: "quint_contract() reads the contract file, which names the Quint model it runs."
