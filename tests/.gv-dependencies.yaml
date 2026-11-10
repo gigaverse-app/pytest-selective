@@ -1,0 +1,24 @@
+# Keep reader lists explicit: shared ownership must not widen dependency selection.
+dependencies:
+  - readers:
+      - test_ci_admission.py
+      - test_release_workflow.py
+    inputs:
+      - //.github/workflows/**
+    kind: content
+    reason: Checks workflow command admission and permissions granted to reusable workflows.
+  - readers:
+      - test_repository_ci.py
+    inputs:
+      - //tests/test_tutorial.py
+      - //tests/testing/test_pytest_plugin.py
+      - //tests/testing/test_working_tree.py
+    kind: content
+    reason: Copies each subprocess reader's source into a fixture repository to check its declarations; never imports
+      it.
+  - readers:
+      - test_repository_hygiene.py
+    inputs:
+      - //tests/**/*.py
+    kind: content
+    reason: The isolation check reads test source without executing its imports.

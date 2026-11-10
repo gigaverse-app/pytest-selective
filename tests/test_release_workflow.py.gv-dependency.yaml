@@ -1,5 +1,0 @@
-dependencies:
-  - inputs:
-      - "//.github/workflows/**"
-    kind: content
-    reason: "Finds every workflow that calls a reusable workflow, to check the permissions it grants."
