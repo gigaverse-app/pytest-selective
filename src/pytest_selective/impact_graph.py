@@ -888,6 +888,7 @@ class ModuleIndex:
         self.packages: dict[str, set[str]] = {}
         self.names: dict[str, set[str]] = {}
         self.initializers: dict[str, set[str]] = {}
+        self._resolved: dict[str, frozenset[str]] = {}
         for path in python_files:
             for root in roots:
                 if not within(path, root):
@@ -902,12 +903,15 @@ class ModuleIndex:
                 self.names.setdefault(path, set()).add(dotted)
                 # Naming a module does not import a same-named module in another root.
                 # Only its physical package ancestors execute with this file.
-                for parent in source.parents:
-                    if parent.as_posix() == ".":
-                        continue
-                    initializer = (PurePosixPath(root) / parent / "__init__.py").as_posix()
+                # Git paths are POSIX paths. Walk the physical directories once,
+                # without constructing Path objects for every ancestor.
+                directory = relative.rpartition("/")[0]
+                root_prefix = "" if root == "." else root.rstrip("/") + "/"
+                while directory:
+                    initializer = root_prefix + directory + "/__init__.py"
                     if initializer in python_files:
                         self.initializers.setdefault(path, set()).add(initializer)
+                    directory = directory.rpartition("/")[0]
 
         self.linked_modules = {
             normalized_name((link if root == "." else link[len(root.rstrip("/")) + 1 :]).replace("/", "."))
@@ -920,11 +924,14 @@ class ModuleIndex:
         # Union ambiguous roots/self.modules conservatively. Ancestor initializers
         # execute for every submodule import, even when never named explicitly.
         normalized = normalized_name(candidate)
+        if normalized in self._resolved:
+            return set(self._resolved[normalized])
         if within_modules(normalized, self.linked_modules):
             raise ValueError(f"import through unsupported Git symlink: {candidate}")
         result: set[str] = set()
         for prefix in module_prefixes(normalized):
             result.update(self.modules.get(prefix, ()))
+        self._resolved[normalized] = frozenset(result)
         return result
 
 
@@ -1074,10 +1081,10 @@ def resolve_graph(
                 if name not in index.modules:
                     unresolved[owner] = sorted(set(unresolved.get(owner, [])) | {name})
                 pending.extend(targets)
+    conftest_parents = {path: str(PurePosixPath(path).parent) for path in conftests}
     for test in tests:
         edges[test].update(globals_set - {test})
-        for conftest in conftests:
-            parent = str(PurePosixPath(conftest).parent)
+        for conftest, parent in conftest_parents.items():
             if within(test, parent):
                 edges[test].add(conftest)
     return Snapshot(
