@@ -194,7 +194,7 @@ def affected(
         if module.file not in changed:
             continue
         try:
-            scoped = narrow_name_scoped_change(repo, (before, after), config, module)
+            scoped = narrow_name_scoped_change(repo, (before, after), config, module, cache)
         except NotNarrowed as error:
             reasons.append(f"{module.file} not narrowed: {error}; every file that loads it stays selected")
         else:
