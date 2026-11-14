@@ -1,4 +1,5 @@
 # gv:test-dependency: actions/test-impact/action.yml
+import json
 import os
 import shlex
 import shutil
@@ -328,6 +329,32 @@ def test_cli_writes_the_explanation_of_the_selection_it_reports(
     explanation = SelectionExplanation.model_validate_json(explanation_path.read_text())
     assert explanation.selected == len(report.selected)
     assert (explanation.base, explanation.head) == (report.base, report.head)
+
+
+def test_cli_timing_covers_both_candidates_and_explanation_without_changing_selection(
+    repo: Path, config: ImpactConfig, tmp_path: Path
+) -> None:
+    base = commit(repo)
+    write(repo, "src/app/leaf.py", "VALUE = 2\n")
+    alternate = commit(repo)
+    write(repo, "src/app/helper.py", "HELP = 2\n")
+    head = commit(repo)
+    status, report_path, _ = run_affected(repo, config, tmp_path, base, head, "--alternate-base", alternate)
+    assert status == 0
+    expected = ImpactReport.model_validate_json(report_path.read_text()).selected
+    timings = tmp_path / "timings.json"
+    status, report_path, _ = run_affected(
+        repo, config, tmp_path, base, head, "--alternate-base", alternate, "--timings-output", str(timings)
+    )
+    assert status == 0
+    assert ImpactReport.model_validate_json(report_path.read_text()).selected == expected
+    measured = json.loads(timings.read_text())
+    phases = measured["phases_seconds"]
+    assert phases["primary_selection"] > 0
+    assert phases["alternate_selection"] > 0
+    assert phases["explanation"] > 0
+    assert phases["cache_close"] > 0
+    assert sum(phases.values()) == pytest.approx(measured["elapsed_seconds"])
 
 
 @pytest.mark.parametrize("full", [False, True], ids=["selected", "requested"])

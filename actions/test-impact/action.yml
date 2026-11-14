@@ -100,6 +100,12 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Start whole-action timing
+      id: timing-start
+      shell: bash
+      run: |
+        echo "started=$(python3 -c 'import time; print(time.monotonic())')" >> "$GITHUB_OUTPUT"
+        rm -f test-impact-cli-timings.json test-impact-timings.json
     - uses: astral-sh/setup-uv@v10.0.1
       with:
         enable-cache: false
@@ -164,6 +170,7 @@ runs:
         args=(affected --config "$IMPACT_CONFIG" --base "$IMPACT_BASE" --head "$IMPACT_HEAD"
               --max-shards "$IMPACT_SHARDS" --minimum-files "$IMPACT_MINIMUM" --github-output "$GITHUB_OUTPUT" --output test-impact-report.json
               --durations "$IMPACT_DURATIONS" --shard-seconds "$IMPACT_SHARD_SECONDS"
+              --timings-output test-impact-cli-timings.json
               --explanation-output test-impact-explanation.json --explanation-format "${IMPACT_EXPLANATION_FORMAT:-1}")
         # A reused workspace must not upload a previous plan's explanation.
         rm -f test-impact-explanation.json
@@ -183,7 +190,7 @@ runs:
         import json, os
         from pathlib import Path
         report = json.loads(Path("test-impact-report.json").read_text())
-        summary = f"Test impact: {len(report['selected'])}/{report['total_files']} files; {report['mode']}; {report['elapsed_seconds']:.2f}s planning"
+        summary = f"Test impact: {len(report['selected'])}/{report['total_files']} files; {report['mode']}; {report['elapsed_seconds']:.2f}s selected-base analysis"
         print(summary)
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
             output.write(summary + "\n")
@@ -238,3 +245,29 @@ runs:
         uv run --no-project --python 3.14 --with pydantic==2.13.4 --with pyyaml==6.0.3 \
           python -m pytest_selective.impact_cli floor-budget \
           --config "$IMPACT_CONFIG" --explanation test-impact-explanation.json
+    - name: Report complete planning duration
+      if: ${{ always() }}
+      continue-on-error: true
+      shell: bash
+      env:
+        IMPACT_STARTED: ${{ steps.timing-start.outputs.started }}
+      run: |
+        python3 - <<'PY'
+        import json, os, time
+        from pathlib import Path
+        elapsed = time.monotonic() - float(os.environ["IMPACT_STARTED"])
+        cli_path = Path("test-impact-cli-timings.json")
+        cli = json.loads(cli_path.read_text()) if cli_path.exists() else None
+        report = {"action_elapsed_seconds": elapsed, "cli": cli}
+        if cli is not None:
+            report["outside_cli_seconds"] = elapsed - cli["elapsed_seconds"]
+        Path("test-impact-timings.json").write_text(json.dumps(report) + "\n")
+        print("Test impact timing: " + json.dumps(report))
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
+            output.write(f"\nComplete test-impact action: **{elapsed:.2f}s** (setup, restore, fetch, planning, explanation upload, cache save, floor check).\n")
+            if cli is not None:
+                output.write(f"CLI total: {cli['elapsed_seconds']:.2f}s; outside CLI: {report['outside_cli_seconds']:.2f}s.\n\n")
+                output.write("| CLI phase | Seconds |\n|---|---:|\n")
+                for name, seconds in cli["phases_seconds"].items():
+                    output.write(f"| {name} | {seconds:.3f} |\n")
+        PY
