@@ -103,15 +103,29 @@ runs:
     - uses: astral-sh/setup-uv@v10.0.1
       with:
         enable-cache: false
+    - name: Resolve graph cache identity
+      id: cache-keys
+      continue-on-error: true
+      shell: bash
+      env:
+        IMPACT_HEAD: ${{ inputs.head }}
+        IMPACT_BASE: ${{ inputs.base }}
+        IMPACT_ALTERNATE_BASE: ${{ inputs.alternate-base }}
+        IMPACT_GRAPH_BASE: ${{ inputs.graph-base }}
+        IMPACT_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        SHARED_ACTION_PATH: ${{ github.action_path }}
+      run: |
+        export PYTHONPATH="$SHARED_ACTION_PATH/../../src${PYTHONPATH:+:$PYTHONPATH}"
+        python3 -m pytest_selective.action_cache
     - name: Restore parsed imports and resolved graphs
       id: graph-cache
+      if: ${{ steps.cache-keys.outputs.key != '' }}
       continue-on-error: true
       uses: actions/cache/restore@v5
       with:
         path: .test-impact
-        key: test-impact-v1-${{ runner.os }}-${{ github.sha }}-${{ github.run_attempt }}
-        restore-keys: |
-          test-impact-v1-${{ runner.os }}-
+        key: ${{ steps.cache-keys.outputs.key }}
+        restore-keys: ${{ steps.cache-keys.outputs.restore-keys }}
     - name: Select affected files
       id: select
       shell: bash
@@ -205,12 +219,12 @@ runs:
         overwrite: true
         retention-days: 7
     - name: Save graph cache
-      if: ${{ steps.graph-cache.outputs.cache-hit != 'true' && hashFiles('.test-impact/cache.sqlite3') != '' }}
+      if: ${{ steps.cache-keys.outputs.key != '' && steps.graph-cache.outputs.cache-hit != 'true' && hashFiles('.test-impact/cache.sqlite3') != '' }}
       continue-on-error: true
       uses: actions/cache/save@v5
       with:
         path: .test-impact
-        key: test-impact-v1-${{ runner.os }}-${{ github.sha }}-${{ github.run_attempt }}
+        key: ${{ steps.cache-keys.outputs.key }}
     # Last, so a failure here costs neither the explanation upload nor the cache: it fails the plan
     # when this PR grows the startup floor past the config's `floor_budget` (no budget, no check).
     - name: Check the startup-floor budget
