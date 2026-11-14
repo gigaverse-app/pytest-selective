@@ -208,3 +208,18 @@ globs. Their complete contents are fingerprinted, and plugin references prevent
 unsafe dependency-pin narrowing. Missing declared files cannot prove selection.
 Keep environment options, dynamically generated configuration and files outside
 the repository covered by explicit whole-lane inputs/full execution.
+
+## Analysis cache
+
+The graph cache also stores source analysis for `name_scoped_modules`. It reuses
+whether a file reads the changed names, accesses the configured settings object,
+or reads names dynamically. Records are keyed by the Git blob, analyzer and Python
+versions, changed names, module path and resolved names, accessors, and importer
+packages. Changing any of those inputs recomputes the affected records. Dependency
+declarations and reachability still use the current snapshots and configuration.
+
+Records survive cache restore and process restart. Missing, damaged or malformed
+records are recomputed from Git. Closing the cache retains at most 10,000 of these
+records, separately from parsed-source and graph retention. Deleting the cache
+changes performance only. Within a process, up to four module indexes are reused
+when their complete file inventories, roots and symlinks match.

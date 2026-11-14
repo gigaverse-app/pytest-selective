@@ -7,13 +7,15 @@ every test when the module is global. A `NameScopedModule` declares that its rea
 names they read. A change that only rebinds names then selects the files that read those names; anything
 the selector cannot prove keeps the module's ordinary edges.
 
-Design and limits: docs/technical-design/test-impact.md#name-scoped-modules.
+Cache behavior: docs/configuration.md#analysis-cache.
 """
 
 import ast
 import difflib
 import fnmatch
+import hashlib
 import io
+import json
 import re
 import tokenize
 from collections.abc import Iterable, Mapping
@@ -21,15 +23,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from pydantic import BaseModel
+
 from pytest_selective.ast_imports import import_candidates, iter_imports, parse_ast
 from pytest_selective.ast_imports import normalized_name as _casefold
 from pytest_selective.impact_declarations import SIDECAR_SUFFIX, match_inputs
 from pytest_selective.impact_graph import (
-    ModuleIndex,
+    GraphCache,
+    _cache_prefix,
     blobs,
     contents_node,
     inventory,
     matches,
+    module_index,
     reachable,
     read_sources,
     reverse_edges,
@@ -401,28 +407,16 @@ def _routed(config: ImpactConfig, module: NameScopedModule) -> dict[str, list[st
     return routed
 
 
-def _readers_of_every_name(
-    repo: Path, snapshot: Snapshot, sources: Mapping[str, bytes], config: ImpactConfig, module: NameScopedModule
-) -> set[str]:
+def _declared_name_readers(repo: Path, snapshot: Snapshot, config: ImpactConfig, module: NameScopedModule) -> set[str]:
     """
-    Files that read the module other than name by name, so every change to it reaches them.
+    Readers that declare the whole module by path or read its contents.
 
-    That is a file that reads names without naming them (`reads_unnamed`), reads the file's contents, or
-    declares the file by path, inline, in a sidecar or in a dependency rule. A string that names the
-    module for a framework to load is not such a read; what the framework then reads is
-    ``external_names``.
+    These depend on the current snapshot and configuration, independently of
+    the cached source facts. Framework module strings use ``external_names``.
     """
-    index = ModuleIndex(set(sources), config.module_roots, inventory(repo, snapshot.tree).links)
-    modules = index.names.get(module.file, set())
     contents = contents_node(module.file)
     path = module.file.encode()
     readers = {reader for reader, dependencies in snapshot.edges.items() if contents in dependencies}
-    for reader, source in sources.items():
-        if reader == module.file:
-            continue
-        packages = index.packages.get(reader, {""})
-        if path in source or reads_unnamed(source, module.accessors, modules, packages):
-            readers.add(reader)
     sidecars = {test + SIDECAR_SUFFIX: test for test in snapshot.tests}
     sidecar_oids = {name: snapshot.files[name] for name in sidecars if name in snapshot.files}
     if sidecar_oids:
@@ -439,6 +433,72 @@ def _readers_of_every_name(
     return readers
 
 
+class SourceNameReads(BaseModel):
+    """Content-derived reads for one module, changed-name set and importer package."""
+
+    named: bool
+    accessor: bool
+    unnamed: bool
+
+
+def _source_name_reads(
+    repo: Path,
+    snapshot: Snapshot,
+    config: ImpactConfig,
+    module: NameScopedModule,
+    names: set[str],
+    cache: GraphCache,
+) -> dict[str, SourceNameReads]:
+    python_files = {path for path in snapshot.files if path.endswith(".py") and path != module.file}
+    index = module_index(python_files | {module.file}, config.module_roots, inventory(repo, snapshot.tree).links)
+    modules = index.names.get(module.file, set())
+    signature = hashlib.sha256(
+        json.dumps(
+            [
+                module.file,
+                module.accessors,
+                sorted(modules),
+                sorted(names),
+            ]
+        ).encode()
+    ).hexdigest()
+    prefix = f"{_cache_prefix()}name-scope:{signature}:"
+    keys = {
+        path: prefix + json.dumps(sorted(index.packages.get(path, {""}))) + ":" + snapshot.files[path]
+        for path in python_files
+    }
+    facts: dict[str, SourceNameReads] = {}
+    missing: dict[str, str] = {}
+    for path, key in keys.items():
+        if key in facts or key in missing:
+            continue
+        raw = cache.get(key)
+        if raw is not None:
+            try:
+                facts[key] = SourceNameReads.model_validate_json(raw)
+                continue
+            except ValueError:
+                pass
+        missing[key] = path
+    sources = read_sources(repo, snapshot.files, set(missing.values())) if missing else {}
+    named = named_readers(sources, names, exclude=module.file)
+    for key, path in missing.items():
+        source = sources[path]
+        facts[key] = SourceNameReads(
+            named=path in named,
+            accessor=_may_bind(source, module.accessors),
+            unnamed=module.file.encode() in source
+            or reads_unnamed(
+                source,
+                module.accessors,
+                modules,
+                index.packages.get(path, {""}),
+            ),
+        )
+        cache.put(key, facts[key].model_dump_json())
+    return {path: facts[key] for path, key in keys.items()}
+
+
 @dataclass(frozen=True)
 class Narrowed:
     """The files a proven change to a name-scoped module reaches, and why."""
@@ -448,7 +508,7 @@ class Narrowed:
 
 
 def narrow_name_scoped_change(
-    repo: Path, snapshots: tuple[Snapshot, Snapshot], config: ImpactConfig, module: NameScopedModule
+    repo: Path, snapshots: tuple[Snapshot, Snapshot], config: ImpactConfig, module: NameScopedModule, cache: GraphCache
 ) -> Narrowed:
     """
     Replace a change to a name-scoped module with the files that read what it changed.
@@ -472,15 +532,14 @@ def narrow_name_scoped_change(
     dependents = reachable(reverse_edges(union_edges(*snapshots)), seed_nodes([module.file]))
     readers: set[str] = set()
     for snapshot in snapshots:
-        sources = read_sources(repo, snapshot.files, {path for path in snapshot.files if path.endswith(".py")})
-        loaders = {
-            path: source
-            for path, source in sources.items()
-            if path in dependents or _may_bind(source, module.accessors)
+        facts = _source_name_reads(repo, snapshot, config, module, names, cache)
+        readers |= {
+            path
+            for path, fact in facts.items()
+            if fact.unnamed or (fact.named and (path in dependents or fact.accessor))
         }
-        readers |= named_readers(loaders, names, exclude=module.file)
-        readers |= _readers_of_every_name(repo, snapshot, sources, config, module)
-        python_files = set(sources)
+        readers |= _declared_name_readers(repo, snapshot, config, module)
+        python_files = set(facts) | {module.file}
         for name in names & set(routed):
             for pattern in routed[name]:
                 readers |= match_inputs(pattern, python_files, f"{snapshot.tree}:name_scoped_modules")
