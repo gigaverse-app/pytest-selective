@@ -48,7 +48,7 @@ def git(repo: Path, *args: str, data: bytes | None = None, index: Path | None = 
 
 def fetch_missing_objects(repo: Path, ids: set[str]) -> None:
     """Amortize promisor transport setup; native lazy fetching remains the fallback."""
-    if os.environ.get("GIT_NO_LAZY_FETCH") == "1":
+    if os.environ.get("GIT_NO_LAZY_FETCH", "0").lower() not in {"0", "false", "no", "off", ""}:
         return
     try:
         remotes = git(repo, "config", "--null", "--type=bool", "--get-regexp", r"^remote\..*\.promisor$")

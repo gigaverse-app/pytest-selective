@@ -311,6 +311,17 @@ possible target. Use qualified imports to make independent demo modules
 unambiguous; selection does not guess a runtime import order.
 # Graph cache restoration
 
+On partial clones (`filter: blob:none`), cached graphs can still require historical
+source blobs for name-level analysis. Missing blobs are fetched together from a
+configured promisor remote instead of opening one network request per file.
+Only requested objects are fetched. Git's native lazy-fetch path remains the
+fallback when the batch cannot be fetched, and unavailable objects still prevent
+a selective proof. `GIT_NO_LAZY_FETCH` remains respected.
+
+When measuring planning, start both versions from the same graph-cache contents
+and fresh Git clones of the same revision. Do not prefetch historical blobs before
+starting the timer: that excludes work the production action has to perform.
+
 The test-impact action saves its disposable graph cache under the analyzed `head`,
 runner OS, Python 3.14 runtime and workflow ref. Restores prefer that head and
 previous work on the same PR, then exact base revisions from the default branch.
