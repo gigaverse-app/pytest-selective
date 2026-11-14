@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.5.1...v1.6.0) (2026-11-14)
+
+
+### Features
+
+* **ci:** report complete planning and candidate timings ([#149](https://github.com/gigaverse-app/pytest-selective/issues/149)) ([64416b7](https://github.com/gigaverse-app/pytest-selective/commit/64416b7615aaf5d49495caedc8a1453d6f5910ac))
+
+
+### Bug fixes
+
+* **ci:** restore graph caches by analyzed revision ([#148](https://github.com/gigaverse-app/pytest-selective/issues/148)) ([4215ee0](https://github.com/gigaverse-app/pytest-selective/commit/4215ee0fc74d04d5a05f0d5e65b073bba243086d))
+
 ## [1.5.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.5.0...v1.5.1) (2026-11-14)
 
 
