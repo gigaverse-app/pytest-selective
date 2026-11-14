@@ -1,8 +1,8 @@
 """
 Import graphs from immutable Git trees; no imports execute during planning.
 
-Blob parsing and resolved graphs have distinct cache keys. Every new tree
-resolves all saved candidates again, including previously unresolved names.
+Blob parsing and resolved graphs have distinct cache keys. A new inventory
+invalidates module resolution, including previously unresolved names.
 """
 
 import ast
@@ -634,14 +634,14 @@ class GraphCache:
 
     def close(self) -> None:
         # Bound transport cost independently of repository age or push count.
-        removed = self.connection.execute(
-            "DELETE FROM cache WHERE key LIKE '%:graph:%' AND rowid NOT IN "
-            "(SELECT rowid FROM cache WHERE key LIKE '%:graph:%' ORDER BY rowid DESC LIMIT 8)"
-        ).rowcount
-        removed += self.connection.execute(
-            "DELETE FROM cache WHERE key LIKE '%:blob:%' AND rowid NOT IN "
-            "(SELECT rowid FROM cache WHERE key LIKE '%:blob:%' ORDER BY rowid DESC LIMIT 10000)"
-        ).rowcount
+        removed = 0
+        for namespace, limit in (("graph", 8), ("blob", 10000), ("name-scope", 10000)):
+            pattern = f"%:{namespace}:%"
+            removed += self.connection.execute(
+                "DELETE FROM cache WHERE key LIKE ? AND rowid NOT IN "
+                "(SELECT rowid FROM cache WHERE key LIKE ? ORDER BY rowid DESC LIMIT ?)",
+                (pattern, pattern, limit),
+            ).rowcount
         self.connection.commit()
         if removed:
             self.connection.execute("VACUUM")
@@ -880,6 +880,20 @@ def star_import_candidates(
     return candidates
 
 
+def module_index(python_files: set[str], roots: list[str], links: list[str]) -> "ModuleIndex":
+    """Reuse an index across revisions with identical paths, roots and symlinks.
+
+    File contents do not affect module resolution. Callers treat the index's
+    inventory maps as read-only; only its private resolution memo is mutable.
+    """
+    return _module_index(frozenset(python_files), tuple(roots), tuple(links))
+
+
+@functools.lru_cache(maxsize=4)
+def _module_index(python_files: frozenset[str], roots: tuple[str, ...], links: tuple[str, ...]) -> "ModuleIndex":
+    return ModuleIndex(set(python_files), list(roots), list(links))
+
+
 class ModuleIndex:
     """Resolve against a complete Git inventory without filesystem probes."""
 
@@ -977,8 +991,8 @@ def resolve_graph(
     plugins_from_session: set[str] | None = None,
 ) -> Snapshot:
     python_files = {path for path in files if path.endswith(".py")}
-    index = ModuleIndex(python_files, config.module_roots, links)
-    prepended = ModuleIndex(python_files, prepend_roots(python_files, config), links)
+    index = module_index(python_files, config.module_roots, links)
+    prepended = module_index(python_files, prepend_roots(python_files, config), links)
 
     edges: dict[str, set[str]] = {path: set() for path in files}
     unresolved: dict[str, list[str]] = {}
@@ -1186,8 +1200,8 @@ class EdgeEvidence:
         self.snapshot = snapshot
         python_files = {path for path in snapshot.files if path.endswith(".py")}
         links = inventory(repo, snapshot.tree).links
-        self.index = ModuleIndex(python_files, config.module_roots, links)
-        self.prepended = ModuleIndex(python_files, prepend_roots(python_files, config), links)
+        self.index = module_index(python_files, config.module_roots, links)
+        self.prepended = module_index(python_files, prepend_roots(python_files, config), links)
         self.globals = global_module_files(self.index, config)
         self.tests = set(snapshot.tests)
 
