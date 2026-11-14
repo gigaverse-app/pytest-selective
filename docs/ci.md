@@ -309,3 +309,18 @@ Same-named modules in independent module roots are unrelated unless an import
 connects them. An actual ambiguous bare import conservatively retains every
 possible target. Use qualified imports to make independent demo modules
 unambiguous; selection does not guess a runtime import order.
+# Graph cache restoration
+
+The test-impact action saves its disposable graph cache under the analyzed `head`,
+runner OS, Python 3.14 runtime and workflow ref. Restores prefer that head and
+previous work on the same PR, then exact base revisions from the default branch.
+Exact legacy revision keys are tried before broader default-branch and legacy
+OS fallbacks, so existing caches can seed the new namespace. Each run can save
+its newly learned graphs without overwriting an immutable earlier cache.
+Lookup stays within GitHub's ten-key limit, retaining the legacy fallback when
+the three base inputs differ.
+
+Keys only choose download candidates. GraphCache still validates content IDs,
+parser versions, configuration and checksums; a missing or unusable cache is
+rebuilt. Cache lookup failures do not prevent selection.
+
