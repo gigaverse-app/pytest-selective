@@ -301,6 +301,16 @@ def _floor_budget(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    started = time.perf_counter()
+    last_phase = started
+    phases: dict[str, float] = {}
+
+    def mark(name: str) -> None:
+        nonlocal last_phase
+        now = time.perf_counter()
+        phases[name] = now - last_phase
+        last_phase = now
+
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv[:1] == ["execute-plan"]:
         from pytest_selective.execution import main as execute
@@ -348,6 +358,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--test", default="")
     parser.add_argument("--source", default="")
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--timings-output", type=Path, help="Separate whole-CLI phase timings, including losing candidates"
+    )
     # affected: why the selection is this large, for the PR sticky (never changes the selection).
     parser.add_argument("--explanation-output", type=Path)
     parser.add_argument(
@@ -422,6 +435,7 @@ def main(argv: list[str] | None = None) -> int:
 
             args.head = snapshot_working_tree(args.repo)
         cache = GraphCache(args.cache)
+        mark("setup")
         if args.command == "audit":
             return _audit(args, config, cache)
         if args.command == "fingerprints":
@@ -438,10 +452,12 @@ def main(argv: list[str] | None = None) -> int:
             select = functools.partial(_select, args.repo, args.head, config, cache, config_path, args.dependency_cache)
             base = args.base
             report = select(base, args.extra_files)
+            mark("primary_selection")
             if args.alternate_base and args.alternate_base != base and not args.full:
                 base, report = _smaller_selection(
                     select, (base, report), args.alternate_base, args.alternate_extra_files
                 )
+                mark("alternate_selection")
             if args.full:
                 snapshot = cache.snapshot(args.repo, args.head, config)
                 report.selected = snapshot.tests
@@ -453,8 +469,10 @@ def main(argv: list[str] | None = None) -> int:
                 report.selected = sorted(report.selected + extras[: args.minimum_files - len(report.selected)])
                 report.reasons.append(f"minimum file count for fixed shards: {args.minimum_files}")
             result = report.model_dump_json(indent=2)
+            mark("selection_policy")
             if args.explanation_output:
                 _write_explanation(args, config, cache, config_path, base, report)
+            mark("explanation")
             if args.github_output:
                 shards = plan_shard_count(
                     report.selected,
@@ -521,8 +539,18 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Test impact planning failed: {error}", file=sys.stderr)
         return 1
     finally:
+        mark("output_and_shards")
         if cache is not None:
             cache.close()
+        mark("cache_close")
+        if args.timings_output:
+            try:
+                args.timings_output.write_text(
+                    json.dumps({"elapsed_seconds": last_phase - started, "phases_seconds": phases}) + "\n",
+                    encoding="utf-8",
+                )
+            except OSError as error:
+                print(f"Cannot write planning timings: {error}", file=sys.stderr)
 
 
 if __name__ == "__main__":

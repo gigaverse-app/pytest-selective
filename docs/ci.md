@@ -322,3 +322,14 @@ Keys only choose download candidates. GraphCache still validates content IDs,
 parser versions, configuration and checksums; a missing or unusable cache is
 rebuilt. Cache lookup failures do not prevent selection.
 
+The action also writes `test-impact-timings.json` and prints its contents to the
+log. Its whole-action clock includes runtime setup, cache restore/save, Git fetch,
+both selection candidates, explanation generation/upload and the floor check.
+The final timing-report write and GitHub runner orchestration outside the action
+are excluded; use the enclosing GitHub step duration for that outer boundary.
+`affected --timings-output PATH` separately measures CLI setup, each candidate,
+selection policy, explanation, output/shards and cache close. Python process
+startup and imports belong to the action's outside-CLI time. Existing report
+`elapsed_seconds` remains the winning candidate's analysis time, now labeled
+explicitly in the summary. Timings are diagnostic and never authorize test skips.
+
