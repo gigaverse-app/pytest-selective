@@ -92,7 +92,9 @@ def manifest_edges(path: str, source: bytes, tree: str, files: set[str]) -> dict
         raise DependencyDeclarationError(f"{location}: sidecar must belong to an existing non-sidecar tracked file")
     manifest = parse_manifest(source, location)
     directory = str(PurePosixPath(path).parent)
-    reader_files = {file for file in files if not is_declaration(file)}
+    # A file sidecar already names its sole reader. Only directory manifests
+    # need to discover readers across the repository inventory.
+    reader_files = {file for file in files if not is_declaration(file)} if is_directory else set()
     edges: dict[str, set[str]] = {} if is_directory else {owner: {path}}
     for index, rule in enumerate(manifest.dependencies, 1):
         rule_location = f"{location}:rule {index}"

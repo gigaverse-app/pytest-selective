@@ -1,8 +1,8 @@
 """
 Import graphs from immutable Git trees; no imports execute during planning.
 
-Blob parsing and resolved graphs have distinct cache keys. Every new tree
-resolves all saved candidates again, including previously unresolved names.
+Blob parsing and resolved graphs have distinct cache keys. A new inventory
+invalidates module resolution, including previously unresolved names.
 """
 
 import ast
@@ -634,14 +634,14 @@ class GraphCache:
 
     def close(self) -> None:
         # Bound transport cost independently of repository age or push count.
-        removed = self.connection.execute(
-            "DELETE FROM cache WHERE key LIKE '%:graph:%' AND rowid NOT IN "
-            "(SELECT rowid FROM cache WHERE key LIKE '%:graph:%' ORDER BY rowid DESC LIMIT 8)"
-        ).rowcount
-        removed += self.connection.execute(
-            "DELETE FROM cache WHERE key LIKE '%:blob:%' AND rowid NOT IN "
-            "(SELECT rowid FROM cache WHERE key LIKE '%:blob:%' ORDER BY rowid DESC LIMIT 10000)"
-        ).rowcount
+        removed = 0
+        for namespace, limit in (("graph", 8), ("blob", 10000), ("name-scope", 10000)):
+            pattern = f"%:{namespace}:%"
+            removed += self.connection.execute(
+                "DELETE FROM cache WHERE key LIKE ? AND rowid NOT IN "
+                "(SELECT rowid FROM cache WHERE key LIKE ? ORDER BY rowid DESC LIMIT ?)",
+                (pattern, pattern, limit),
+            ).rowcount
         self.connection.commit()
         if removed:
             self.connection.execute("VACUUM")
@@ -880,6 +880,20 @@ def star_import_candidates(
     return candidates
 
 
+def module_index(python_files: set[str], roots: list[str], links: list[str]) -> "ModuleIndex":
+    """Reuse an index across revisions with identical paths, roots and symlinks.
+
+    File contents do not affect module resolution. Callers treat the index's
+    inventory maps as read-only; only its private resolution memo is mutable.
+    """
+    return _module_index(frozenset(python_files), tuple(roots), tuple(links))
+
+
+@functools.lru_cache(maxsize=4)
+def _module_index(python_files: frozenset[str], roots: tuple[str, ...], links: tuple[str, ...]) -> "ModuleIndex":
+    return ModuleIndex(set(python_files), list(roots), list(links))
+
+
 class ModuleIndex:
     """Resolve against a complete Git inventory without filesystem probes."""
 
@@ -888,6 +902,7 @@ class ModuleIndex:
         self.packages: dict[str, set[str]] = {}
         self.names: dict[str, set[str]] = {}
         self.initializers: dict[str, set[str]] = {}
+        self._resolved: dict[str, frozenset[str]] = {}
         for path in python_files:
             for root in roots:
                 if not within(path, root):
@@ -902,12 +917,15 @@ class ModuleIndex:
                 self.names.setdefault(path, set()).add(dotted)
                 # Naming a module does not import a same-named module in another root.
                 # Only its physical package ancestors execute with this file.
-                for parent in source.parents:
-                    if parent.as_posix() == ".":
-                        continue
-                    initializer = (PurePosixPath(root) / parent / "__init__.py").as_posix()
+                # Git paths are POSIX paths. Walk the physical directories once,
+                # without constructing Path objects for every ancestor.
+                directory = relative.rpartition("/")[0]
+                root_prefix = "" if root == "." else root.rstrip("/") + "/"
+                while directory:
+                    initializer = root_prefix + directory + "/__init__.py"
                     if initializer in python_files:
                         self.initializers.setdefault(path, set()).add(initializer)
+                    directory = directory.rpartition("/")[0]
 
         self.linked_modules = {
             normalized_name((link if root == "." else link[len(root.rstrip("/")) + 1 :]).replace("/", "."))
@@ -920,11 +938,14 @@ class ModuleIndex:
         # Union ambiguous roots/self.modules conservatively. Ancestor initializers
         # execute for every submodule import, even when never named explicitly.
         normalized = normalized_name(candidate)
+        if normalized in self._resolved:
+            return set(self._resolved[normalized])
         if within_modules(normalized, self.linked_modules):
             raise ValueError(f"import through unsupported Git symlink: {candidate}")
         result: set[str] = set()
         for prefix in module_prefixes(normalized):
             result.update(self.modules.get(prefix, ()))
+        self._resolved[normalized] = frozenset(result)
         return result
 
 
@@ -970,8 +991,8 @@ def resolve_graph(
     plugins_from_session: set[str] | None = None,
 ) -> Snapshot:
     python_files = {path for path in files if path.endswith(".py")}
-    index = ModuleIndex(python_files, config.module_roots, links)
-    prepended = ModuleIndex(python_files, prepend_roots(python_files, config), links)
+    index = module_index(python_files, config.module_roots, links)
+    prepended = module_index(python_files, prepend_roots(python_files, config), links)
 
     edges: dict[str, set[str]] = {path: set() for path in files}
     unresolved: dict[str, list[str]] = {}
@@ -1074,10 +1095,10 @@ def resolve_graph(
                 if name not in index.modules:
                     unresolved[owner] = sorted(set(unresolved.get(owner, [])) | {name})
                 pending.extend(targets)
+    conftest_parents = {path: str(PurePosixPath(path).parent) for path in conftests}
     for test in tests:
         edges[test].update(globals_set - {test})
-        for conftest in conftests:
-            parent = str(PurePosixPath(conftest).parent)
+        for conftest, parent in conftest_parents.items():
             if within(test, parent):
                 edges[test].add(conftest)
     return Snapshot(
@@ -1179,8 +1200,8 @@ class EdgeEvidence:
         self.snapshot = snapshot
         python_files = {path for path in snapshot.files if path.endswith(".py")}
         links = inventory(repo, snapshot.tree).links
-        self.index = ModuleIndex(python_files, config.module_roots, links)
-        self.prepended = ModuleIndex(python_files, prepend_roots(python_files, config), links)
+        self.index = module_index(python_files, config.module_roots, links)
+        self.prepended = module_index(python_files, prepend_roots(python_files, config), links)
         self.globals = global_module_files(self.index, config)
         self.tests = set(snapshot.tests)
 

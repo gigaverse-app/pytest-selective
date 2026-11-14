@@ -18,9 +18,11 @@ from pytest_selective.impact_cli import main
 from pytest_selective.impact_graph import (
     DependencyDeclarationError,
     GraphCache,
+    ModuleIndex,
     blobs,
     explanation,
     inventory,
+    module_index,
     parse_source,
     policy_fingerprints,
     reachable,
@@ -29,6 +31,39 @@ from pytest_selective.impact_models import DeferredStringsRule, DependencyRule, 
 from pytest_selective.impact_selection import affected
 from tests.testing.git_repo import commit, init, write
 from tests.testing.git_repo import head as head_of
+
+
+def test_repeated_resolution_preserves_ambiguous_roots_and_owns_its_result() -> None:
+    files = {
+        "src/pkg/__init__.py",
+        "src/pkg/leaf.py",
+        "vendor/pkg/__init__.py",
+        "vendor/pkg/leaf.py",
+        "src/pkg_sibling/leaf.py",
+    }
+    index = ModuleIndex(files, ["src", "vendor/"], ["src/linked"])
+    expected = files - {"src/pkg_sibling/leaf.py"}
+    assert index.resolve("pkg.leaf.VALUE") == expected
+    index.resolve("pkg.leaf.VALUE").clear()
+    assert index.resolve("PKG.leaf.VALUE") == expected
+    assert index.initializers["src/pkg/leaf.py"] == {"src/pkg/__init__.py"}
+    assert index.initializers["vendor/pkg/leaf.py"] == {"vendor/pkg/__init__.py"}
+    assert index.resolve("absent") == set()
+    assert index.resolve("absent") == set()
+    for _ in range(2):
+        with pytest.raises(ValueError, match="unsupported Git symlink"):
+            index.resolve("linked.child")
+
+
+def test_shared_module_index_tracks_inventory_roots_and_links() -> None:
+    files = {"src/pkg/leaf.py"}
+    first = module_index(files, ["src"], [])
+    assert first.resolve("pkg.future") == set()
+    assert module_index(set(files), ["src"], []) is first
+    assert module_index(files | {"src/pkg/future.py"}, ["src"], []).resolve("pkg.future") == {"src/pkg/future.py"}
+    assert module_index(files, ["."], []).resolve("pkg.leaf") == set()
+    with pytest.raises(ValueError, match="unsupported Git symlink"):
+        module_index(files, ["src"], ["src/pkg"]).resolve("pkg.leaf")
 
 
 @pytest.fixture

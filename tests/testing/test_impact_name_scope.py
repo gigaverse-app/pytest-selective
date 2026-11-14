@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from pytest_selective import impact_graph, impact_name_scope
 from pytest_selective.impact_graph import GraphCache
 from pytest_selective.impact_models import DeferredStringsRule, ImpactConfig, NameScopedModule
 from pytest_selective.impact_name_scope import (
@@ -100,6 +101,74 @@ def test_a_changed_name_selects_only_the_tests_that_read_it(
 
     assert report.selected == ["tests/test_cache.py", "tests/test_startup.py"]
     assert any("CACHE_TTL" in reason for reason in report.reasons)
+
+
+def test_unchanged_readers_are_not_reread_after_a_cache_restart(
+    repo: Path, config: ImpactConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base, head = edit_settings(repo, "CACHE_TTL = 60", "CACHE_TTL = 90")
+    path = tmp_path / "persistent.sqlite3"
+    first = GraphCache(path)
+    expected = affected(repo, base, head, config, first).selected
+    reader_oid = first.snapshot(repo, head, config).files["src/proj/cache.py"]
+    first.close()
+    fetched: set[str] = set()
+    original = impact_name_scope.blobs
+
+    def record(root: Path, oids: set[str]) -> dict[str, bytes]:
+        fetched.update(oids)
+        return original(root, oids)
+
+    monkeypatch.setattr(impact_name_scope, "blobs", record)
+    monkeypatch.setattr(impact_graph, "blobs", record)
+    second = GraphCache(path)
+    try:
+        assert affected(repo, base, head, config, second).selected == expected
+        assert reader_oid not in fetched
+        # Same source, different changed names must not reuse the earlier answer.
+        write(repo, SETTINGS, BASE_SETTINGS.replace("https://feature.test", "https://next.test"))
+        next_head = commit(repo)
+        assert affected(repo, base, next_head, config, second).selected == [
+            "tests/test_feature.py",
+            "tests/test_startup.py",
+        ]
+    finally:
+        second.close()
+
+
+@pytest.mark.parametrize("damage", ["checksum", "schema"])
+def test_damaged_name_read_records_are_recomputed(
+    repo: Path, config: ImpactConfig, cache: GraphCache, damage: str
+) -> None:
+    base, head = edit_settings(repo, "CACHE_TTL = 60", "CACHE_TTL = 90")
+    expected = affected(repo, base, head, config, cache).selected
+    keys = cache.connection.execute("SELECT key FROM cache WHERE key LIKE '%:name-scope:%'").fetchall()
+    assert keys
+    for (key,) in keys:
+        if damage == "schema":
+            cache.put(key, "{}")
+        else:
+            cache.connection.execute("UPDATE cache SET digest='damaged' WHERE key=?", (key,))
+    assert affected(repo, base, head, config, cache).selected == expected
+
+
+def test_name_read_cache_tracks_accessor_policy_and_source_content(
+    repo: Path, config: ImpactConfig, cache: GraphCache
+) -> None:
+    base, head = edit_settings(repo, "CACHE_TTL = 60", "CACHE_TTL = 90")
+    assert affected(repo, base, head, config, cache).selected == ["tests/test_cache.py", "tests/test_startup.py"]
+    without_accessor = config.model_copy(
+        update={
+            "name_scoped_modules": [POLICY.model_copy(update={"accessors": []})],
+        }
+    )
+    assert affected(repo, base, head, without_accessor, cache).selected == ["tests/test_startup.py"]
+    # An unchanged path now reads a different name. The blob id must invalidate its facts.
+    write(repo, "src/proj/cache.py", "from framework.conf import settings\ndef ttl(): return settings.FEATURE_URL\n")
+    new_base = commit(repo)
+    write(repo, SETTINGS, BASE_SETTINGS.replace("CACHE_TTL = 60", "CACHE_TTL = 120"))
+    new_head = commit(repo)
+    assert affected(repo, new_base, new_head, config, cache).selected == ["tests/test_startup.py"]
 
 
 @pytest.mark.parametrize("global_input", [SETTINGS, "src/proj/cache.py"])
