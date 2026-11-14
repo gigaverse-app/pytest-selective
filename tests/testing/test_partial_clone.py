@@ -64,6 +64,11 @@ def test_missing_blobs_are_fetched_together_and_unrequested_objects_stay_lazy(
     monkeypatch.setenv("GIT_NO_LAZY_FETCH", "1")
     with pytest.raises(ValueError, match="Git blobs unavailable"):
         blobs(clone, {original["file_7.py"]})
+    monkeypatch.delenv("GIT_NO_LAZY_FETCH")
+    git(clone, "remote", "set-url", "source", (tmp_path / "unavailable").as_uri())
+    git(clone, "remote", "add", "backup", source.as_uri())
+    git(clone, "config", "remote.backup.promisor", "true")
+    assert blobs(clone, {original["file_7.py"]}) == {original["file_7.py"]: b"old = 7\n"}
 
 
 def test_local_blob_reads_preserve_binary_content_and_reject_non_blobs(tmp_path: Path) -> None:
