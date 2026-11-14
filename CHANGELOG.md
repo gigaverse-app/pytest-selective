@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.6.0...v1.6.1) (2026-11-14)
+
+
+### Performance
+
+* batch historical blob fetches in partial clones ([#151](https://github.com/gigaverse-app/pytest-selective/issues/151)) ([4f6526b](https://github.com/gigaverse-app/pytest-selective/commit/4f6526b9011517d5a643083d700663cd3015b102))
+
 ## [1.6.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.5.1...v1.6.0) (2026-11-14)
 
 
