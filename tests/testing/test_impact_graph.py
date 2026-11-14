@@ -22,6 +22,7 @@ from pytest_selective.impact_graph import (
     blobs,
     explanation,
     inventory,
+    module_index,
     parse_source,
     policy_fingerprints,
     reachable,
@@ -52,6 +53,17 @@ def test_repeated_resolution_preserves_ambiguous_roots_and_owns_its_result() -> 
     for _ in range(2):
         with pytest.raises(ValueError, match="unsupported Git symlink"):
             index.resolve("linked.child")
+
+
+def test_shared_module_index_tracks_inventory_roots_and_links() -> None:
+    files = {"src/pkg/leaf.py"}
+    first = module_index(files, ["src"], [])
+    assert first.resolve("pkg.future") == set()
+    assert module_index(set(files), ["src"], []) is first
+    assert module_index(files | {"src/pkg/future.py"}, ["src"], []).resolve("pkg.future") == {"src/pkg/future.py"}
+    assert module_index(files, ["."], []).resolve("pkg.leaf") == set()
+    with pytest.raises(ValueError, match="unsupported Git symlink"):
+        module_index(files, ["src"], ["src/pkg"]).resolve("pkg.leaf")
 
 
 @pytest.fixture
