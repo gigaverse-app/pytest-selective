@@ -33,6 +33,7 @@ from pytest_selective.ast_imports import (
     parse_ast,
     within_modules,
 )
+from pytest_selective.git_operations import fetch_missing_objects
 from pytest_selective.git_operations import git as git
 from pytest_selective.git_operations import git_environment as git_environment
 from pytest_selective.impact_declarations import (
@@ -170,19 +171,35 @@ def inventory(repo: Path, revision: str) -> GitTree:
 def blobs(repo: Path, ids: set[str]) -> dict[str, bytes]:
     if not ids:
         return {}
-    output = git(repo, "cat-file", "--batch", data=("\n".join(sorted(ids)) + "\n").encode())
+    result, missing = _read_blobs(repo, ids, lazy_fetch=False)
+    if missing:
+        fetch_missing_objects(repo, missing)
+        fetched, unresolved = _read_blobs(repo, missing, lazy_fetch=True)
+        if unresolved:
+            raise ValueError(f"Git blobs unavailable: {sorted(unresolved)}")
+        result.update(fetched)
+    return result
+
+
+def _read_blobs(repo: Path, ids: set[str], *, lazy_fetch: bool) -> tuple[dict[str, bytes], set[str]]:
+    output = git(repo, "cat-file", "--batch", data=("\n".join(sorted(ids)) + "\n").encode(), lazy_fetch=lazy_fetch)
     result: dict[str, bytes] = {}
+    missing: set[str] = set()
     offset = 0
     for _ in ids:
         end = output.index(b"\n", offset)
-        oid, kind, size = output[offset:end].split()
+        header = output[offset:end].split()
+        offset = end + 1
+        if len(header) == 2 and header[1] == b"missing":
+            missing.add(header[0].decode())
+            continue
+        oid, kind, size = header
         if kind != b"blob":
             raise ValueError("Git object is not a blob")
-        offset = end + 1
         length = int(size)
         result[oid.decode()] = output[offset : offset + length]
         offset += length + 1
-    return result
+    return result, missing
 
 
 def pytest_policies(repo: Path, files: dict[str, str], extra_files: tuple[str, ...] = ()) -> dict[str, str]:

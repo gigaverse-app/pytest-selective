@@ -30,9 +30,11 @@ def git_environment() -> dict[str, str]:
     return {name: value for name, value in os.environ.items() if name not in GIT_LOCATION_ENV}
 
 
-def git(repo: Path, *args: str, data: bytes | None = None, index: Path | None = None) -> bytes:
+def git(repo: Path, *args: str, data: bytes | None = None, index: Path | None = None, lazy_fetch: bool = True) -> bytes:
     """Run against the requested repository, preserving binary blobs and failure details."""
     environment = git_environment()
+    if not lazy_fetch:
+        environment["GIT_NO_LAZY_FETCH"] = "1"
     if index is not None:
         environment["GIT_INDEX_FILE"] = str(index)
     return subprocess.run(
@@ -42,6 +44,39 @@ def git(repo: Path, *args: str, data: bytes | None = None, index: Path | None = 
         check=True,
         env=environment,
     ).stdout
+
+
+def fetch_missing_objects(repo: Path, ids: set[str]) -> None:
+    """Amortize promisor transport setup; native lazy fetching remains the fallback."""
+    if os.environ.get("GIT_NO_LAZY_FETCH") == "1":
+        return
+    try:
+        remotes = git(repo, "config", "--null", "--type=bool", "--get-regexp", r"^remote\..*\.promisor$")
+    except subprocess.CalledProcessError:
+        return
+    for entry in remotes.split(b"\0"):
+        key, _, value = entry.partition(b"\n")
+        if value != b"true":
+            continue
+        remote = key.decode()[len("remote.") : -len(".promisor")]
+        try:
+            git(
+                repo,
+                "-c",
+                "fetch.negotiationAlgorithm=noop",
+                "fetch",
+                remote,
+                "--no-tags",
+                "--no-write-fetch-head",
+                "--recurse-submodules=no",
+                "--filter=blob:none",
+                "--no-auto-gc",
+                "--stdin",
+                data=("\n".join(sorted(ids)) + "\n").encode(),
+            )
+        except subprocess.CalledProcessError:
+            continue
+        return
 
 
 def git_text(repo: Path, *args: str, index: Path | None = None) -> str:
