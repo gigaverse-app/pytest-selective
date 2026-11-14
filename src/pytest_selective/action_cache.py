@@ -40,14 +40,14 @@ def cache_keys(
     legacy = f"test-impact-v1-{os_name}-"
     restores = [
         exact,
-        *(f"{current}{commit}-" for commit in commits),
         current,
         *(f"{default}{commit}-" for commit in commits),
         *(f"{legacy}{commit}-" for commit in [revision, *commits]),
         default,
-        legacy,
     ]
-    return exact + run, list(dict.fromkeys(restores))
+    # GitHub permits ten keys including the primary key. Reserve the last restore
+    # slot for migration fallback, even when all three base inputs are distinct.
+    return exact + run, list(dict.fromkeys(restores))[:8] + [legacy]
 
 
 def main() -> None:
