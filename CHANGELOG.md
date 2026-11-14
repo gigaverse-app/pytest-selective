@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.5.0...v1.5.1) (2026-11-14)
+
+
+### Performance
+
+* **selection:** avoid repeated graph resolution and inventory scans ([#145](https://github.com/gigaverse-app/pytest-selective/issues/145)) ([09cab74](https://github.com/gigaverse-app/pytest-selective/commit/09cab74284d3ffeab34f4b82c42e95e95b0ef367))
+* **selection:** cache source name reads across revisions ([#147](https://github.com/gigaverse-app/pytest-selective/issues/147)) ([86cced9](https://github.com/gigaverse-app/pytest-selective/commit/86cced9b16cc67b298a092fe99a8ab387da65432))
+
 ## [1.5.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.4.0...v1.5.0) (2026-11-09)
 
 
