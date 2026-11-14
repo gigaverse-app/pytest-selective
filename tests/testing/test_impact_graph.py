@@ -18,6 +18,7 @@ from pytest_selective.impact_cli import main
 from pytest_selective.impact_graph import (
     DependencyDeclarationError,
     GraphCache,
+    ModuleIndex,
     blobs,
     explanation,
     inventory,
@@ -29,6 +30,28 @@ from pytest_selective.impact_models import DeferredStringsRule, DependencyRule, 
 from pytest_selective.impact_selection import affected
 from tests.testing.git_repo import commit, init, write
 from tests.testing.git_repo import head as head_of
+
+
+def test_repeated_resolution_preserves_ambiguous_roots_and_owns_its_result() -> None:
+    files = {
+        "src/pkg/__init__.py",
+        "src/pkg/leaf.py",
+        "vendor/pkg/__init__.py",
+        "vendor/pkg/leaf.py",
+        "src/pkg_sibling/leaf.py",
+    }
+    index = ModuleIndex(files, ["src", "vendor/"], ["src/linked"])
+    expected = files - {"src/pkg_sibling/leaf.py"}
+    assert index.resolve("pkg.leaf.VALUE") == expected
+    index.resolve("pkg.leaf.VALUE").clear()
+    assert index.resolve("PKG.leaf.VALUE") == expected
+    assert index.initializers["src/pkg/leaf.py"] == {"src/pkg/__init__.py"}
+    assert index.initializers["vendor/pkg/leaf.py"] == {"vendor/pkg/__init__.py"}
+    assert index.resolve("absent") == set()
+    assert index.resolve("absent") == set()
+    for _ in range(2):
+        with pytest.raises(ValueError, match="unsupported Git symlink"):
+            index.resolve("linked.child")
 
 
 @pytest.fixture
