@@ -384,6 +384,78 @@ def test_hypothesis_constant_collection_is_not_a_test_input(recorder: ReadRecord
     assert recorder.record() == AuditRecord()
 
 
+def _reader_called_through(*modules: str) -> object:
+    """A callable whose stack, innermost first, runs through functions of the named modules."""
+    call = "recorder.audit('open', (path, 'r', 0))"
+    reader: object = None
+    for index, module in enumerate(modules):
+        namespace: dict[str, object] = {"__name__": module, "inner": reader}
+        body = call if index == 0 else "inner(recorder, path)"
+        exec(f"def read(recorder, path):\n    {body}\n", namespace)
+        reader = namespace["read"]
+    return reader
+
+
+@pytest.mark.parametrize(
+    ("stack", "is_input"),
+    [
+        (("linecache", "traceback", "logging"), False),
+        (("linecache", "warnings"), False),
+        (("linecache", "inspect"), True),
+        (("linecache",), True),
+        (("traceback",), True),
+    ],
+    ids=["logged-traceback", "shown-warning", "inspect-getsource", "direct-linecache", "traceback-without-linecache"],
+)
+def test_only_source_shown_for_a_traceback_or_warning_is_not_a_test_input(
+    recorder: ReadRecorder, tmp_path: Path, stack: tuple[str, ...], is_input: bool
+) -> None:
+    """
+    INVARIANT: a source file opened to display one of its lines is not an input of the current test.
+
+    A thread left running by an earlier test file logged an exception while a later file's test was
+    current; rendering the traceback opened the earlier file, and the audit failed the later one.
+    """
+    read = _reader_called_through(*stack)
+    assert callable(read)
+    with recorder.attributed(tmp_path / TEST):
+        read(recorder, str(tmp_path / DATA))
+    assert recorder.record().inputs == ({TEST: [DATA]} if is_input else {})
+
+
+def test_a_real_logged_traceback_through_another_tracked_file_records_no_read(tmp_path: Path) -> None:
+    """Real pytest, real ``logging.exception``: the frame's file is opened only to render the traceback."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init(repo)
+    write(repo, "tests/test_earlier.py", "def test_earlier():\n    pass\n")
+    write(
+        repo,
+        "tests/test_later.py",
+        "import linecache\n"
+        "import logging\n"
+        "from pathlib import Path\n"
+        "\n"
+        "EARLIER = str(Path(__file__).with_name('test_earlier.py'))\n"
+        "\n"
+        "\n"
+        "def test_logs_a_traceback_whose_frame_is_in_another_test_file():\n"
+        "    # A frame that claims the other file, as a thread started there would have.\n"
+        "    code = compile('\\n\\nraise RuntimeError(\"from a leftover thread\")', EARLIER, 'exec')\n"
+        "    linecache.clearcache()\n"
+        "    try:\n"
+        "        exec(code, {})\n"
+        "    except RuntimeError:\n"
+        "        logging.getLogger('leftover').exception('background failure')\n",
+    )
+    commit(repo)
+    result = run_audited_pytest(repo, Path("audit-records"), "tests/test_later.py")
+    assert result.returncode == 0, result.stdout + result.stderr
+    (record,) = load_records(repo / "audit-records")
+    assert record.errors == []
+    assert "tests/test_earlier.py" not in record.inputs.get("tests/test_later.py", [])
+
+
 class BrokenPath(os.PathLike[str]):
     def __fspath__(self) -> str:
         raise RuntimeError("unreadable path")
