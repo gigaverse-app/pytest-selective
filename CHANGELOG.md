@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.2](https://github.com/gigaverse-app/pytest-selective/compare/v1.7.1...v1.7.2) (2026-11-17)
+
+
+### Bug fixes
+
+* **audit:** do not count source shown in a traceback as a test input ([#158](https://github.com/gigaverse-app/pytest-selective/issues/158)) ([08aac8c](https://github.com/gigaverse-app/pytest-selective/commit/08aac8c15112575159bfcf6c571bf82b117cdfc8))
+
 ## [1.7.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.7.0...v1.7.1) (2026-11-17)
 
 

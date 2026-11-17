@@ -928,7 +928,7 @@ wheels = [
 
 [[package]]
 name = "pytest-selective"
-version = "1.7.1"
+version = "1.7.2"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
@@ -982,7 +982,7 @@ quint = [{ name = "pytest-quint-connect", specifier = ">=1.0.0,<2" }]
 
 [[package]]
 name = "selective-deps"
-version = "1.7.1"
+version = "1.7.2"
 source = { editable = "declarations" }
 dependencies = [
     { name = "pydantic" },
