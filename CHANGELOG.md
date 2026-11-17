@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.7.0...v1.7.1) (2026-11-17)
+
+
+### Bug fixes
+
+* **declarations:** name the portable package selective-deps ([#157](https://github.com/gigaverse-app/pytest-selective/issues/157)) ([8cd088f](https://github.com/gigaverse-app/pytest-selective/commit/8cd088f552926203a6ae0e2194ebfc14c5584907))
+* **release:** resume partial multi-package publication ([#155](https://github.com/gigaverse-app/pytest-selective/issues/155)) ([7341622](https://github.com/gigaverse-app/pytest-selective/commit/734162252c6941883d44e36395c83df7191309bc))
+
 ## [1.7.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.6.1...v1.7.0) (2026-11-17)
 
 
