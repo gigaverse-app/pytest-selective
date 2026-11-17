@@ -73,3 +73,11 @@ def test_publishing_keeps_oidc_isolated_and_advances_actions_only_after_pypi():
     for name, job in jobs.items():
         if name != "publish":
             assert job.get("permissions", release.get("permissions", {})).get("id-token", "none") == "none"
+
+
+def test_partial_publication_can_resume_from_the_tested_artifacts():
+    # Uploads are sequential: the main wheel can succeed before the companion fails.
+    # A retry must retain that wheel and continue uploading the remaining archives.
+    steps = workflow("release.yml")["jobs"]["publish"]["steps"]
+    upload = next(step for step in steps if "pypa/gh-action-pypi-publish@" in step.get("uses", ""))
+    assert upload.get("with", {}).get("skip-existing") is True
