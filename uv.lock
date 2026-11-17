@@ -1,6 +1,12 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.11"
+
+[manifest]
+members = [
+    "pytest-selective",
+    "pytest-selective-declarations",
+]
 
 [[package]]
 name = "annotated-types"
@@ -927,6 +933,7 @@ source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
     { name = "pytest" },
+    { name = "pytest-selective-declarations" },
     { name = "pyyaml" },
 ]
 
@@ -955,6 +962,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.11,<3" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest", marker = "extra == 'audit'", specifier = ">=8" },
+    { name = "pytest-selective-declarations", editable = "declarations" },
     { name = "pyyaml", specifier = ">=6,<7" },
 ]
 provides-extras = ["audit"]
@@ -971,6 +979,21 @@ dev = [
     { name = "twine", specifier = ">=6" },
 ]
 quint = [{ name = "pytest-quint-connect", specifier = ">=1.0.0,<2" }]
+
+[[package]]
+name = "pytest-selective-declarations"
+version = "1.6.1"
+source = { editable = "declarations" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.11,<3" },
+    { name = "pyyaml", specifier = ">=6,<7" },
+]
 
 [[package]]
 name = "pytest-timeout"

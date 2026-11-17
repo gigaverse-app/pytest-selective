@@ -12,7 +12,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> None:
-    distributions = sorted((ROOT / "dist").glob("*.whl")) + sorted((ROOT / "dist").glob("*.tar.gz"))
+    from smoke_declarations import smoke as smoke_declarations
+
+    smoke_declarations()
+    distributions = sorted((ROOT / "dist").glob("pytest_selective-*.whl")) + sorted(
+        (ROOT / "dist").glob("pytest_selective-*.tar.gz")
+    )
     if len(distributions) != 2:
         raise SystemExit("Expected exactly one wheel and one sdist in dist/")
     environment = {key: value for key, value in os.environ.items() if key not in {"PYTHONPATH", "VIRTUAL_ENV"}}
@@ -24,7 +29,18 @@ def main() -> None:
             python = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
             cli = venv / ("Scripts/pytest-selective.exe" if os.name == "nt" else "bin/pytest-selective")
             subprocess.run(
-                ["uv", "pip", "install", "--python", str(python), str(distribution)], check=True, env=environment
+                [
+                    "uv",
+                    "pip",
+                    "install",
+                    "--python",
+                    str(python),
+                    "--find-links",
+                    str(ROOT / "dist"),
+                    str(distribution),
+                ],
+                check=True,
+                env=environment,
             )
             subprocess.run([str(cli), "--help"], cwd=folder, check=True, env=environment, stdout=subprocess.DEVNULL)
             expansion = venv / (
@@ -51,7 +67,18 @@ def main() -> None:
                 env=environment,
             )
             subprocess.run(
-                ["uv", "pip", "install", "--python", str(python), f"{distribution}[audit]"], check=True, env=environment
+                [
+                    "uv",
+                    "pip",
+                    "install",
+                    "--python",
+                    str(python),
+                    "--find-links",
+                    str(ROOT / "dist"),
+                    f"{distribution}[audit]",
+                ],
+                check=True,
+                env=environment,
             )
             subprocess.run([str(python), str(ROOT / "scripts/tutorial.py")], cwd=folder, check=True, env=environment)
             # No -p or checkout on PYTHONPATH: wheel/sdist entry-point discovery

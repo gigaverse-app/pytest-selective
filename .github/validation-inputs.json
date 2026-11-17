@@ -1,5 +1,6 @@
 {
   "tests": [
+    "declarations",
     ".github",
     "src",
     "tests",
@@ -11,6 +12,7 @@
     ".pre-commit-config.yaml"
   ],
   "contracts": [
+    "declarations",
     ".github",
     "src",
     "contracts",

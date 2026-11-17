@@ -77,6 +77,8 @@ extra:
     skills/pytest-selective/SKILL.md: agent-setup.md
   llms_txt: documentation/llms.txt
   published_sources:
+  - source: declarations/README.md
+    as: docs/declarations.md
   - source: skills/pytest-selective/SKILL.md
     as: agent-setup.md
   - docs/tutorials/adoption-checklist.md

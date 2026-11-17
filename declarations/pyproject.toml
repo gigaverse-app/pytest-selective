@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pytest-selective-declarations"
+version = "1.6.1"
+description = "Portable reader-owned dependency declarations for any test runner"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{name = "Gigaverse"}]
+dependencies = ["pydantic>=2.11,<3", "pyyaml>=6,<7"]
+
+[project.urls]
+Repository = "https://github.com/gigaverse-app/pytest-selective"
+Documentation = "https://pytest-selective.readthedocs.io/en/latest/docs/declarations/"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pytest_selective_declarations"]

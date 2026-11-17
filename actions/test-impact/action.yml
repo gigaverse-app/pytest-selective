@@ -158,7 +158,7 @@ runs:
       run: |
         export PYTHONPATH="$SHARED_ACTION_PATH/../../src${PYTHONPATH:+:$PYTHONPATH}"
         # Both modes must use the same isolated parser runtime, including YAML sidecars.
-        impact=(uv run --no-project --python 3.14 --with pydantic==2.13.4 --with pyyaml==6.0.3 python -m pytest_selective.impact_cli)
+        impact=(uv run --no-project --python 3.14 --with pydantic==2.13.4 --with pyyaml==6.0.3 --with "$SHARED_ACTION_PATH/../../declarations" python -m pytest_selective.impact_cli)
         if [ "${IMPACT_WARM_ONLY:-false}" = true ]; then
           if "${impact[@]}" warm --config "$IMPACT_CONFIG" --head "$IMPACT_HEAD"; then
             echo "Merged-tree test impact cache is ready" >> "$GITHUB_STEP_SUMMARY"
@@ -242,7 +242,7 @@ runs:
         SHARED_ACTION_PATH: ${{ github.action_path }}
       run: |
         export PYTHONPATH="$SHARED_ACTION_PATH/../../src${PYTHONPATH:+:$PYTHONPATH}"
-        uv run --no-project --python 3.14 --with pydantic==2.13.4 --with pyyaml==6.0.3 \
+        uv run --no-project --python 3.14 --with pydantic==2.13.4 --with pyyaml==6.0.3 --with "$SHARED_ACTION_PATH/../../declarations" \
           python -m pytest_selective.impact_cli floor-budget \
           --config "$IMPACT_CONFIG" --explanation test-impact-explanation.json
     - name: Report complete planning duration

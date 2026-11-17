@@ -7,6 +7,12 @@
   },
   "rules": [
     {
+      "name": "portable-declarations",
+      "when": ["declarations/**/*.py", "scripts/smoke_declarations.py"],
+      "select": ["all"],
+      "reason": "shared declaration semantics affect every selector and the installed companion package"
+    },
+    {
       "name": "python-environment",
       "when": ["pyproject.toml", "**/pyproject.toml", "uv.lock", "**/uv.lock", ".python-version"],
       "select": ["all"],

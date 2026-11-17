@@ -6,6 +6,24 @@ from pathlib import PurePosixPath
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pytest_selective_declarations import (
+    CONTENTS_PREFIX as CONTENTS_PREFIX,
+)
+from pytest_selective_declarations import (
+    DependencyInputs as DependencyInputs,
+)
+from pytest_selective_declarations import (
+    DependencyManifest as DependencyManifest,
+)
+from pytest_selective_declarations import (
+    ManifestDependencyRule as ManifestDependencyRule,
+)
+from pytest_selective_declarations import (
+    contents_node as contents_node,
+)
+from pytest_selective_declarations import (
+    file_of as file_of,
+)
 
 from pytest_selective.input_policy import DEFAULT_GLOBAL_INPUTS
 from pytest_selective.test_inventory import TEST_FILE_PATTERNS
@@ -15,30 +33,9 @@ SECTION_ONLY_PYTEST_CONFIG = frozenset({"tox.ini", "setup.cfg"})
 #: The fingerprint releases up to 1.1.1 recorded for such a file without a pytest section.
 EMPTY_SECTIONS_FINGERPRINT = hashlib.sha256(json.dumps({}).encode()).hexdigest()
 
-#: Marks a graph node that stands for a file's bytes: its readers inspect it without executing it.
-CONTENTS_PREFIX = "@contents:"
-
-
-def contents_node(path: str) -> str:
-    """The node a content read of `path` depends on; it never follows `path`'s own imports."""
-    return CONTENTS_PREFIX + path
-
-
-def file_of(node: str) -> str:
-    """The repository path a graph node stands for."""
-    return node.removeprefix(CONTENTS_PREFIX)
-
 
 class ImpactModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
-
-class DependencyInputs(ImpactModel):
-    """Canonical input semantics, shared by central and reader-owned rules."""
-
-    inputs: list[str]
-    reason: str = ""
-    kind: Literal["content", "import"] = "import"
 
 
 class DependencyRule(DependencyInputs):
@@ -47,17 +44,6 @@ class DependencyRule(DependencyInputs):
     readers: list[str]
     kind: Literal["content", "import"] = "content"
     reviewed_readers: dict[str, str] = Field(default_factory=dict)
-
-
-class ManifestDependencyRule(DependencyInputs):
-    inputs: list[str] = Field(min_length=1)
-    readers: list[str] | None = Field(default=None, min_length=1)
-    #: Reader patterns stay manifest-relative; only unanchored inputs change their base.
-    relative_to: Literal["manifest", "reader"] = "manifest"
-
-
-class DependencyManifest(ImpactModel):
-    dependencies: list[ManifestDependencyRule]
 
 
 class DjangoURLConfPolicy(ImpactModel):

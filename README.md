@@ -1,6 +1,11 @@
 ![pytest-selective: Run affected Python tests. See why they matter.](https://raw.githubusercontent.com/gigaverse-app/pytest-selective/main/docs/assets/banner.png?v=17de2a0b7412)
 
 # pytest-selective
+
+Building a non-Python adapter? Install the lightweight
+[`pytest-selective-declarations`](declarations/README.md) companion to reuse
+reader-owned sidecars and directory manifests. It has no pytest or selector
+dependency; combine its validated edges with your language's native import graph.
 [![CI](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/pytest-selective)](https://pypi.org/project/pytest-selective/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://github.com/gigaverse-app/pytest-selective/blob/main/pyproject.toml)

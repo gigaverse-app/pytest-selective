@@ -52,7 +52,7 @@ runs:
         args=(--config "$SELECTIVE_CONFIG" --base "$SELECTIVE_BASE" --github-output "$GITHUB_OUTPUT")
         args+=(--full "$SELECTIVE_FULL")
         if [ -n "$SELECTIVE_PR_HEAD" ]; then args+=(--pr-head "$SELECTIVE_PR_HEAD"); fi
-        uv run --no-project --python 3.14 --with pydantic==2.13.4 --with pyyaml==6.0.3 \
+        uv run --no-project --python 3.14 --with pydantic==2.13.4 --with pyyaml==6.0.3 --with "$SELECTIVE_ACTION/../../declarations" \
           python -m pytest_selective.ci "${args[@]}" | tee test-lanes.json
         {
           echo '### Test lane selection'

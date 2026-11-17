@@ -1,5 +1,15 @@
 # Publishing pytest-selective
 
+The release contains `pytest-selective` and its lightweight
+`pytest-selective-declarations` companion at the same version. Release Please
+updates both project versions and lock entries. CI builds, validates and installs
+both wheel/sdist pairs; Publish uploads those tested artifacts together.
+
+Before the first companion release, register its PyPI Trusted Publisher with
+owner `gigaverse-app`, repository `pytest-selective`, workflow `release.yml` and
+environment `pypi`, matching the existing project. This is required provisioning;
+a green build alone does not establish publication access for the new project.
+
 The distribution is `pytest-selective`; imports use `pytest_selective`.
 The version has one source of truth: `[project].version` in `pyproject.toml`.
 

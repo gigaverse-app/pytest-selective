@@ -66,8 +66,13 @@
       "extra-files": [
         {
           "type": "toml",
+          "path": "declarations/pyproject.toml",
+          "jsonpath": "$.project.version"
+        },
+        {
+          "type": "toml",
           "path": "uv.lock",
-          "jsonpath": "$.package[?(@.name.value=='pytest-selective' || @.name=='pytest-selective')].version"
+          "jsonpath": "$.package[?(@.name.value=='pytest-selective' || @.name=='pytest-selective' || @.name.value=='pytest-selective-declarations' || @.name=='pytest-selective-declarations')].version"
         }
       ]
     }
