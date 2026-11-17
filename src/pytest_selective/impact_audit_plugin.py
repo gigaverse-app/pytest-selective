@@ -45,6 +45,11 @@ _WORD_SEPARATORS = re.compile(r"[\s=;|&<>()'\"]+")
 #: own heuristics. What it reads depends on what earlier tests imported, never on the test.
 #: Hypothesis seeds its generators with constants parsed from local modules (6.131+).
 _PROCESS_WIDE_READERS = frozenset({"hypothesis.internal.constants_ast"})
+#: Standard-library code that asks ``linecache`` for a source line only to show it: a rendered
+#: traceback (also behind ``logging.exception``) and a displayed warning. Which file that is depends
+#: on whose frame or warning it is, and a thread left running by an earlier test file logs its own
+#: frames while a later one is current. The text shown never changes a test's outcome.
+_SOURCE_DISPLAY = frozenset({"traceback", "warnings"})
 
 
 def _key(path: str) -> str:
@@ -60,10 +65,19 @@ def _write_only(mode: object, flags: object) -> bool:
 
 
 def _read_by_process_wide_reader() -> bool:
+    """
+    Whether the open on the stack is library bookkeeping and no input of the current test.
+
+    A direct ``linecache`` or ``inspect.getsource`` call by a test stays a read: only ``linecache``
+    reached from source display is exempt.
+    """
     frame = sys._getframe(1)
+    through_linecache = False
     while frame is not None:
-        if frame.f_globals.get("__name__") in _PROCESS_WIDE_READERS:
+        name = frame.f_globals.get("__name__")
+        if name in _PROCESS_WIDE_READERS or (through_linecache and name in _SOURCE_DISPLAY):
             return True
+        through_linecache = through_linecache or name == "linecache"
         frame = frame.f_back
     return False
 
