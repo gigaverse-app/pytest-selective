@@ -1,7 +1,7 @@
 # Publishing pytest-selective
 
 The release contains `pytest-selective` and its lightweight
-`pytest-selective-declarations` companion at the same version. Release Please
+`selective-deps` companion at the same version. Release Please
 updates both project versions and lock entries. CI builds, validates and installs
 both wheel/sdist pairs; Publish uploads those tested artifacts together.
 
@@ -22,7 +22,7 @@ the first release):
 
 | Field | Value |
 | --- | --- |
-| PyPI project | Register each separately: `pytest-selective` and `pytest-selective-declarations` |
+| PyPI project | Register each separately: `pytest-selective` and `selective-deps` |
 | GitHub owner | `gigaverse-app` |
 | Repository | `pytest-selective` |
 | Workflow filename | `release.yml` |
@@ -97,7 +97,9 @@ are immutable; fix release defects with a new version and document any yanked
 release.
 
 The first 1.7.0 publication uploaded the main wheel, then PyPI rejected the new
-companion project because its pending publisher was missing. That tag predates
+companion project, then named `pytest-selective-declarations`, because its pending
+publisher was missing. The companion is now named `selective-deps`; register that
+name only. That tag predates
 retry support. Register the companion publisher and publish the next patch
 through Release Please; do not move the 1.7.0 tag. Both projects need their wheel
 and source archive, and the companion must install without pytest or the full

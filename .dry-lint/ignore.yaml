@@ -1,7 +1,7 @@
 schema: 1
 
 distinct:
-  - symbol: declarations/src/pytest_selective_declarations/models.py::DependencyInputs
+  - symbol: declarations/src/selective_deps/models.py::DependencyInputs
     from:
       - src/pytest_selective/impact_models.py::AuditExemption
     reason: >-

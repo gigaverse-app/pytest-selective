@@ -21,7 +21,7 @@ def check_metadata(raw: bytes, readme: str, project: str = "pytest-selective") -
 
 def main() -> None:
     version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
-    for project, folder in (("pytest-selective", ROOT), ("pytest-selective-declarations", ROOT / "declarations")):
+    for project, folder in (("pytest-selective", ROOT), ("selective-deps", ROOT / "declarations")):
         assert tomllib.loads((folder / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"] == version
         readme = (folder / "README.md").read_text(encoding="utf-8")
         stem = project.replace("-", "_")

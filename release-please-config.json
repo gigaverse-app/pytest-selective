@@ -72,7 +72,7 @@
         {
           "type": "toml",
           "path": "uv.lock",
-          "jsonpath": "$.package[?(@.name.value=='pytest-selective' || @.name=='pytest-selective' || @.name.value=='pytest-selective-declarations' || @.name=='pytest-selective-declarations')].version"
+          "jsonpath": "$.package[?(@.name.value=='pytest-selective' || @.name=='pytest-selective' || @.name.value=='selective-deps' || @.name=='selective-deps')].version"
         }
       ]
     }

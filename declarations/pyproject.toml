@@ -3,9 +3,9 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pytest-selective-declarations"
+name = "selective-deps"
 version = "1.7.0"
-description = "Portable reader-owned dependency declarations for any test runner"
+description = "Portable file dependency declarations for test selection and incremental tooling"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
@@ -18,4 +18,4 @@ Repository = "https://github.com/gigaverse-app/pytest-selective"
 Documentation = "https://pytest-selective.readthedocs.io/en/latest/docs/declarations/"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/pytest_selective_declarations"]
+packages = ["src/selective_deps"]

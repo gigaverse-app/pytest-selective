@@ -7,7 +7,7 @@ from smoke_environments import installed_distributions
 PROBE = r"""
 import importlib.util
 import sys
-from pytest_selective_declarations import dependency_edges, contents_node, DependencyDeclarationError
+from selective_deps import dependency_edges, contents_node, DependencyDeclarationError
 assert importlib.util.find_spec("pytest") is None
 assert importlib.util.find_spec("pytest_selective") is None
 files = {"web/read.ts", "web/read.ts.gv-dependency.yaml", "data.json"}
@@ -24,9 +24,7 @@ assert not any(name.startswith(("pytest_selective.", "_pytest")) for name in sys
 
 
 def smoke() -> None:
-    for distribution, version, folder, _, python, environment in installed_distributions(
-        "pytest_selective_declarations"
-    ):
+    for distribution, version, folder, _, python, environment in installed_distributions("selective_deps"):
         subprocess.run([str(python), "-I", "-c", PROBE], cwd=folder, check=True, env=environment)
         print(f"Verified {distribution.name} on Python {version} without pytest or pytest-selective", flush=True)
 

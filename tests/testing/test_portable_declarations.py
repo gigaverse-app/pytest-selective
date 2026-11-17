@@ -7,7 +7,7 @@ import sys
 def test_portable_api_has_no_pytest_or_selection_imports():
     code = r"""
 import sys
-from pytest_selective_declarations import dependency_edges, contents_node
+from selective_deps import dependency_edges, contents_node
 files = {'web/read.ts', 'web/read.ts.gv-dependency.yaml', 'fixtures/data.json'}
 manifests = {'web/read.ts.gv-dependency.yaml': b'dependencies:\n  - inputs: ["//fixtures/*.json"]\n    kind: content\n'}
 edges = dependency_edges(manifests, files, revision='example')

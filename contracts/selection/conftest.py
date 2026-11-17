@@ -169,7 +169,7 @@ MUTANTS: dict[str, Callable[[], list[tuple[str, object]]]] = {
     # Read a content-kind declaration as an import: it then follows the read file's imports.
     "content-follows-imports": lambda: [
         ("pytest_selective.impact_graph.contents_node", lambda path: path),
-        ("pytest_selective_declarations.parser.contents_node", lambda path: path),
+        ("selective_deps.parser.contents_node", lambda path: path),
     ],
     # Scope every conftest to its top-level directory, so tests/sub/conftest.py reaches every test.
     "conftest-scope-collapsed": lambda: [
