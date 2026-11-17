@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.6.1...v1.7.0) (2026-11-17)
+
+
+### Features
+
+* **declarations:** expose a lightweight language-neutral dependency API ([e870ab0](https://github.com/gigaverse-app/pytest-selective/commit/e870ab0d840f8e1e7b0b0158de98954ad71f4801))
+
 ## [1.6.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.6.0...v1.6.1) (2026-11-14)
 
 
