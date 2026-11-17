@@ -44,6 +44,10 @@ jobs:
           path: dist
       - name: Publish tested distributions with attestations
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # PyPI uploads are not atomic across the two packages. Resume a partial
+          # upload from this run's tested artifacts without replacing existing files.
+          skip-existing: true
 
   action-version:
     needs: publish

@@ -22,7 +22,7 @@ the first release):
 
 | Field | Value |
 | --- | --- |
-| PyPI project | `pytest-selective` |
+| PyPI project | Register each separately: `pytest-selective` and `pytest-selective-declarations` |
 | GitHub owner | `gigaverse-app` |
 | Repository | `pytest-selective` |
 | Workflow filename | `release.yml` |
@@ -87,10 +87,21 @@ For an Actions-only publication, advance `v1` to the exact reviewed main commit
 after its complete CI passes. This updates the Git tag without creating a GitHub
 release or invoking PyPI publication. Do not move immutable package release tags.
 
-Manual dispatch is available for a version-matching **tag**, not a branch. The
-workflow intentionally does not skip existing uploads: investigate a partial
-release instead of silently treating it as successful. Published versions are
-immutable; fix release defects with a new version and document any yanked release.
+Manual dispatch is available for a version-matching **tag**, not a branch. PyPI
+uploads are sequential, so publication can fail after uploading only some of
+the four archives. Resolve the reported failure, then rerun the failed Publish
+jobs to reuse their tested distribution artifact. Existing files are skipped;
+the remaining uploads must succeed before the Actions tag advances. Verify all
+four files on PyPI before treating publication as complete. Published versions
+are immutable; fix release defects with a new version and document any yanked
+release.
+
+The first 1.7.0 publication uploaded the main wheel, then PyPI rejected the new
+companion project because its pending publisher was missing. That tag predates
+retry support. Register the companion publisher and publish the next patch
+through Release Please; do not move the 1.7.0 tag. Both projects need their wheel
+and source archive, and the companion must install without pytest or the full
+selector.
 
 ## After the first release
 
