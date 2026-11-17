@@ -7,7 +7,7 @@ license: Apache-2.0
 # Set up pytest-selective in a repository
 
 For non-Python adapters, keep the native language graph and test runner. Reuse
-the [portable declarations API](../../declarations/README.md) from the lightweight
+the [portable declarations API](https://pytest-selective.readthedocs.io/en/latest/docs/declarations/) from the lightweight
 `pytest-selective-declarations` companion, which does not install pytest or the
 Python selector. Do not copy its parser or introduce a separate declaration
 format or reader-hash registry. The Python adoption steps below apply to pytest

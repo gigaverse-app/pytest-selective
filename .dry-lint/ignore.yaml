@@ -1,0 +1,12 @@
+schema: 1
+
+distinct:
+  - symbol: declarations/src/pytest_selective_declarations/models.py::DependencyInputs
+    from:
+      - src/pytest_selective/impact_models.py::AuditExemption
+    reason: >-
+      DependencyInputs declares positive import or content edges, including empty inputs
+      parsed from source annotations. AuditExemption records reads excluded from the graph
+      because another lane covers them; it requires nonempty readers, inputs and a reason
+      naming that lane. Neither is a specialization of the other, and the portable parser
+      must not import the Python read-audit model.

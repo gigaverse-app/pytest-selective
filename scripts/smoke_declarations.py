@@ -1,12 +1,8 @@
 """Install the portable distributions with their ordinary dependencies, without pytest."""
 
-import os
 import subprocess
-import tempfile
-from itertools import product
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+from smoke_environments import installed_distributions
 
 PROBE = r"""
 import importlib.util
@@ -28,22 +24,11 @@ assert not any(name.startswith(("pytest_selective.", "_pytest")) for name in sys
 
 
 def smoke() -> None:
-    distributions = sorted((ROOT / "dist").glob("pytest_selective_declarations-*.whl")) + sorted(
-        (ROOT / "dist").glob("pytest_selective_declarations-*.tar.gz")
-    )
-    assert len(distributions) == 2, "Expected one declarations wheel and sdist"
-    environment = {key: value for key, value in os.environ.items() if key not in {"PYTHONPATH", "VIRTUAL_ENV"}}
-    for distribution, version in product(distributions, ("3.11", "3.14")):
-        with tempfile.TemporaryDirectory(prefix="declarations-install-") as temporary:
-            folder = Path(temporary)
-            venv = folder / "venv"
-            subprocess.run(["uv", "venv", "--python", version, str(venv)], check=True, env=environment)
-            python = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
-            subprocess.run(
-                ["uv", "pip", "install", "--python", str(python), str(distribution)], check=True, env=environment
-            )
-            subprocess.run([str(python), "-I", "-c", PROBE], cwd=folder, check=True, env=environment)
-            print(f"Verified {distribution.name} on Python {version} without pytest or pytest-selective", flush=True)
+    for distribution, version, folder, _, python, environment in installed_distributions(
+        "pytest_selective_declarations"
+    ):
+        subprocess.run([str(python), "-I", "-c", PROBE], cwd=folder, check=True, env=environment)
+        print(f"Verified {distribution.name} on Python {version} without pytest or pytest-selective", flush=True)
 
 
 if __name__ == "__main__":
