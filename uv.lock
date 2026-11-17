@@ -5,7 +5,7 @@ requires-python = ">=3.11"
 [manifest]
 members = [
     "pytest-selective",
-    "pytest-selective-declarations",
+    "selective-deps",
 ]
 
 [[package]]
@@ -933,7 +933,7 @@ source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
     { name = "pytest" },
-    { name = "pytest-selective-declarations" },
+    { name = "selective-deps" },
     { name = "pyyaml" },
 ]
 
@@ -962,7 +962,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.11,<3" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest", marker = "extra == 'audit'", specifier = ">=8" },
-    { name = "pytest-selective-declarations", editable = "declarations" },
+    { name = "selective-deps", editable = "declarations" },
     { name = "pyyaml", specifier = ">=6,<7" },
 ]
 provides-extras = ["audit"]
@@ -981,7 +981,7 @@ dev = [
 quint = [{ name = "pytest-quint-connect", specifier = ">=1.0.0,<2" }]
 
 [[package]]
-name = "pytest-selective-declarations"
+name = "selective-deps"
 version = "1.7.0"
 source = { editable = "declarations" }
 dependencies = [

@@ -114,8 +114,8 @@
     "src/pytest_selective/impact_selection.py",
     "src/pytest_selective/impact_graph.py",
     "src/pytest_selective/impact_declarations.py",
-    "declarations/src/pytest_selective_declarations/parser.py",
-    "declarations/src/pytest_selective_declarations/models.py",
+    "declarations/src/selective_deps/parser.py",
+    "declarations/src/selective_deps/models.py",
     "src/pytest_selective/ast_imports.py"
   ],
   "attest": {

@@ -3,7 +3,7 @@
 # pytest-selective
 
 Building a non-Python adapter? Install the lightweight
-[`pytest-selective-declarations`](declarations/README.md) companion to reuse
+[`selective-deps`](declarations/README.md) companion to reuse
 reader-owned sidecars and directory manifests. It has no pytest or selector
 dependency; combine its validated edges with your language's native import graph.
 [![CI](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml)

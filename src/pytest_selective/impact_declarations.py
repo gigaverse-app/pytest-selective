@@ -1,6 +1,6 @@
 """Compatibility exports; portable declaration semantics live in one package."""
 
-from pytest_selective_declarations import (
+from selective_deps import (
     DIRECTORY_MANIFEST,
     SIDECAR_SUFFIX,
     DependencyDeclarationError,

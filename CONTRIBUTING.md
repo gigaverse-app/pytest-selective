@@ -65,7 +65,7 @@ uv run --group quint pytest-quint-connect report '**/.artifacts/quint-connect/re
 | Private working-tree snapshots, staged inputs and index timestamp preservation | `working_tree.py` |
 | Python module names, Unicode matching and dotted import relationships | `ast_imports.py` |
 | Test-file discovery and cache exclusions | `test_inventory.py` |
-| Reader-owned declaration grammar, path expansion and dependency kinds | `declarations/src/pytest_selective_declarations`; the selector modules retain compatibility exports |
+| Reader-owned declaration grammar, path expansion and dependency kinds | `declarations/src/selective_deps`; the selector modules retain compatibility exports |
 | Repository-relative path containment, including the dot root | `impact_graph.within` |
 
 The expansion guard imports the first three owners directly when run as a script;

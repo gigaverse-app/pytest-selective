@@ -6,22 +6,22 @@ from pathlib import PurePosixPath
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from pytest_selective_declarations import (
+from selective_deps import (
     CONTENTS_PREFIX as CONTENTS_PREFIX,
 )
-from pytest_selective_declarations import (
+from selective_deps import (
     DependencyInputs as DependencyInputs,
 )
-from pytest_selective_declarations import (
+from selective_deps import (
     DependencyManifest as DependencyManifest,
 )
-from pytest_selective_declarations import (
+from selective_deps import (
     ManifestDependencyRule as ManifestDependencyRule,
 )
-from pytest_selective_declarations import (
+from selective_deps import (
     contents_node as contents_node,
 )
-from pytest_selective_declarations import (
+from selective_deps import (
     file_of as file_of,
 )
 

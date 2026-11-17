@@ -1,12 +1,12 @@
-# Portable dependency declarations
+# selective-deps
 
-Use pytest-selective's dependency format with any language or test runner:
+Declare file dependencies for test selection and incremental tooling in any language:
 
 ```sh
-pip install pytest-selective-declarations
+pip install selective-deps
 ```
 
-This companion installs Pydantic and PyYAML. It does not depend on pytest or
+This package installs Pydantic and PyYAML. It does not depend on pytest or
 pytest-selective, register plugins, inspect Python imports, open a graph cache,
 or run Git. The full pytest-selective package uses this same implementation.
 
@@ -30,7 +30,7 @@ The adapter supplies a complete tracked-file inventory and the declaration bytes
 from one snapshot:
 
 ```python
-from pytest_selective_declarations import dependency_edges
+from selective_deps import dependency_edges
 
 files = {"web/catalog.ts", "web/catalog.ts.gv-dependency.yaml", "fixtures/catalog/demo.json"}
 manifests = {
