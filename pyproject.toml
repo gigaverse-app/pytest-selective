@@ -12,7 +12,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{name = "Gigaverse"}]
 keywords = ["pytest", "test-selection", "test-impact-analysis", "incremental-testing", "git", "ci"]
-dependencies = ["pydantic>=2.11,<3", "pyyaml>=6,<7", "pytest>=8"]
+dependencies = ["pydantic>=2.11,<3", "pyyaml>=6,<7", "pytest>=8", "pytest-selective-declarations>=1.6.1,<2"]
 classifiers = [
   "Framework :: Pytest",
   "Intended Audience :: Developers",
@@ -50,6 +50,12 @@ quint = ["pytest-quint-connect>=1.0.0,<2"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pytest_selective"]
+
+[tool.uv.workspace]
+members = ["declarations"]
+
+[tool.uv.sources]
+pytest-selective-declarations = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

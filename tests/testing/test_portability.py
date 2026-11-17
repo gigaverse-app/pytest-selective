@@ -5,9 +5,9 @@ import sys
 from pathlib import Path
 
 import pytest
+from pytest_selective_declarations.parser import _path_pattern
 
 from pytest_selective.impact_audit_plugin import repository_root, tracked_files
-from pytest_selective.impact_declarations import _path_pattern
 from pytest_selective.impact_graph import inventory
 from tests.testing.git_repo import commit, write
 

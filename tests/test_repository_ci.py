@@ -103,7 +103,7 @@ def test_distributions_follow_the_package_lane_and_smoke_follows_runtime_selecti
         ).split()
     )
     for command in (
-        "uv build",
+        "uv build --all-packages",
         "uv run --locked twine check --strict dist/*",
         "uv run --locked python scripts/check_metadata.py",
     ):

@@ -10,7 +10,7 @@ uv run pre-commit install
 uv run pre-commit run --all-files
 uv run pytest -q --cov --cov-report=term-missing
 uv run python scripts/tutorial.py
-uv build
+uv build --all-packages
 uv run twine check --strict dist/*
 uv run python scripts/smoke_distribution.py
 ```
@@ -65,7 +65,7 @@ uv run --group quint pytest-quint-connect report '**/.artifacts/quint-connect/re
 | Private working-tree snapshots, staged inputs and index timestamp preservation | `working_tree.py` |
 | Python module names, Unicode matching and dotted import relationships | `ast_imports.py` |
 | Test-file discovery and cache exclusions | `test_inventory.py` |
-| Reader-owned declaration grammar, path expansion and dependency kinds | `impact_declarations.py`, with the canonical models in `impact_models.py` |
+| Reader-owned declaration grammar, path expansion and dependency kinds | `declarations/src/pytest_selective_declarations`; the selector modules retain compatibility exports |
 | Repository-relative path containment, including the dot root | `impact_graph.within` |
 
 The expansion guard imports the first three owners directly when run as a script;

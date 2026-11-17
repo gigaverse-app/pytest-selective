@@ -60,7 +60,7 @@ jobs:
         env:
           PYTHONPATH: src
         run: |
-          uv run --no-project --python 3.14 --with pydantic==2.13.4 --with pyyaml==6.0.3 \
+          uv run --no-project --python 3.14 --with pydantic==2.13.4 --with pyyaml==6.0.3 --with ./declarations \
             python scripts/ci_file_config.py "$RUNNER_TEMP/test-impact.json"
       - id: files
         uses: ./
@@ -206,7 +206,7 @@ jobs:
       - uses: gigaverse-app/ci-esta/actions/setup-cached-uv@v1
         with:
           python-version: '3.14'
-      - run: uv build
+      - run: uv build --all-packages
       - run: uv run --locked twine check --strict dist/*
       - run: uv run --locked python scripts/check_metadata.py
       - name: Smoke installed distributions when runtime inputs change

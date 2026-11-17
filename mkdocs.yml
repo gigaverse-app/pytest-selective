@@ -77,6 +77,8 @@ extra:
     skills/pytest-selective/SKILL.md: agent-setup.md
   llms_txt: documentation/llms.txt
   published_sources:
+  - source: declarations/README.md
+    as: docs/declarations.md
   - source: skills/pytest-selective/SKILL.md
     as: agent-setup.md
   - docs/tutorials/adoption-checklist.md
@@ -111,6 +113,7 @@ nav:
   - Agent prompt and skill installation: docs/agents.md
 - Configure and run:
   - Configuration reference: docs/configuration.md
+  - Portable declarations for any language: docs/declarations.md
   - Set up CI selection: docs/ci.md
   - GitHub Actions reference: docs/actions.md
 - Keep selection trustworthy:
