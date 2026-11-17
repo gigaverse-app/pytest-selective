@@ -10,3 +10,13 @@ distinct:
       because another lane covers them; it requires nonempty readers, inputs and a reason
       naming that lane. Neither is a specialization of the other, and the portable parser
       must not import the Python read-audit model.
+
+  - symbol: src/pytest_selective/impact_models.py::AuditExemption
+    from:
+      - src/pytest_selective/impact_name_scope.py::Narrowed
+    reason: >-
+      AuditExemption is user configuration naming reader/input patterns and the
+      independent lane that covers a runtime read. Narrowed is an immutable analysis
+      result containing concrete readers reached by a proven name-scoped source edit
+      and its explanation. It has no input patterns, validation policy or exemption
+      behavior; sharing a model would conflate configuration with computed evidence.
