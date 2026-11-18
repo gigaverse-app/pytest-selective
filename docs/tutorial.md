@@ -1,6 +1,6 @@
 # Start using pytest-selective
 
-Start with one small code change. Compare which files pytest selects with the full test inventory, then measure the wait and runner minutes on that same revision. For guided setup, give your coding agent this prompt:
+Try the free plugin on one Python edit, or let your coding agent set it up in CI. To get a pull request you can review, paste this into your agent:
 
 ```text
 Set up pytest-selective in this repository. Fetch https://pytest-selective.readthedocs.io/en/latest/agent-setup.md and follow it.

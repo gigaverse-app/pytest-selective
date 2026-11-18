@@ -1,89 +1,15 @@
 ---
-title: pytest-selective documentation
-description: Run the tests your Python change can affect.
+title: pytest-selective
+description: Run the Python tests affected by your edit.
+hide:
+  - navigation
+  - toc
 ---
 
-![pytest-selective](../docs/assets/banner.svg)
-
-# Run the tests your Python change can affect.
-
-**Run the tests your change can affect.** Edit a Python function and pytest-selective follows its imports and callers to the affected test files. It explains each selection, includes declared runtime inputs and runs the full suite when it cannot establish scope. In CI, the planner can skip an unrelated job before its runner starts.
-
-In our Django monorepo, selection and CI-esta scheduling together brought the PR test gate to **5.1 minutes against a 52-minute full-suite estimate**. Across two backend repos, billed minutes per merged PR fell **43%**. CI-esta adds verified result reuse, dependency caching, balanced shards and PR reports. [See the case study](https://pytest-selective.readthedocs.io/en/latest/case-study/).
-
-## Set it up with your coding agent
-
-Give Claude Code, Codex, Cursor or any coding agent in your repository this one prompt:
-
-```text
-Set up pytest-selective in this repository. Fetch https://pytest-selective.readthedocs.io/en/latest/agent-setup.md and follow it.
-```
-
-The agent maps your CI jobs to lanes, adds the planner, a gate and routing tests, proves a docs-only pull request skips the expensive jobs while code changes keep full coverage, measures the difference and opens a pull request. Making the gate a required check, labels and merging stay with you. [Read the procedure it follows](../skills/pytest-selective/SKILL.md),
-or do it by hand with the [whole-lane tutorial](../docs/tutorials/skip-unrelated-ci.md).
-
-## What it does
-
-pytest-selective follows Python dependencies across Git revisions, explains why
-each test was selected, and falls back to full execution when scope cannot be
-established. Use it for the local edit/test loop or to skip entire unrelated CI
-lanes before services and runners start.
-
-[Try it in your project](../docs/tutorial.md){ .md-button .md-button--primary }
-[Skip unrelated CI jobs](../docs/tutorials/skip-unrelated-ci.md){ .md-button }
-
-## Start locally
-
-In an existing Git-backed Python project with a passing pytest suite:
-
-```bash
-uv add --dev pytest-selective
-# Commit the dependency change, then edit application code.
-uv run pytest --selective
-# Keep a full-suite checkpoint:
-uv run pytest --no-selective
-```
-
-Python 3.11+ and Git 2.24+ are required. Native mode compares HEAD with staged,
-unstaged and nonignored untracked changes. It collects normally, then deselects
-unaffected tests. Use a known passing branch base for committed changes. The
-[tutorial](../docs/tutorial.md) covers the first run and a controlled regression.
-
-```mermaid
-flowchart LR
-  A[Git change] --> B[Dependency graph + declared inputs]
-  B --> C{Selection}
-  C --> D[Affected tests or complete lanes]
-  C --> E[No affected work]
-  C --> F[Uncertain scope: full execution]
-```
-
-## Pick the right level
-
-| Your bottleneck | Start here |
-| --- | --- |
-| Repeating local tests after each edit | [Native pytest plugin](../docs/local-development.md) |
-| Importing and collecting a large suite | [Pre-collection runner](../docs/local-development.md#pre-collection-runner) |
-| Starting databases and every OS lane for README changes | [Whole-lane tutorial](../docs/tutorials/skip-unrelated-ci.md) |
-| Selection is unexpectedly broad | [Dependency explanations and audit](../docs/selection-health.md) |
-
-Imports cannot reveal every file read, subprocess or external dependency. Declare
-those inputs and keep full checkpoints. Conformance suites and whole-suite
-coverage may need complete lanes. [Guarantees and limits](../docs/evidence.md).
-
-## Measured, scenario-specific savings
-
-![README-only CI comparison: 627 versus 48 runner-seconds and 211 versus 26 seconds elapsed](assets/routing-comparison.svg)
-
-One same-revision full/selected pair retained quality and package checks while
-skipping unrelated test lanes. This is a historical workflow comparison, not a
-universal speedup or a bill. [Runs, retained checks and measurement limits](../docs/benchmarks/2026-10-22-routing.md).
-
-## Related tools and support
-
-[Choose a related tool](ecosystem.md) when you also need test selection, CI
-measurement or background-work guarantees. Each project works independently.
-
-`latest` follows main and can contain APIs newer than your installed package.
-Check the release notes for that version. [Report an issue](https://github.com/gigaverse-app/pytest-selective/issues)
-with a minimal reproducer, or read [the contribution guide](../CONTRIBUTING.md).
+<div class="lp py">
+<header><div><p class="brand">pytest-selective</p><h1>Test what your change touches.</h1><p>Get feedback on your edit without running every Python test. pytest-selective finds the tests that depend on the code you changed.</p><a class="cta" href="#try-it">Try it on a local edit ↓</a><p class="sub">Free · Apache 2.0 · Works with your existing pytest suite</p></div>
+<aside><small>CI runner time · MongoDB test change</small><strong>94%<span style="font-size:.32em;letter-spacing:-.03em"> less</span></strong><p>Full workflow · 1,602 seconds</p><div class="bar"></div><p>Selected workflow · 93 seconds</p><div class="bar short" style="width:5.8%"></div><a href="https://pytest-selective.readthedocs.io/en/latest/ecosystem/">See how the gate fell from 5m22s to 54s ↗</a></aside></header>
+<section class="setup" id="try-it"><h2>Start with one function.</h2><p>In a Git project with a passing pytest suite, install the plugin and commit the dependency change.</p><pre id="first-command">uv add --dev pytest-selective</pre><button type="button" hidden data-copy="first-command">Copy install command</button><span role="status" aria-live="polite"></span><p>Edit an application function, then run:</p><pre>uv run pytest --selective</pre><p>The summary shows which tests your edit selected. Use <code>uv run pytest --no-selective</code> for a full run.</p><p><a href="https://pytest-selective.readthedocs.io/en/latest/docs/tutorial/">Follow the local tutorial →</a> · <a href="https://pytest-selective.readthedocs.io/en/latest/agent-setup/">Set up CI with your coding agent</a></p></section>
+<section><h2>From a code edit to a test plan.</h2><div class="grid"><article><h3>Follow indirect imports</h3><p>Edit a pricing helper and select the checkout tests that reach it through other modules.</p></article><article><h3>See why a test ran</h3><p>Inspect the selection report. Declare runtime inputs such as files a test opens on disk.</p></article><article><h3>Skip service startup</h3><p>Plan before pytest collection in CI so unrelated changes can skip the whole job. Uncertain changes run the full suite.</p></article></div></section>
+<section><h2>Follow a checkout change.</h2><p>Suppose you change how <code>round_discount()</code> rounds a price. A checkout test calls that function through the order service, so the selector includes it. A profile test with no dependency on pricing can sit this run out. If a shared pytest fixture changes, the selection can expand to the full suite.</p><p><a href="https://pytest-selective.readthedocs.io/en/latest/docs/local-development/">Run locally</a> · <a href="https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/sidecar-dependencies/">Declare runtime inputs</a> · <a href="https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/skip-unrelated-ci/">Skip unrelated CI jobs</a> · <a href="https://pytest-selective.readthedocs.io/en/latest/docs/selection-health/">Understand a full-suite fallback</a> · <a href="https://pytest-selective.readthedocs.io/en/latest/docs/evidence/">Check the guarantees</a></p></section>
+<footer><a href="https://github.com/gigaverse-app/pytest-selective">GitHub</a> · <a href="https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/adoption-checklist/">Adoption guide</a> · <a href="https://pytest-selective.readthedocs.io/en/latest/docs/actions/">Actions reference</a></footer></div>

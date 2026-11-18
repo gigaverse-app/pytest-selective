@@ -11,4 +11,5 @@
   <meta property="og:image:alt" content="{{ config.site_name | e }}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="{{ config.extra.brand_social_image | e }}">
+{% if page.is_homepage %}<link rel="stylesheet" href="{{ 'assets/landing.css' | url }}"><script defer src="{{ 'assets/landing.js' | url }}"></script>{% endif %}
 {% endif %}{% endblock %}
