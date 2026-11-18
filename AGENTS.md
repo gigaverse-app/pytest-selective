@@ -49,6 +49,12 @@ Release Please derives versions and changelogs from Conventional Commits. Let
 it prepare the release PR; do not hand-edit versions for ordinary changes.
 Merging a release PR authorizes PyPI publication after CI. Follow RELEASING.md.
 
+CI-esta and other repositories import this package's Python names, so the
+commit type is a promise to them. Follow the [supported Python API](docs/python-api.md)
+stability rules: removing or renaming a listed name is `feat!` (keep an alias for
+a minor release first), and changing what selection reports for an unchanged
+repository is `feat` with the adopter's next step in the PR body.
+
 ## Shared agent instructions
 
 Edit this root `AGENTS.md` as the single source for Codex and Claude.

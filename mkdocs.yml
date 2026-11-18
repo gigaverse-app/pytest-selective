@@ -94,6 +94,7 @@ extra:
   - docs/ci.md
   - docs/comparison-pytest-impacted.md
   - docs/configuration.md
+  - docs/python-api.md
   - docs/evidence.md
   - docs/local-development.md
   - docs/pytest-hygiene.md
@@ -114,6 +115,7 @@ nav:
 - Configure and run:
   - Configuration reference: docs/configuration.md
   - Portable declarations for any language: docs/declarations.md
+  - Supported Python API: docs/python-api.md
   - Set up CI selection: docs/ci.md
   - GitHub Actions reference: docs/actions.md
 - Keep selection trustworthy:
