@@ -38,9 +38,11 @@ Your agent opens a pull request with the workflow changes and measurements. You 
 
 ## How much time could you save?
 
-On pytest-obligation, editing its README took **20 seconds** to check instead of **6 minutes**, using **97% less runner time**. Editing a MongoDB test still ran the relevant checks and finished in **54 seconds** instead of **5m22s**. [Explore the measured examples](https://pytest-selective.readthedocs.io/en/latest/ecosystem/).
+Change a MongoDB test and keep the database checks that matter. In pytest-obligation, that edit passed CI in **54 seconds instead of 5m22s**, using **93 runner-seconds instead of 1,602**. [Explore the measured examples](https://pytest-selective.readthedocs.io/en/latest/ecosystem/).
 
 [Declare runtime dependencies](declarations/README.md) · [Add caching, evidence reuse and balanced shards with CI-esta](https://ci-esta.readthedocs.io/en/latest/) · [Contribute](CONTRIBUTING.md) · [License](LICENSE)
+
+[Detailed adoption reference](ADOPTION-REFERENCE.md) — installation options, selection guarantees, benchmarks and tool comparisons.
 
 <details>
 <summary>Project quality checks</summary>
