@@ -30,7 +30,7 @@ Prefer one directory manifest to a sidecar per file. In a manifest, `{stem}` in
 an input is each reader's file name before its first dot, so
 `inputs: ["{stem}.mjs"]` pairs `report.test.mjs` with `report.mjs`. A rule with
 `inputs: []` records readers reviewed as having no repository inputs, such as
-scripts that read only generated reports; it requires a `reason`. Use `reason`
+scripts that read only generated reports; it requires a `reason` and takes no `kind`. Use `reason`
 rather than YAML comments to explain any rule.
 
 The adapter supplies a complete tracked-file inventory and the declaration bytes

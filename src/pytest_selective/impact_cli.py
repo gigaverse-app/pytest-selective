@@ -11,13 +11,14 @@ import os
 import subprocess
 import sys
 import time
+from collections import Counter
 from collections.abc import Callable
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from pytest_selective.checkpoint import full_checkpoint_reason
 from pytest_selective.git_operations import pull_request_merge_base
 from pytest_selective.impact_audit import audit, load_records, summary
-from pytest_selective.impact_audit_declarations import plan_declarations, write_sidecar
+from pytest_selective.impact_audit_declarations import DeclarationPlan, plan_declarations, write_sidecar
 from pytest_selective.impact_explanation import dependent_tests, explain
 from pytest_selective.impact_graph import (
     DependencyDeclarationError,
@@ -253,9 +254,27 @@ def _write_declarations(repo: Path, report: AuditReport, snapshot: Snapshot, rec
         f"Declared {declared} of {len(report.undeclared)} undeclared reads in {len(plan.sidecars)} sidecars. "
         "Review and commit them, then re-run audit (or audit --working-tree) to confirm."
     )
+    _suggest_shared_manifests(plan)
     for skipped in plan.skipped:
         print(f"not declared: {skipped}", file=sys.stderr)
     return 2 if plan.skipped else 0
+
+
+SHARED_CONVENTION_GUIDE = (
+    "https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/sidecar-dependencies/"
+    "#share-a-convention-without-sharing-every-input"
+)
+
+
+def _suggest_shared_manifests(plan: DeclarationPlan) -> None:
+    """Point at one directory manifest wherever this run wrote several sidecars side by side."""
+    by_directory = Counter(PurePosixPath(sidecar.test).parent.as_posix() for sidecar in plan.sidecars)
+    for directory, count in sorted(by_directory.items()):
+        if count > 1:
+            print(
+                f"hint: wrote {count} sidecars in {directory}/; if they follow one convention, replace them with "
+                f"{directory}/.gv-dependencies.yaml ({SHARED_CONVENTION_GUIDE})"
+            )
 
 
 #: Files that joined the floor named in the budget error before the rest are counted.

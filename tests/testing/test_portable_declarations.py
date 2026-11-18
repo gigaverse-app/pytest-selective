@@ -65,3 +65,13 @@ def test_other_brace_placeholders_remain_invalid():
     manifest = b'dependencies:\n  - readers: ["*.test.mjs"]\n    inputs: ["{name}.mjs"]\n'
     with pytest.raises(DependencyDeclarationError, match="invalid repository-relative dependency pattern"):
         dependency_edges({"ci/.gv-dependencies.yaml": manifest}, files)
+
+
+def test_a_rule_without_inputs_rejects_a_kind():
+    import pytest
+    from selective_deps import DependencyDeclarationError, dependency_edges
+
+    files = {"ci/.gv-dependencies.yaml", "ci/report.mjs"}
+    manifest = b"dependencies: [{readers: [report.mjs], inputs: [], kind: import, reason: Reviewed.}]"
+    with pytest.raises(DependencyDeclarationError, match="follows nothing"):
+        dependency_edges({"ci/.gv-dependencies.yaml": manifest}, files)
