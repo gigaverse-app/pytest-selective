@@ -5,6 +5,12 @@ description: A staged adoption tutorial and checklist for local pytest, pre-coll
 
 # Get the most benefit from pytest-selective
 
+Start with one small code change. Compare which files pytest selects with the full test inventory, then measure the wait and runner minutes on that same revision. For guided setup, give your coding agent this prompt:
+
+```text
+Set up pytest-selective in this repository. Fetch https://pytest-selective.readthedocs.io/en/latest/agent-setup.md and follow it.
+```
+
 Choose the level that avoids your actual cost. The native plugin avoids
 unaffected test execution. The pre-collection runner also avoids importing and
 collecting unrelated files. Whole-lane CI planning can avoid starting runners,

@@ -7,6 +7,10 @@ description: Run the tests your Python change can affect.
 
 # Run the tests your Python change can affect.
 
+**Run the tests your change can affect.** Edit a Python function and pytest-selective follows its imports and callers to the affected test files. It explains each selection, includes declared runtime inputs and runs the full suite when it cannot establish scope. In CI, the planner can skip an unrelated job before its runner starts.
+
+In our Django monorepo, selection and CI-esta scheduling together brought the PR test gate to **5.1 minutes against a 52-minute full-suite estimate**. Across two backend repos, billed minutes per merged PR fell **43%**. CI-esta adds verified result reuse, dependency caching, balanced shards and PR reports. [See the case study](https://pytest-selective.readthedocs.io/en/latest/case-study/).
+
 ## Set it up with your coding agent
 
 Give Claude Code, Codex, Cursor or any coding agent in your repository this one prompt:
