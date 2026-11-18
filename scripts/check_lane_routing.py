@@ -35,9 +35,9 @@ ROUTES: dict[str, set[str]] = {
     # A file no job runs and no test reads.
     "actions/plan-lanes/helper.py": NOTHING,
     "actions/README.md": NOTHING,
-    # Both distributions embed README.md and LICENSE; the contract job checks the README's contract report, and
-    # tests/test_distribution_metadata.py imports scripts/check_metadata.py, which reads the README.
-    "README.md": EVERY,
+    # Distributions and the metadata test read the README; the replay reads its own report.
+    "README.md": {"tests", "package"},
+    "contracts/selection/verified-report.md": {"contracts"},
     "LICENSE": PACKAGE,
     "CONTRIBUTING.md": NOTHING,
     "docs/ci.md": NOTHING,

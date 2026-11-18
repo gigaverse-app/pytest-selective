@@ -22,7 +22,6 @@
     "action.yml",
     "pyproject.toml",
     "uv.lock",
-    ".pre-commit-config.yaml",
-    "README.md"
+    ".pre-commit-config.yaml"
   ]
 }
