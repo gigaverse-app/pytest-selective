@@ -1915,6 +1915,32 @@ def test_reader_relative_non_python_helpers_reach_only_their_importers(
     assert affected(repo, base, head, config, cache).selected == ["tests/left/test_script.py"]
 
 
+@pytest.mark.parametrize("change", ["own", "sibling", "manifest"])
+def test_stem_rule_selects_only_the_reader_named_by_the_changed_input(
+    repo: Path, config: ImpactConfig, cache: GraphCache, change: str
+) -> None:
+    write(repo, "tests/left/test_one.json", "1")
+    write(repo, "tests/right/test_two.json", "1")
+    manifest = "tests/.gv-dependencies.yaml"
+    write(
+        repo,
+        manifest,
+        'dependencies: [{readers: ["**/test_*.py"], relative_to: reader, inputs: ["{stem}.json"], kind: content}]',
+    )
+    base = commit(repo)
+    expected = ["tests/left/test_one.py"]
+    if change == "own":
+        write(repo, "tests/left/test_one.json", "2")
+    elif change == "sibling":
+        write(repo, "tests/right/test_two.json", "2")
+        expected = ["tests/right/test_two.py"]
+    else:
+        write(repo, manifest, (repo / manifest).read_text() + "# reviewed\n")
+        expected = ["tests/left/test_one.py", "tests/right/test_two.py"]
+    head = commit(repo)
+    assert affected(repo, base, head, config, cache).selected == expected
+
+
 @pytest.mark.parametrize("inputs", ["missing.json", "../escape.json", "//missing.json"])
 def test_reader_relative_rule_validates_inputs_for_every_matched_reader(
     repo: Path, config: ImpactConfig, cache: GraphCache, inputs: str

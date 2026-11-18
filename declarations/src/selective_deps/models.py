@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 CONTENTS_PREFIX = "@contents:"
 
@@ -25,9 +25,14 @@ class DependencyInputs(BaseModel):
 
 
 class ManifestDependencyRule(DependencyInputs):
-    inputs: list[str] = Field(min_length=1)
     readers: list[str] | None = Field(default=None, min_length=1)
     relative_to: Literal["manifest", "reader"] = "manifest"
+
+    @model_validator(mode="after")
+    def _reviewed_without_inputs(self) -> "ManifestDependencyRule":
+        if not self.inputs and not self.reason.strip():
+            raise ValueError("a rule with no inputs records a reviewed reader and requires a reason")
+        return self
 
 
 class DependencyManifest(BaseModel):

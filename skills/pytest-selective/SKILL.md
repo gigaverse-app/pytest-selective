@@ -190,7 +190,9 @@ Add `.test-impact/` to `.gitignore`: the planner keeps its graph cache there.
 for simple inputs and executed helpers. For repeated layouts, use a directory
 `.gv-dependencies.yaml` with `readers`, `inputs` and `relative_to: reader`: each reader
 then follows its own files, without connecting sibling projects. Keep `kind: content`
-for Python source scanned as text; comments use import semantics. Reserve per-reader
+for Python source scanned as text; comments use import semantics. Pair readers with
+same-named siblings through `inputs: ["{stem}.ext"]`, and record readers reviewed as
+having no repository inputs through `inputs: []` with a `reason`. Reserve per-reader
 sidecars for exceptions. Review generated audit declarations for these conventions and
 compare affected readers/lanes before and after, including additions and deletions.
 The [shared-convention guide](https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/sidecar-dependencies/#share-a-convention-without-sharing-every-input)

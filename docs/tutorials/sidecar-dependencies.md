@@ -207,6 +207,42 @@ with `inputs: ["**/*.py"]`, `relative_to: reader` and `kind: content`. Each inve
 then follows only the Python source under its own directory. Prefer this to a broad
 rule joining every scanner to every project's source.
 
+### Pair each reader with its own sibling
+
+When every reader consumes a file named after itself, put `{stem}` in an input.
+It is the reader's file name before its first dot: `report.test.mjs` has stem
+`report`. One rule then replaces a sidecar per test:
+
+```yaml
+dependencies:
+  - readers: ["report.test.mjs", "upload.test.mjs"]
+    inputs: ["{stem}.mjs"]
+    kind: import
+    reason: Each contract test executes its sibling script in a subprocess.
+```
+
+Each reader resolves its own input, so changing `report.mjs` selects only
+`report.test.mjs`. Every matched reader must have its sibling; list readers
+explicitly, or use a glob only where the convention holds for every match.
+`{stem}` is the only placeholder. Other braces remain invalid.
+
+### Record a reviewed reader with no repository inputs
+
+Language adapters that cannot prove what a reader opens can require a declaration
+for any file that uses filesystem APIs. When a reader only opens temporary fixtures,
+generated reports or event payloads, list it in a rule with no inputs:
+
+```yaml
+dependencies:
+  - readers: ["publish-report.mjs", "summarize.test.mjs"]
+    inputs: []
+    reason: Reads only generated reports and temporary fixtures.
+```
+
+A rule without inputs must have a `reason`. It connects each reader only to the
+manifest, so editing the rule still selects them. Do not use it to silence a
+reader of tracked files: declare those inputs instead.
+
 Keep the convention where its readers live. A project-specific layout belongs in
 its manifest; it does not need a framework-specific plugin in the selector. Review
 `audit --write-declarations` output for repeated layouts before retaining individual
