@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "selective-deps"
-version = "1.7.2"
+version = "1.8.0"
 description = "Portable file dependency declarations for test selection and incremental tooling"
 readme = "README.md"
 requires-python = ">=3.11"

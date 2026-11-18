@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.7.2...v1.8.0) (2026-11-18)
+
+
+### Features
+
+* **declarations:** pair readers with siblings and record reviewed readers ([#160](https://github.com/gigaverse-app/pytest-selective/issues/160)) ([ba38520](https://github.com/gigaverse-app/pytest-selective/commit/ba385202c441786ef0c96075bd4c2d6e890dbfb7))
+
+
+### Bug fixes
+
+* **declarations:** address review of reviewed readers and stem pairs ([#162](https://github.com/gigaverse-app/pytest-selective/issues/162)) ([6127570](https://github.com/gigaverse-app/pytest-selective/commit/6127570a16bf9c9ea943903f5c5b5e0e8279eec3))
+
 ## [1.7.2](https://github.com/gigaverse-app/pytest-selective/compare/v1.7.1...v1.7.2) (2026-11-17)
 
 
