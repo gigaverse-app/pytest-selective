@@ -277,6 +277,8 @@ def test_written_declarations_leave_no_undeclared_read(
         printed,
     )
     assert f"Declared {len(UNDECLARED)} of {len(UNDECLARED)} undeclared reads" in printed
+    # Several sidecars written into one directory point at a single shared manifest instead.
+    assert re.search(r"hint: wrote \d+ sidecars in tests/; .* tests/\.gv-dependencies\.yaml", printed)
     assert audit_cli(run, tmp_path, repo_config(), "--working-tree") == 0
 
 

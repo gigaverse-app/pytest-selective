@@ -172,6 +172,21 @@ are relative to its directory. `//` anchors either pattern at the repository
 root, for example `//schemas/receipt.json`. Do not use `../` to reach another
 directory.
 
+### Choose a declaration form
+
+| The reader... | Write |
+| --- | --- |
+| is the only one in its directory that needs a declaration | `<file>.gv-dependency.yaml` beside it |
+| shares a directory with other readers that need declarations | one `.gv-dependencies.yaml` with a rule per convention |
+| reads files beside itself, like its siblings do | a rule with `relative_to: reader` |
+| executes or reads the file with its own name, like `x.test.mjs` → `x.mjs` | `inputs: ["{stem}.mjs"]` |
+| opens only temporary, generated or event files | `inputs: []` with a `reason` |
+| executes or imports the input (subprocess, worker, dynamic import) | `kind: import` |
+| reads the input's bytes (JSON, templates, source as text) | `kind: content` |
+
+Explain every rule with `reason:`; it travels with the rule. A YAML comment
+copied into several sidecars is a sign they belong in one manifest.
+
 ### Share a convention without sharing every input
 
 When each reader consumes files beside itself, use `relative_to: reader` in a
@@ -226,6 +241,11 @@ Each reader resolves its own input, so changing `report.mjs` selects only
 explicitly, or use a glob only where the convention holds for every match.
 `{stem}` is the only placeholder. Other braces remain invalid.
 
+The stem stops at the **first** dot, so `build.v2.test.mjs` has stem `build`. A
+missing `build.mjs` fails with "matches no tracked files", but an unrelated
+`build.mjs` would be bound silently. Give readers with dotted base names their
+own rule naming the input explicitly.
+
 ### Record a reviewed reader with no repository inputs
 
 Language adapters that cannot prove what a reader opens can require a declaration
@@ -239,14 +259,15 @@ dependencies:
     reason: Reads only generated reports and temporary fixtures.
 ```
 
-A rule without inputs must have a `reason`. It connects each reader only to the
+A rule without inputs must have a `reason` and no `kind`, since nothing is
+followed. It connects each reader only to the
 manifest, so editing the rule still selects them. Do not use it to silence a
 reader of tracked files: declare those inputs instead.
 
 Keep the convention where its readers live. A project-specific layout belongs in
-its manifest; it does not need a framework-specific plugin in the selector. Review
-`audit --write-declarations` output for repeated layouts before retaining individual
-sidecars. An existing shared rule already satisfies the audit for covered reads.
+its manifest; it does not need a framework-specific plugin in the selector. The audit writer emits one sidecar per test and prints a `hint:` line for each
+directory that received several. Fold those into the directory's manifest before
+committing them. An existing shared rule already satisfies the audit for covered reads.
 
 ### Reading content versus executing Python
 

@@ -39,7 +39,8 @@ For agents that read `AGENTS.md`, merge this small policy into your existing fil
 ```markdown
 ## Test/CI optimization
 Use the pytest-selective skill when narrowing Python test execution.
-Declare non-import inputs, prove routing with real Git changes, and retain
+Declare non-import inputs beside their readers, one `.gv-dependencies.yaml` per
+directory rather than a sidecar per file. Prove routing with real Git changes, and retain
 docs/package checks, required gates and full-suite checkpoints.
 For GitHub Actions timing or repeated work, also use the CI-esta skill.
 Report measured runner time and elapsed time separately, with run links.

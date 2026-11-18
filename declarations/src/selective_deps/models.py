@@ -32,6 +32,8 @@ class ManifestDependencyRule(DependencyInputs):
     def _reviewed_without_inputs(self) -> "ManifestDependencyRule":
         if not self.inputs and not self.reason.strip():
             raise ValueError("a rule with no inputs records a reviewed reader and requires a reason")
+        if not self.inputs and "kind" in self.model_fields_set:
+            raise ValueError("a rule with no inputs follows nothing; remove its kind")
         return self
 
 
