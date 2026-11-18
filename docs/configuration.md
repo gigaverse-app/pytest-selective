@@ -94,6 +94,11 @@ and set `relative_to: reader`: each unanchored input then resolves beside each
 matched reader. The default remains `relative_to: manifest`, and `//` always
 anchors at the repository root. This keeps sibling readers' inputs separate;
 see [shared conventions](tutorials/sidecar-dependencies.md#share-a-convention-without-sharing-every-input).
+An input containing `{stem}` resolves to each reader's file name before its first
+dot, pairing `x.test.mjs` with `x.mjs` in one rule. A rule with `inputs: []` and a
+required `reason` records readers reviewed as having no repository inputs. See
+[sibling pairs](tutorials/sidecar-dependencies.md#pair-each-reader-with-its-own-sibling)
+and [reviewed readers](tutorials/sidecar-dependencies.md#record-a-reviewed-reader-with-no-repository-inputs).
 
 Declare lock files, environment manifests, and other suite-wide inputs explicitly:
 

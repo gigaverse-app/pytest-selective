@@ -9,6 +9,7 @@ from .models import DependencyManifest, contents_node
 
 SIDECAR_SUFFIX = ".gv-dependency.yaml"
 DIRECTORY_MANIFEST = ".gv-dependencies.yaml"
+STEM = "{stem}"
 
 
 class DependencyDeclarationError(ValueError):
@@ -106,20 +107,35 @@ def manifest_edges(path: str, source: bytes, tree: str, files: set[str]) -> dict
         if is_directory:
             assert rule.readers is not None
             readers = _expand(rule.readers, reader_files, directory, rule_location)
-        by_directory: dict[str, set[str]] = {}
+        by_input: dict[tuple[str, str], set[str]] = {}
+        per_reader = any(STEM in pattern for pattern in rule.inputs)
         for reader in sorted(readers):
             # Resolve each reader's inputs separately: a sibling's matching files
             # must neither widen this reader nor conceal its missing inputs.
             input_directory = str(PurePosixPath(reader).parent) if rule.relative_to == "reader" else directory
-            if input_directory not in by_directory:
-                inputs = _expand(rule.inputs, files, input_directory, f"{rule_location}:reader {reader}")
-                by_directory[input_directory] = (
+            stem = _stem(reader, f"{rule_location}:reader {reader}") if per_reader else ""
+            if (input_directory, stem) not in by_input:
+                inputs = _expand(
+                    [pattern.replace(STEM, stem) for pattern in rule.inputs],
+                    files,
+                    input_directory,
+                    f"{rule_location}:reader {reader}",
+                )
+                by_input[input_directory, stem] = (
                     inputs if rule.kind == "import" else {contents_node(target) for target in inputs}
                 )
-            dependencies = by_directory[input_directory]
+            dependencies = by_input[input_directory, stem]
             edges.setdefault(reader, set()).update(dependencies | {path})
             edges[reader].discard(reader)
     return edges
+
+
+def _stem(reader: str, location: str) -> str:
+    """The reader's file name before its first dot: `run.test.mjs` names `run`."""
+    stem = PurePosixPath(reader).name.split(".", 1)[0]
+    if not stem:
+        raise DependencyDeclarationError(f"{location}: {STEM} needs a reader name that does not start with a dot")
+    return stem
 
 
 def _expand(patterns: list[str], files: set[str], directory: str, location: str) -> set[str]:
