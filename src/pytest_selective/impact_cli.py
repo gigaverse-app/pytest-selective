@@ -355,6 +355,7 @@ def main(argv: list[str] | None = None) -> int:
         choices=[
             "affected",
             "audit",
+            "declarations",
             "dependencies",
             "explain",
             "conftest-impact",
@@ -419,6 +420,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     # floor-budget: the explanation `affected --explanation-output` wrote for this plan.
     parser.add_argument("--explanation", type=Path, default=Path("test-impact-explanation.json"))
+    parser.add_argument("--json", action="store_true", help="declarations: print the findings as JSON")
     args = parser.parse_args(argv)
     full_reason = args.full
     args.full = full_reason is not None
@@ -434,12 +436,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.working_tree and args.command not in {
         "affected",
         "audit",
+        "declarations",
         "warm",
         "dependencies",
         "explain",
         "conftest-impact",
     }:
-        parser.error("--working-tree is supported for affected, audit, warm, dependencies, explain and conftest-impact")
+        parser.error(
+            "--working-tree is supported for affected, audit, declarations, warm, dependencies, explain and conftest-impact"
+        )
     if args.command == "typecheck-scope":
         return _typecheck_scope(args)
     if args.command == "floor-budget":
@@ -521,6 +526,12 @@ def main(argv: list[str] | None = None) -> int:
         else:
             start = time.perf_counter()
             snapshot = cache.snapshot(args.repo, args.head, config)
+            if args.command == "declarations":
+                from pytest_selective.declaration_health import declaration_health, render
+
+                health = declaration_health(args.repo, snapshot)
+                print(health.model_dump_json(indent=2) if args.json else render(health))
+                return 1 if health.unreached or health.crowded else 0
             if args.command == "warm":
                 result = GraphAnalysisReport(
                     head=snapshot.tree,

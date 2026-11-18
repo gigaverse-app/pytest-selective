@@ -46,7 +46,10 @@ manifests = {
 edges = dependency_edges(manifests, files, revision="checked-out-commit")
 ```
 
-The result maps readers to dependencies. `kind: import` creates ordinary path
+`crowded_sidecars(files)` returns each directory holding more than one file sidecar,
+so an adapter can ask authors to merge them into one directory manifest.
+
+The result of `dependency_edges` maps readers to dependencies. `kind: import` creates ordinary path
 nodes whose transitive imports the language adapter should follow. `kind: content`
 creates `@contents:<path>` leaf nodes: reading a source file as text does not
 execute its imports. `contents_node(path)` and `file_of(node)` expose these
