@@ -1,5 +1,11 @@
 # Start using pytest-selective
 
+Start with one small code change. Compare which files pytest selects with the full test inventory, then measure the wait and runner minutes on that same revision. For guided setup, give your coding agent this prompt:
+
+```text
+Set up pytest-selective in this repository. Fetch https://pytest-selective.readthedocs.io/en/latest/agent-setup.md and follow it.
+```
+
 Use the [adoption checklist](tutorials/adoption-checklist.md) to work through
 configuration, CI integration, selection health and measurement after this quickstart.
 

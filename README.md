@@ -2,10 +2,6 @@
 
 # pytest-selective
 
-Building a non-Python adapter? Install the lightweight
-[`selective-deps`](declarations/README.md) companion to reuse
-reader-owned sidecars and directory manifests. It has no pytest or selector
-dependency; combine its validated edges with your language's native import graph.
 [![CI](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gigaverse-app/pytest-selective/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/pytest-selective)](https://pypi.org/project/pytest-selective/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://github.com/gigaverse-app/pytest-selective/blob/main/pyproject.toml)
@@ -15,7 +11,9 @@ dependency; combine its validated edges with your language's native import graph
 [![Agent skill](https://img.shields.io/badge/Agent_Skill-ready-2563EB)](https://github.com/gigaverse-app/pytest-selective/blob/main/docs/agents.md)
 [![Documentation](https://readthedocs.org/projects/pytest-selective/badge/?version=latest)](https://pytest-selective.readthedocs.io/en/latest/)
 
-**Run affected Python tests. See why they matter.**
+**Run the tests your change can affect.** Edit a Python function and pytest-selective follows its imports and callers to the affected test files. It explains each selection, includes declared runtime inputs and runs the full suite when it cannot establish scope. In CI, the planner can skip an unrelated job before its runner starts.
+
+In our Django monorepo, selection and CI-esta scheduling together brought the PR test gate to **5.1 minutes against a 52-minute full-suite estimate**. Across two backend repos, billed minutes per merged PR fell **43%**. CI-esta adds verified result reuse, dependency caching, balanced shards and PR reports. [See the case study](https://pytest-selective.readthedocs.io/en/latest/case-study/).
 
 **Set it up with your coding agent.** Paste this one prompt into Claude Code, Codex, Cursor or any coding agent in
 your repository:
@@ -52,6 +50,11 @@ CI-esta now uses this selector in its own CI: a matched README-only pair
 used **49 instead of 105 runner-seconds (53.3% less)** while keeping quality,
 routing and package checks. Its reports now compute dependency critical paths
 and slack. [See the source runs and method](https://github.com/gigaverse-app/ci-esta/blob/main/docs/benchmarks/2026-10-23-toolkit.md).
+
+Building a non-Python adapter? Install the lightweight
+[`selective-deps`](declarations/README.md) companion to reuse
+reader-owned sidecars and directory manifests. It has no pytest or selector
+dependency; combine its validated edges with your language's native import graph.
 
 ## Choose how to use it
 
