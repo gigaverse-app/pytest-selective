@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.8.0...v1.9.0) (2026-11-18)
+
+
+### Features
+
+* **declarations:** add a declarations command that lists unreached and crowded declarations ([#164](https://github.com/gigaverse-app/pytest-selective/issues/164)) ([16b99ea](https://github.com/gigaverse-app/pytest-selective/commit/16b99ea6cf9885ad3a5b2632c2995644484c36ea))
+
+
+### Bug fixes
+
+* **api:** list the adopter Python API and test every name in it ([#163](https://github.com/gigaverse-app/pytest-selective/issues/163)) ([1518b50](https://github.com/gigaverse-app/pytest-selective/commit/1518b507994bf49914830381de0f7dc4af53100f))
+
 ## [1.8.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.7.2...v1.8.0) (2026-11-18)
 
 
