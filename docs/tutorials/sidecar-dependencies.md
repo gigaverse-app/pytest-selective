@@ -355,6 +355,17 @@ changes and the repository's actual configuration.
 | README changes still select scanner tests | Inspect `always_run`, broad input globs, global inputs, and shared conftest dependencies |
 | A local declaration seems ignored | Use `--working-tree`; ordinary revision planning reads committed trees |
 
+Before opening the pull request, and in CI, check that the declarations stay tidy:
+
+```bash
+pytest-selective declarations --config impact.json --working-tree
+```
+
+It lists declared readers no test reaches (their declarations change no selection;
+delete them) and directories holding several sidecars (merge each into one
+`.gv-dependencies.yaml`). It exits 1 while either list is non-empty and prints
+*Declarations are tidy* when both are empty; `--json` prints the same findings as data.
+
 Malformed declarations, duplicate YAML keys, aliases, and missing owners are
 errors to fix. Do not use a stale plan after failure. Keep explicit full runs and
 scheduled checkpoints for behavior the graph cannot prove. Runtime read auditing

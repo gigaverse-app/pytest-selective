@@ -195,7 +195,9 @@ same-named siblings through `inputs: ["{stem}.ext"]`, and record readers reviewe
 having no repository inputs through `inputs: []` with a `reason`. Reserve per-reader
 sidecars for exceptions; the [form table](https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/sidecar-dependencies/#choose-a-declaration-form)
 maps each situation to its form. `audit --write-declarations` prints a `hint:` per directory
-that received several sidecars: fold those into one manifest before committing. Review generated audit declarations for these conventions and
+that received several sidecars: fold those into one manifest before committing.
+Run `pytest-selective declarations --config … --working-tree` before the PR and in CI: it fails on
+declarations no test reaches and on directories of sidecars. Review generated audit declarations for these conventions and
 compare affected readers/lanes before and after, including additions and deletions.
 The [shared-convention guide](https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/sidecar-dependencies/#share-a-convention-without-sharing-every-input)
 has the syntax and validation rules; use a selector revision supporting `relative_to`.

@@ -24,6 +24,8 @@ from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import TypeVar
 
+from selective_deps import dependency_edges
+
 from pytest_selective.ast_imports import (
     import_candidates,
     iter_imports,
@@ -39,7 +41,6 @@ from pytest_selective.git_operations import git_environment as git_environment
 from pytest_selective.impact_declarations import (
     DependencyDeclarationError,
     is_declaration,
-    manifest_edges,
     match_inputs,
 )
 from pytest_selective.impact_models import (
@@ -398,12 +399,16 @@ def dependency_comments(source: bytes) -> list[DependencyComment]:
     return comments
 
 
+def declared_edges(repo: Path, tree: str, files: dict[str, str]) -> dict[str, set[str]]:
+    """Reader to declared inputs, from every sidecar and directory manifest in the tree."""
+    declarations = {path: oid for path, oid in files.items() if is_declaration(path)}
+    contents = blobs(repo, set(declarations.values()))
+    return dependency_edges({path: contents[oid] for path, oid in declarations.items()}, files, revision=tree)
+
+
 def add_sidecar_edges(repo: Path, tree: str, files: dict[str, str], snapshot: Snapshot) -> None:
-    sidecars = {path: oid for path, oid in files.items() if is_declaration(path)}
-    contents = blobs(repo, set(sidecars.values()))
-    for path, oid in sorted(sidecars.items()):
-        for reader, dependencies in manifest_edges(path, contents[oid], tree, set(files)).items():
-            snapshot.edges[reader] = sorted(set(snapshot.edges.get(reader, [])) | dependencies)
+    for reader, dependencies in declared_edges(repo, tree, files).items():
+        snapshot.edges[reader] = sorted(set(snapshot.edges.get(reader, [])) | dependencies)
 
 
 def declared_inputs(comment: DependencyComment, files: dict[str, str], location: str) -> set[str]:

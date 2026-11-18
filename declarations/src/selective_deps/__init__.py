@@ -4,6 +4,7 @@ Callers provide tracked paths and manifest bytes, then combine the returned edge
 with their language's import graph. Content nodes are leaves, not executable imports.
 """
 
+import posixpath
 from collections.abc import Collection, Mapping
 
 from .models import (
@@ -33,6 +34,7 @@ __all__ = [
     "DependencyManifest",
     "ManifestDependencyRule",
     "contents_node",
+    "crowded_sidecars",
     "dependency_edges",
     "file_of",
     "is_declaration",
@@ -64,3 +66,16 @@ def dependency_edges(
         for reader, inputs in manifest_edges(path, source, revision, inventory).items():
             edges.setdefault(reader, set()).update(inputs)
     return edges
+
+
+def crowded_sidecars(files: Collection[str]) -> dict[str, list[str]]:
+    """Directories holding more than one file sidecar, each a candidate for one directory manifest.
+
+    Tools report these so authors write one `.gv-dependencies.yaml` per directory instead of
+    a sidecar per reader. Paths are sorted; a repository-root directory is ``"."``.
+    """
+    by_directory: dict[str, list[str]] = {}
+    for path in sorted(files):
+        if path.endswith(SIDECAR_SUFFIX):
+            by_directory.setdefault(posixpath.dirname(path) or ".", []).append(path)
+    return {directory: paths for directory, paths in by_directory.items() if len(paths) > 1}
