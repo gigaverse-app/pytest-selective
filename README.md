@@ -36,11 +36,23 @@ Your agent opens a pull request with the workflow changes and measurements. You 
 
 [Quickstart](https://pytest-selective.readthedocs.io/en/latest/docs/tutorial/) · [Adoption guide](https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/adoption-checklist/) · [GitHub Actions reference](https://pytest-selective.readthedocs.io/en/latest/docs/actions/)
 
+## Follow a change through CI
+
+Suppose you change how `round_discount()` rounds a price. A checkout test calls that function through the order service, so the selector includes it. A profile test with no dependency on pricing can sit this run out. If a shared pytest fixture changes, the selection can expand to the full suite.
+
 ## How much time could you save?
 
 Change a MongoDB test and keep the database checks that matter. In pytest-obligation, that edit passed CI in **54 seconds instead of 5m22s**, using **93 runner-seconds instead of 1,602**. [Explore the measured examples](https://pytest-selective.readthedocs.io/en/latest/ecosystem/).
 
 [Declare runtime dependencies](declarations/README.md) · [Add caching, evidence reuse and balanced shards with CI-esta](https://ci-esta.readthedocs.io/en/latest/) · [Contribute](CONTRIBUTING.md) · [License](LICENSE)
+
+## Go deeper
+
+- [Run locally](https://pytest-selective.readthedocs.io/en/latest/docs/local-development/)
+- [Declare runtime inputs](https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/sidecar-dependencies/)
+- [Skip unrelated CI jobs](https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/skip-unrelated-ci/)
+- [Understand a full-suite fallback](https://pytest-selective.readthedocs.io/en/latest/docs/selection-health/)
+- [Check the guarantees](https://pytest-selective.readthedocs.io/en/latest/docs/evidence/)
 
 [Detailed adoption reference](ADOPTION-REFERENCE.md) — installation options, selection guarantees, benchmarks and tool comparisons.
 
