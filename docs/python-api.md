@@ -8,7 +8,7 @@ this table, so removing or renaming one fails CI. Any other module or name is
 internal and can change in any release.
 
 The portable declaration parser has its own package and contract:
-[`selective-deps`](declarations.md).
+[`selective-deps`](../declarations/README.md).
 
 ## Stability rules
 
