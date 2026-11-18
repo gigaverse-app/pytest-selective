@@ -398,12 +398,20 @@ def dependency_comments(source: bytes) -> list[DependencyComment]:
     return comments
 
 
-def add_sidecar_edges(repo: Path, tree: str, files: dict[str, str], snapshot: Snapshot) -> None:
-    sidecars = {path: oid for path, oid in files.items() if is_declaration(path)}
-    contents = blobs(repo, set(sidecars.values()))
-    for path, oid in sorted(sidecars.items()):
+def declared_edges(repo: Path, tree: str, files: dict[str, str]) -> dict[str, set[str]]:
+    """Reader to declared inputs, from every sidecar and directory manifest in the tree."""
+    declarations = {path: oid for path, oid in files.items() if is_declaration(path)}
+    contents = blobs(repo, set(declarations.values()))
+    edges: dict[str, set[str]] = {}
+    for path, oid in sorted(declarations.items()):
         for reader, dependencies in manifest_edges(path, contents[oid], tree, set(files)).items():
-            snapshot.edges[reader] = sorted(set(snapshot.edges.get(reader, [])) | dependencies)
+            edges.setdefault(reader, set()).update(dependencies)
+    return edges
+
+
+def add_sidecar_edges(repo: Path, tree: str, files: dict[str, str], snapshot: Snapshot) -> None:
+    for reader, dependencies in declared_edges(repo, tree, files).items():
+        snapshot.edges[reader] = sorted(set(snapshot.edges.get(reader, [])) | dependencies)
 
 
 def declared_inputs(comment: DependencyComment, files: dict[str, str], location: str) -> set[str]:

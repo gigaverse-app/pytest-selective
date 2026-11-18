@@ -3,9 +3,9 @@
 from pathlib import Path
 
 from pydantic import BaseModel
-from selective_deps import crowded_sidecars, is_declaration, manifest_edges
+from selective_deps import crowded_sidecars
 
-from pytest_selective.impact_graph import blobs, reachable
+from pytest_selective.impact_graph import declared_edges, reachable
 from pytest_selective.impact_models import Snapshot
 
 GUIDE = "https://pytest-selective.readthedocs.io/en/latest/docs/tutorials/sidecar-dependencies/"
@@ -19,16 +19,9 @@ class DeclarationHealth(BaseModel):
 
 
 def declaration_health(repo: Path, snapshot: Snapshot) -> DeclarationHealth:
-    declarations = {path: oid for path, oid in snapshot.files.items() if is_declaration(path)}
-    contents = blobs(repo, set(declarations.values()))
-    files = set(snapshot.files)
-    readers = {
-        reader
-        for path, oid in declarations.items()
-        for reader in manifest_edges(path, contents[oid], snapshot.tree, files)
-    }
+    readers = set(declared_edges(repo, snapshot.tree, snapshot.files))
     reached = reachable(snapshot.edges, set(snapshot.tests))
-    return DeclarationHealth(unreached=sorted(readers - reached), crowded=crowded_sidecars(files))
+    return DeclarationHealth(unreached=sorted(readers - reached), crowded=crowded_sidecars(snapshot.files))
 
 
 def render(health: DeclarationHealth) -> str:

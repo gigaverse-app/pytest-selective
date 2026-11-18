@@ -14,16 +14,32 @@ SIDECAR = "dependencies:\n  - inputs: ['//data/{name}.json']\n    kind: content\
 def declarations(repo: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> tuple[int, dict[str, object]]:
     config = tmp_path / "config.json"
     config.write_text(ImpactConfig(module_roots=["."], test_roots=["tests"]).model_dump_json(), encoding="utf-8")
-    status = main(["declarations", "--repo", str(repo), "--config", str(config),
-                   "--cache", str(tmp_path / "cache.sqlite3"), "--json"])
+    status = main(
+        [
+            "declarations",
+            "--repo",
+            str(repo),
+            "--config",
+            str(config),
+            "--cache",
+            str(tmp_path / "cache.sqlite3"),
+            "--json",
+        ]
+    )
     captured = capsys.readouterr()
     assert captured.out, captured.err
     return status, json.loads(captured.out)
 
 
 def test_crowded_sidecars_groups_file_sidecars_by_directory() -> None:
-    files = ["a/x.py.gv-dependency.yaml", "a/y.py.gv-dependency.yaml", "a/.gv-dependencies.yaml",
-             "b/z.py.gv-dependency.yaml", "root.py.gv-dependency.yaml", "other.py.gv-dependency.yaml"]
+    files = [
+        "a/x.py.gv-dependency.yaml",
+        "a/y.py.gv-dependency.yaml",
+        "a/.gv-dependencies.yaml",
+        "b/z.py.gv-dependency.yaml",
+        "root.py.gv-dependency.yaml",
+        "other.py.gv-dependency.yaml",
+    ]
     assert crowded_sidecars(files) == {
         ".": ["other.py.gv-dependency.yaml", "root.py.gv-dependency.yaml"],
         "a": ["a/x.py.gv-dependency.yaml", "a/y.py.gv-dependency.yaml"],
@@ -54,8 +70,11 @@ def test_lists_unreached_readers_and_directories_to_merge(tmp_path, capsys) -> N
     (repo / "pkg/orphan.py.gv-dependency.yaml").unlink()
     for name in ("one", "two"):
         (repo / f"tests/test_{name}.py.gv-dependency.yaml").unlink()
-    write(repo, "tests/.gv-dependencies.yaml",
-          "dependencies:\n  - readers: [test_one.py, test_two.py]\n    inputs: ['//data/one.json', '//data/two.json']\n"
-          "    kind: content\n    reason: The tests read the shared data files.\n")
+    write(
+        repo,
+        "tests/.gv-dependencies.yaml",
+        "dependencies:\n  - readers: [test_one.py, test_two.py]\n    inputs: ['//data/one.json', '//data/two.json']\n"
+        "    kind: content\n    reason: The tests read the shared data files.\n",
+    )
     commit(repo)
     assert declarations(repo, tmp_path, capsys) == (0, {"unreached": [], "crowded": {}})
