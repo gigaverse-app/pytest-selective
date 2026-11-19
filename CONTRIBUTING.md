@@ -49,12 +49,12 @@ When selection semantics change on purpose, change `selection.qnt` with them and
 regenerate the driver (`pytest-quint-connect codegen contracts/selection/quint-connect.json`).
 Never drop a witness, mutant or observed field to make it pass.
 
-CI reports each run in one pull-request comment and checks the README's contract block
-against it. After a change to the contract's cases, refresh the block from a complete
+CI checks the committed report against fresh contract results and checks the README block against that report. After a change to the contract's cases, refresh the block from a complete
 local run and commit it:
 
 ```bash
 uv run --group quint pytest-quint-connect report '**/.artifacts/quint-connect/results.json' --readme README.md
+uv run --group quint pytest-quint-connect report '**/.artifacts/quint-connect/results.json' --readme contracts/selection/verified-report.md
 ```
 
 ### Shared implementation owners
@@ -107,8 +107,7 @@ through what its jobs run: the tests that import it, the files tests declare the
 read, and the scripts and actions each job executes. Documentation-only PRs keep
 quality checks (including Markdown links) and the documentation build, while
 skipping every lane. A README or LICENSE change runs the `package` lane, because
-both distributions embed them; a README change also runs `contracts`, whose job
-checks the README's contract report, and the one test whose metadata check reads it. `pyproject.toml` and `uv.lock` run every
+both distributions embed them; a README change also selects the metadata test. The quality job checks the report block on every push. `pyproject.toml` and `uv.lock` run every
 lane. `ci-esta lanes --base origin/main` shows what a change would run and why.
 [.github/test-lanes.json](.github/test-lanes.json) extends the workflow and holds
 only what it cannot show: the `tests` lane's roots (its jobs run `pytest-selective

@@ -30,7 +30,7 @@ jobs:
         "py311-macos":"tests (3.11, macos-latest)","py314-ubuntu":"tests (3.14, ubuntu-latest)",
         "py314-windows":"tests (3.14, windows-latest)","py314-macos":"tests (3.14, macos-latest)",
         "minimum":"pytest-minimum"}
-      # The contracts lane's one job. It reads README.md, so it keeps its own inputs and receipt.
+      # The contract receipt covers the replay inputs and its verified report.
       CONTRACT_LANE_JOBS: '{"selection":"Selection contract (Quint)"}'
     outputs:
       # Planned lanes after reuse: a reusing lane is false only when every one of its jobs is proven by a receipt.
@@ -109,6 +109,8 @@ jobs:
       - uses: gigaverse-app/ci-esta/actions/setup-cached-uv@v1
         with:
           python-version: '3.14'
+      - name: Check the README contract block
+        run: python scripts/check_contract_readme.py
       # Semantic judging owns its credentials and fork boundary in the required dry-lint job.
       - run: uv run --locked pre-commit run --all-files
         env:
@@ -244,10 +246,10 @@ jobs:
         run: uv run --locked --group quint pytest-quint-connect codegen --check contracts/selection/quint-connect.json
       - name: Generate histories from the model and replay them against the planner
         run: uv run --locked --group quint pytest -c contracts/selection/quint.ini contracts/selection --quint-require-complete -q
-      # Match the README with the same locked renderer that produced these receipts.
+      # Verify the committed report against fresh replay results.
       # A presentation update to the floating report action must not break an immutable release.
-      - name: Check the README against the locked contract renderer
-        run: uv run --locked --group quint pytest-quint-connect report '**/.artifacts/quint-connect/results.json' --readme README.md --check
+      - name: Check the verified report against the locked contract renderer
+        run: uv run --locked --group quint pytest-quint-connect report '**/.artifacts/quint-connect/results.json' --readme contracts/selection/verified-report.md --check
       # The current action owns the sticky and artifacts, independently of README formatting.
       - uses: gigaverse-app/pytest-quint-connect/report@v1
         if: ${{ always() }}
