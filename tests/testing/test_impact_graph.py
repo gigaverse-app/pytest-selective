@@ -1087,18 +1087,29 @@ def test_ci_action_distinguishes_invalid_declarations_from_operational_fallback(
 
 @pytest.mark.parametrize(
     ("alternate", "full", "passed"),
-    [("pr-base", "false", True), ("unfetchable", "false", False), ("pr-base", "true", False), ("", "false", False)],
-    ids=["fetched", "unfetchable", "full-suite", "absent"],
+    [
+        ("pr-base", "false", True),
+        ("unfetchable", "false", False),
+        ("pr-base", "true", False),
+        ("", "false", False),
+        ("origin/trunk", "false", True),
+    ],
+    ids=["fetched", "unfetchable", "full-suite", "absent", "local-tracking-ref"],
 )
 def test_ci_action_offers_a_fetchable_alternate_base(tmp_path: Path, alternate: str, full: str, passed: bool) -> None:
     """The action hands the CLI a second base only when it can be read and a scoped run is allowed."""
     action = yaml.safe_load(Path("actions/test-impact/action.yml").read_text())
     step = next(step for step in action["runs"]["steps"] if step.get("id") == "select")
     invocation = tmp_path / "invocation"
+    local_ref = alternate == "origin/trunk"
+    if local_ref:
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+        revision = commit(tmp_path)
+        subprocess.run(["git", "update-ref", "refs/remotes/origin/trunk", revision], cwd=tmp_path, check=True)
     script = tmp_path / "action.sh"
     script.write_text(
         "set -euo pipefail\n"
-        + 'git() { [ "${!#}" != unfetchable ]; }\n'
+        + ("" if local_ref else 'git() { [ "${!#}" != unfetchable ]; }\n')
         + 'uv() { printf "%s\\n" "$@" > "$INVOCATION"; return 1; }\n'
         + step["run"],
         newline="\n",
@@ -1107,7 +1118,7 @@ def test_ci_action_offers_a_fetchable_alternate_base(tmp_path: Path, alternate: 
     env = dict(
         os.environ,
         IMPACT_CONFIG="consumer.json",
-        IMPACT_BASE="validated-tree",
+        IMPACT_BASE="refs/remotes/origin/trunk" if local_ref else "validated-tree",
         IMPACT_HEAD="HEAD",
         IMPACT_FULL=full,
         IMPACT_EXTRA="changed-files.txt",
@@ -1130,10 +1141,10 @@ def test_ci_action_offers_a_fetchable_alternate_base(tmp_path: Path, alternate: 
     offered = "--alternate-base" in args
     assert offered is passed
     if passed:
-        assert args[args.index("--alternate-base") + 1] == alternate
+        assert args[args.index("--alternate-base") + 1] == (revision if local_ref else alternate)
         assert args[args.index("--alternate-extra-files") + 1] == "alternate-changed-files.txt"
     # The operational fallback still names the base it fell back from.
-    assert "base=validated-tree" in output.read_text().splitlines()
+    assert f"base={revision if local_ref else 'validated-tree'}" in output.read_text().splitlines()
 
 
 def test_import_through_directory_symlink_falls_back(repo: Path, config: ImpactConfig, cache: GraphCache) -> None:

@@ -9,7 +9,7 @@ inputs:
     description: Consumer-owned dependency graph configuration.
     required: true
   base:
-    description: Complete change-set base (a validated ancestor, PR base, or push before SHA).
+    description: Complete change-set base. Accepts a commit SHA or a local origin tracking ref from the checkout.
     default: ${{ github.event.pull_request.base.sha || github.event.before }}
   head:
     description: Exact checked-out commit.
