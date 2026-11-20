@@ -8,7 +8,7 @@ inputs:
     description: Consumer-owned dependency graph configuration.
     required: true
   base:
-    description: Complete change-set base (a validated ancestor, PR base, or push before SHA).
+    description: Complete change-set base. Accepts a commit SHA or a local origin tracking ref from the checkout.
     default: ${{ github.event.pull_request.base.sha || github.event.before }}
   head:
     description: Exact checked-out commit.
@@ -167,7 +167,14 @@ runs:
           fi
           exit 0
         fi
-        args=(affected --config "$IMPACT_CONFIG" --base "$IMPACT_BASE" --head "$IMPACT_HEAD"
+        fetch_base() {
+          case "$1" in
+            origin/*) git rev-parse --verify --end-of-options "refs/remotes/$1^{commit}" ;;
+            refs/remotes/origin/*) git rev-parse --verify --end-of-options "$1^{commit}" ;;
+            *) git fetch --no-tags --depth=1 origin "$1" && printf '%s\n' "$1" ;;
+          esac
+        }
+        args=(affected --config "$IMPACT_CONFIG" --head "$IMPACT_HEAD"
               --max-shards "$IMPACT_SHARDS" --minimum-files "$IMPACT_MINIMUM" --github-output "$GITHUB_OUTPUT" --output test-impact-report.json
               --durations "$IMPACT_DURATIONS" --shard-seconds "$IMPACT_SHARD_SECONDS"
               --timings-output test-impact-cli-timings.json
@@ -180,12 +187,12 @@ runs:
         if [ -n "${IMPACT_GRAPH_BASE:-}" ]; then args+=(--graph-base "$IMPACT_GRAPH_BASE"); fi
         # Optional: an unfetchable alternate only forgoes a smaller selection.
         if [ -n "${IMPACT_ALTERNATE_BASE:-}" ] && [ "$IMPACT_FULL" != true ] &&
-          git fetch --no-tags --depth=1 origin "$IMPACT_ALTERNATE_BASE"; then
-          args+=(--alternate-base "$IMPACT_ALTERNATE_BASE")
+          alternate=$(fetch_base "$IMPACT_ALTERNATE_BASE"); then
+          args+=(--alternate-base "$alternate")
           if [ -n "${IMPACT_ALTERNATE_EXTRA:-}" ]; then args+=(--alternate-extra-files "$IMPACT_ALTERNATE_EXTRA"); fi
         fi
-        if [ -n "$IMPACT_BASE" ] && git fetch --no-tags --depth=1 origin "$IMPACT_BASE" &&
-          "${impact[@]}" "${args[@]}"; then
+        if [ -n "$IMPACT_BASE" ] && base=$(fetch_base "$IMPACT_BASE") &&
+          "${impact[@]}" "${args[@]}" --base "$base"; then
           python3 - <<'PY'
         import json, os
         from pathlib import Path
@@ -203,7 +210,7 @@ runs:
           fi
           echo "::warning::Test impact proof unavailable; running all configured test roots"
           {
-            echo "base=$IMPACT_BASE"
+            echo "base=${base:-$IMPACT_BASE}"
             echo "mode=full"
             echo "test_roots=$IMPACT_ROOTS"
             echo "test_roots_json=$(python3 -c 'import json,os,shlex; print(json.dumps(shlex.split(os.environ["IMPACT_ROOTS"])))')"
