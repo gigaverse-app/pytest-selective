@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.9.0...v1.9.1) (2026-11-20)
+
+
+### Bug fixes
+
+* **action:** resolve local tracking refs for affected tests ([5f7afc7](https://github.com/gigaverse-app/pytest-selective/commit/5f7afc79b6943d5e2b312107e89c4217aef87ae0))
+
+
+### Performance
+
+* **ci:** validate README prose edits without replaying Quint ([#168](https://github.com/gigaverse-app/pytest-selective/issues/168)) ([7aa5e94](https://github.com/gigaverse-app/pytest-selective/commit/7aa5e947bc1bbdf5bd2a811b330d0b03ec0ab02c))
+
 ## [1.9.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.8.0...v1.9.0) (2026-11-18)
 
 
