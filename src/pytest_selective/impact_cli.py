@@ -17,8 +17,16 @@ from pathlib import Path, PurePosixPath
 
 from pytest_selective.checkpoint import full_checkpoint_reason
 from pytest_selective.git_operations import pull_request_merge_base
-from pytest_selective.impact_audit import audit, load_records, summary
-from pytest_selective.impact_audit_declarations import DeclarationPlan, plan_declarations, write_sidecar
+from pytest_selective.impact_audit import DECLARATION_GUIDE, audit, load_records, summary
+from pytest_selective.impact_audit_declarations import (
+    REASON_ADVICE,
+    DeclarationPlan,
+    plan_declarations,
+    proposal_heading,
+    proposal_markdown,
+    proposed_text,
+    write_sidecar,
+)
 from pytest_selective.impact_explanation import dependent_tests, explain
 from pytest_selective.impact_graph import (
     DependencyDeclarationError,
@@ -214,9 +222,14 @@ def _audit(args: argparse.Namespace, config: ImpactConfig, cache: GraphCache) ->
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    if args.write_declarations and report.undeclared:
+        # Writing has no fallback: a plan that cannot be built is the error to report.
+        plan = plan_declarations(report, snapshot, records)
+    else:
+        plan = _proposed_plan(report, snapshot, records)
     if args.summary:
         with args.summary.open("a", encoding="utf-8") as output:
-            output.write(summary(report))
+            output.write(summary(report, proposal_markdown(plan) if plan else ""))
     print(
         f"Test-impact read audit: {len(report.undeclared)} undeclared of {report.recorded_reads} reads "
         f"by {report.audited_tests} test files ({report.exempted_reads} exempted or always-run)"
@@ -225,14 +238,76 @@ def _audit(args: argparse.Namespace, config: ImpactConfig, cache: GraphCache) ->
         print(f"{read.test} -> {read.input}")
     for error in report.recorder_errors:
         print(f"recorder error: {error}", file=sys.stderr)
-    if args.write_declarations and report.undeclared:
-        return _write_declarations(args.repo, report, snapshot, records)
+    if args.write_declarations and plan:
+        return _write_declarations(args.repo, report, plan)
+    if report.undeclared:
+        _explain_undeclared(report, plan, args.config)
     return 2 if report.undeclared else 0
 
 
-def _write_declarations(repo: Path, report: AuditReport, snapshot: Snapshot, records: list[AuditRecord]) -> int:
+def _proposed_plan(report: AuditReport, snapshot: Snapshot, records: list[AuditRecord]) -> DeclarationPlan | None:
+    """The declarations to suggest; a failure to build them must not change what the audit reports."""
+    if not report.undeclared:
+        return None
+    try:
+        return plan_declarations(report, snapshot, records)
+    except Exception as error:  # noqa: BLE001 - the suggestion is advice; the audit verdict stands without it
+        print(f"could not propose declarations: {error}", file=sys.stderr)
+        return None
+
+
+#: GitHub shows about ten annotations per step; the rest stay in the log.
+ANNOTATED_TEST_FILES = 10
+
+
+def _workflow_value(text: str, *, property_value: bool = False) -> str:
+    """Escape ``text`` for a GitHub workflow command (its message, or one ``key=value`` property)."""
+    escaped = text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    return escaped.replace(":", "%3A").replace(",", "%2C") if property_value else escaped
+
+
+def _explain_undeclared(report: AuditReport, plan: DeclarationPlan | None, config: Path) -> None:
+    """Say what the failure means and print the declarations that fix it, in the log and as annotations."""
+    inputs: dict[str, list[str]] = {}
+    for read in report.undeclared:
+        inputs.setdefault(read.test, []).append(read.input)
+    print(
+        "\nA change to an undeclared input runs none of the tests that read it, so those tests stop guarding it. "
+        "Declare each input next to the test that reads it."
+    )
+    sidecars = {declarations.test: declarations for declarations in plan.sidecars} if plan else {}
+    if plan:
+        for declarations in plan.sidecars:
+            print(f"\n{proposal_heading(declarations)}")
+            print(proposed_text(declarations, exists=declarations.existing), end="")
+        print(f"\n{REASON_ADVICE}")
+        for skipped in plan.skipped:
+            print(f"not declarable: {skipped}", file=sys.stderr)
+    tests = " ".join(inputs)
+    print(
+        "To write them instead, record the reads and let the audit write the sidecars:\n"
+        f"  pytest -p pytest_selective.impact_audit_plugin --impact-audit-dir impact-audit {tests}\n"
+        f"  pytest-selective audit --config {config} --records impact-audit --working-tree --write-declarations\n"
+        f"Guide: {DECLARATION_GUIDE}"
+    )
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return
+    for test, paths in list(inputs.items())[:ANNOTATED_TEST_FILES]:
+        where = f"declare it in {sidecars[test].sidecar}" if test in sidecars else "declare it next to the test"
+        message = (
+            f"{test} reads {', '.join(paths)}, but a change to {'it' if len(paths) == 1 else 'them'} would not run "
+            f"this test: {where}. The audit step's log shows the rules to add."
+        )
+        print(
+            f"::error file={_workflow_value(test, property_value=True)},"
+            f"title={_workflow_value('Undeclared test input', property_value=True)}::{_workflow_value(message)}"
+        )
+    if len(inputs) > ANNOTATED_TEST_FILES:
+        print(f"::error::{len(inputs) - ANNOTATED_TEST_FILES} more test files read undeclared inputs; see the log.")
+
+
+def _write_declarations(repo: Path, report: AuditReport, plan: DeclarationPlan) -> int:
     """Write a sidecar rule for every undeclared read; exit 2 only when some read could not be declared."""
-    plan = plan_declarations(report, snapshot, records)
     for sidecar in plan.sidecars:
         write_sidecar(repo, sidecar)
         print(
