@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.9.1...v1.10.0) (2026-11-21)
+
+
+### Features
+
+* **audit:** a failing read audit prints the declarations that fix it ([#172](https://github.com/gigaverse-app/pytest-selective/issues/172)) ([0233cb0](https://github.com/gigaverse-app/pytest-selective/commit/0233cb0c3fbc3f245cf03655e88fca744392ccd1))
+
 ## [1.9.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.9.0...v1.9.1) (2026-11-20)
 
 
