@@ -47,6 +47,8 @@ class SidecarDeclarations(ImpactModel):
     covers: dict[str, list[str]]
     #: Test files a change to any declared input selects: the reader and every test depending on it.
     selects: int
+    #: Whether the analysed tree already has this sidecar, so the rules are appended to it.
+    existing: bool = False
 
     @property
     def sidecar(self) -> str:
@@ -117,7 +119,10 @@ def plan_declarations(report: AuditReport, snapshot: Snapshot, records: list[Aud
         ]
         if rules:
             selects = max(reach.get(test, 0).bit_count(), 1)
-            sidecars.append(SidecarDeclarations(test=test, rules=rules, covers=covers, selects=selects))
+            existing = test + SIDECAR_SUFFIX in files
+            sidecars.append(
+                SidecarDeclarations(test=test, rules=rules, covers=covers, selects=selects, existing=existing)
+            )
     return DeclarationPlan(sidecars=sidecars, skipped=skipped, total_tests=len(snapshot.tests))
 
 
@@ -132,13 +137,39 @@ def render_rules(rules: list[ManifestDependencyRule]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def proposed_text(declarations: SidecarDeclarations, exists: bool) -> str:
+    """What to add by hand: the whole new sidecar, or only the rules to append to an existing one."""
+    rendered = render_rules(declarations.rules)
+    return rendered if exists else "dependencies:\n" + rendered
+
+
+#: The generated reasons say where a rule came from, not why the test needs the input.
+REASON_ADVICE = "Replace each `reason` with why the test reads the input before you commit it."
+
+
+def proposal_heading(declarations: SidecarDeclarations) -> str:
+    verb = "Append to" if declarations.existing else "Create"
+    return f"{verb} {declarations.sidecar}:"
+
+
+def proposal_markdown(plan: DeclarationPlan) -> str:
+    """The step-summary section showing the sidecars that would declare every undeclared read."""
+    lines = ["", "These declarations would cover every read above:", ""]
+    for declarations in plan.sidecars:
+        text = proposed_text(declarations, exists=declarations.existing)
+        lines += [proposal_heading(declarations), "", "```yaml", text.rstrip("\n"), "```", ""]
+    lines.append(REASON_ADVICE)
+    lines += [f"- not declarable: `{skipped}`" for skipped in plan.skipped]
+    return "\n".join(lines) + "\n"
+
+
 def write_sidecar(repo: Path, declarations: SidecarDeclarations) -> None:
     """Create the test's sidecar, or append the rules to the one it already has."""
     path = repo / declarations.sidecar
     rendered = render_rules(declarations.rules)
     if not path.exists():
         # LF on every platform: the sidecar is committed beside the test.
-        text = "dependencies:\n" + rendered
+        text = proposed_text(declarations, exists=False)
         parse_manifest(text.encode(), declarations.sidecar)
     else:
         existing = path.read_bytes().decode("utf-8-sig")

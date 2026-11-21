@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from pytest_selective.impact_audit import audit, load_records, summary
 from pytest_selective.impact_audit_declarations import IMPORT_REASON
 from pytest_selective.impact_audit_plugin import ReadRecorder
-from pytest_selective.impact_cli import main
+from pytest_selective.impact_cli import _workflow_value, main
 from pytest_selective.impact_graph import GraphCache
 from pytest_selective.impact_models import (
     AuditExemption,
@@ -280,6 +280,106 @@ def test_written_declarations_leave_no_undeclared_read(
     # Several sidecars written into one directory point at a single shared manifest instead.
     assert re.search(r"hint: wrote \d+ sidecars in tests/; .* tests/\.gv-dependencies\.yaml", printed)
     assert audit_cli(run, tmp_path, repo_config(), "--working-tree") == 0
+
+
+def copied_run(audited_run: AuditedRun, tmp_path: Path) -> AuditedRun:
+    """A private copy of the audited repository, so a test can add declarations to it."""
+    repo = tmp_path / "repo"
+    shutil.copytree(audited_run.repo, repo, ignore=shutil.ignore_patterns(".audit-pytest-tmp", "audit-records"))
+    return AuditedRun(repo=repo, records=audited_run.records)
+
+
+PROPOSAL = re.compile(r"^(Create|Append to) (\S+):\n((?:.+\n)+)", re.M)
+
+
+def test_applying_the_printed_declarations_passes_the_audit(
+    audited_run: AuditedRun, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """
+    INVARIANT: a failing audit prints, for every reading test, the sidecar text that declares its reads.
+
+    Pasting exactly what the log shows, without running anything else, leaves no undeclared read, and the
+    step summary proposes the same text. A test that already has a sidecar is told to append the rules.
+    """
+    run = copied_run(audited_run, tmp_path)
+    existing = f"{UNDECLARED[1].test}.gv-dependency.yaml"
+    write(
+        run.repo,
+        existing,
+        'dependencies:\n  - inputs:\n      - "//data/declared.json"\n    kind: content\n    reason: "Fixture."\n',
+    )
+    commit(run.repo)
+    summary_path = tmp_path / "summary.md"
+    assert audit_cli(run, tmp_path, repo_config(), "--summary", str(summary_path)) == EXIT_UNDECLARED
+    printed = capsys.readouterr().out
+    proposals = PROPOSAL.findall(printed)
+    assert sorted(sidecar for _, sidecar, _ in proposals) == sorted(
+        {f"{read.test}.gv-dependency.yaml" for read in UNDECLARED}
+    )
+    assert [verb for verb, sidecar, _ in proposals if sidecar == existing] == ["Append to"]
+    for verb, sidecar, text in proposals:
+        path = run.repo / sidecar
+        assert path.exists() == (verb == "Append to")
+        path.write_text((path.read_text(encoding="utf-8") if path.exists() else "") + text, encoding="utf-8")
+        assert f"```yaml\n{text.rstrip()}\n```" in summary_path.read_text(encoding="utf-8")
+    assert audit_cli(run, tmp_path, repo_config(), "--working-tree") == 0
+
+
+def test_the_printed_commands_write_the_missing_declarations(
+    audited_run: AuditedRun, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """INVARIANT: the record-and-write commands a failing audit prints leave no undeclared read when run."""
+    run = copied_run(audited_run, tmp_path)
+    config_path = tmp_path / "config.json"
+    assert audit_cli(run, tmp_path, repo_config()) == EXIT_UNDECLARED
+    printed = capsys.readouterr().out
+    record = re.search(r"^  pytest -p (.+)$", printed, re.M)
+    write_declarations = re.search(r"^  pytest-selective (audit .+)$", printed, re.M)
+    assert record and write_declarations
+    isolated = run.repo.parent / "isolated-pytest.ini"
+    isolated.write_text("[pytest]\n", encoding="utf-8")
+    env = dict(os.environ, PYTHONPATH=str(run.repo / "src"), PYTEST_DISABLE_PLUGIN_AUTOLOAD="1")
+    isolation = ["-c", str(isolated), "--basetemp", str(run.repo / ".audit-pytest-tmp"), "--rootdir", str(run.repo)]
+    recorded = subprocess.run(
+        [sys.executable, "-m", "pytest", *isolation, "-p", *record.group(1).split()],
+        cwd=run.repo,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert recorded.returncode == 0, recorded.stdout + recorded.stderr
+    monkeypatch.chdir(run.repo)
+    arguments = write_declarations.group(1).split()
+    assert arguments[arguments.index("--config") + 1] == str(config_path)
+    cache = ["--repo", str(run.repo), "--cache", str(tmp_path / "cache.sqlite3")]
+    assert main([*arguments, *cache]) == 0
+    assert main(["audit", *cache, "--config", str(config_path), "--records", "impact-audit", "--working-tree"]) == 0
+
+
+@pytest.mark.parametrize("github_actions", [True, False], ids=["github-actions", "elsewhere"])
+def test_github_annotates_each_reading_test_file_once(
+    audited_run: AuditedRun,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    github_actions: bool,
+) -> None:
+    """INVARIANT: on GitHub Actions each test file with undeclared reads gets one error annotation on that file."""
+    if github_actions:
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    else:
+        monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    assert audit_cli(audited_run, tmp_path, repo_config()) == EXIT_UNDECLARED
+    annotated = re.findall(r"^::error file=([^,]+),title=[^:]+::(.+)$", capsys.readouterr().out, re.M)
+    expected = sorted({read.test for read in UNDECLARED}) if github_actions else []
+    assert sorted(test for test, _ in annotated) == expected
+    assert all(f"{test}.gv-dependency.yaml" in message for test, message in annotated)
+
+
+def test_workflow_command_values_cannot_end_or_split_the_command() -> None:
+    """INVARIANT: escaped text carries no newline, and a property carries no ``:`` or ``,`` separator."""
+    assert _workflow_value("50% a\r\nb: c, d") == "50%25 a%0D%0Ab: c, d"
+    assert _workflow_value("tests/a: b,c.py", property_value=True) == "tests/a%3A b%2Cc.py"
 
 
 def test_summary_without_findings_has_no_table() -> None:

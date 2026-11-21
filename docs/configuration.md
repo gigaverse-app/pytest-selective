@@ -142,6 +142,13 @@ edges at their readers. See [evidence and limitations](evidence.md).
 
 ### Write the missing declarations
 
+A failing audit already shows the fix. After the `test -> input` lines it prints,
+for each reading test, the sidecar to create (or the rules to append to the one it
+has), the two commands that would write them for you, and a link here. The step
+summary repeats the same YAML. On GitHub Actions each reading test file also gets
+one error annotation, so the check's page names the file to declare it in without
+opening the log. The exit code is unchanged: 2 while any read is undeclared.
+
 `audit --write-declarations` writes a rule for every undeclared read into the
 reading test's sidecar, `<test>.gv-dependency.yaml`, creating it or appending to
 the one it already has:

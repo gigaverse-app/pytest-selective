@@ -23,7 +23,10 @@ from pytest_selective.impact_models import (
     file_of,
 )
 
-PLACEMENT_GUIDE = "docs/guides/test-dependency-placement.md"
+#: Published, so the link works from any adopter's CI log; a repository path would not exist there.
+DECLARATION_GUIDE = (
+    "https://pytest-selective.readthedocs.io/en/latest/docs/configuration/#write-the-missing-declarations"
+)
 
 
 def load_records(directory: Path) -> list[AuditRecord]:
@@ -82,8 +85,8 @@ def audit(snapshot: Snapshot, records: list[AuditRecord], config: ImpactConfig) 
     )
 
 
-def summary(report: AuditReport) -> str:
-    """Markdown for the GitHub step summary."""
+def summary(report: AuditReport, proposal: str = "") -> str:
+    """Markdown for the GitHub step summary; ``proposal`` is the rendered fix for the undeclared reads."""
     lines = [
         "### Test-impact read audit",
         "",
@@ -97,12 +100,15 @@ def summary(report: AuditReport) -> str:
             "A change to an undeclared input selects none of its readers. Declare each input on the file "
             "that reads it: `# gv:test-dependency: <path>` for an import edge, or a "
             "`<file>.gv-dependency.yaml` sidecar with `kind: content` for a file read as text. "
-            f"See `{PLACEMENT_GUIDE}`. Inputs another lane covers belong in `audit_exemptions`.",
+            f"See [write the missing declarations]({DECLARATION_GUIDE}). "
+            "Inputs another lane covers belong in `audit_exemptions`.",
             "",
             "| Test file | Undeclared input |",
             "| --- | --- |",
             *(f"| `{read.test}` | `{read.input}` |" for read in report.undeclared),
         ]
+        if proposal:
+            lines += proposal.rstrip("\n").split("\n")
     if report.recorder_errors:
         lines += ["", "Recorder errors (the reads these events carried were not audited):", ""]
         lines += [f"- `{error}`" for error in report.recorder_errors]
