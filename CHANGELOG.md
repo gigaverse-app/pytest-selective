@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.10.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.9.1...v1.10.0) (2026-11-26)
+
+
+### Features
+
+* **audit:** a failing read audit prints the declarations that fix it ([#172](https://github.com/gigaverse-app/pytest-selective/issues/172)) ([0233cb0](https://github.com/gigaverse-app/pytest-selective/commit/0233cb0c3fbc3f245cf03655e88fca744392ccd1))
+
+
+### Bug fixes
+
+* **audit:** resolve git operands in the directory selected by -C ([#174](https://github.com/gigaverse-app/pytest-selective/issues/174)) ([b3a725d](https://github.com/gigaverse-app/pytest-selective/commit/b3a725d5d65c27f0735c15ef85e1edc7bd314f21))
+
 ## [1.9.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.9.0...v1.9.1) (2026-11-20)
 
 
