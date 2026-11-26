@@ -19,6 +19,7 @@ own those inputs.
 
 import os
 import re
+import shlex
 import subprocess
 import sys
 import uuid
@@ -92,6 +93,36 @@ def _words(value: object) -> Iterable[str]:
         yield from (word for word in _WORD_SEPARATORS.split(text) if word and word != text)
 
 
+def _git_chdir_arguments(executable: object, argv: object) -> tuple[list[str], int] | None:
+    """Return the arguments and subcommand position for direct git invocations with leading -C options."""
+    if isinstance(argv, str) and os.name == "nt" and " -C " in argv:
+        # Popen's Windows audit event carries a command line, even for a list of arguments.
+        # Accept only a lossless decoding of the form Python itself emits.
+        try:
+            words = [word.removeprefix('"').removesuffix('"') for word in shlex.split(argv, posix=False)]
+        except ValueError:
+            return None
+        if subprocess.list2cmdline(words) != argv:
+            return None
+    elif isinstance(argv, (list, tuple)) and len(argv) >= 4 and argv[1] in ("-C", b"-C"):
+        if not all(isinstance(arg, (str, bytes, os.PathLike)) for arg in argv):
+            return None
+        words = [os.fsdecode(arg) for arg in argv]
+    else:
+        return None
+    if len(words) < 4 or words[1] != "-C":
+        return None
+    program = os.fsdecode(executable) if isinstance(executable, (str, bytes, os.PathLike)) else words[0]
+    if os.path.normcase(os.path.basename(program)) not in {"git", "git.exe"}:
+        return None
+    index = 1
+    while index + 1 < len(words) and words[index] == "-C":
+        index += 2
+    if index >= len(words) or words[index].startswith("-"):
+        return None
+    return words, index
+
+
 class ReadRecorder:
     """Attributes tracked-file reads to the test file that is current when they happen."""
 
@@ -138,8 +169,17 @@ class ReadRecorder:
         directory = os.fsdecode(cwd) if isinstance(cwd, (str, bytes, os.PathLike)) else None
         for index in _COMMAND_ARGUMENTS[event]:
             if index < len(args):
-                for word in _words(args[index]):
-                    self._add(owner, word, directory)
+                value = args[index]
+                argument_directory = directory
+                if index and (command := _git_chdir_arguments(args[index - 1], value)):
+                    words, subcommand = command
+                    self._add(owner, words[0], directory)
+                    for target in words[2:subcommand:2]:
+                        self._add(owner, target, argument_directory)
+                        argument_directory = os.path.realpath(os.path.join(argument_directory or os.curdir, target))
+                    value = words[subcommand:]
+                for word in _words(value):
+                    self._add(owner, word, argument_directory)
 
     def _add(self, owner: str, value: object, directory: str | None) -> None:
         if not isinstance(value, (str, bytes, os.PathLike)):
