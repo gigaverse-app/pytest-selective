@@ -450,6 +450,33 @@ def test_subprocess_arguments_naming_tracked_files_are_reads(
     assert recorded(recorder, tmp_path, event, *args).inputs == {TEST: [DATA]}
 
 
+def test_git_paths_follow_the_command_working_directory(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    init(repo)
+    write(repo, "input.txt", "unrelated")
+    write(repo, "nested tree/data/input.txt", "tracked input")
+    write(
+        repo,
+        TEST,
+        """
+import subprocess
+
+def test_git_diff(tmp_path):
+    subprocess.run(["git", "init", "-q", tmp_path], check=True)
+    subprocess.run(["git", "-C", tmp_path, "diff", "--", "input.txt"], check=True)
+    subprocess.run(["git", "-C", "..", "-C", "nested tree/data", "diff", "--", "input.txt"],
+                   cwd="tests", check=True)
+""",
+    )
+    commit(repo)
+    records = tmp_path / "records"
+    result = run_audited_pytest(repo, records, TEST)
+    assert result.returncode == 0, result.stdout + result.stderr
+    reads = load_records(records)[0].inputs[TEST]
+    assert "nested tree/data/input.txt" in reads
+    assert "input.txt" not in reads
+
+
 @pytest.mark.parametrize(
     "args",
     [
