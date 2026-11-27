@@ -44,6 +44,10 @@ _COMMAND_ARGUMENTS = {
 _GIT_VALUE_OPTIONS = frozenset(
     {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--super-prefix", "--config-env", "--attr-source"}
 )
+#: The shells whose ``-c`` command line is read as one git command when it is nothing more.
+_SHELLS = frozenset({"sh", "bash", "dash", "zsh", "ksh"})
+#: Shell syntax beyond one program with literal, possibly quoted, arguments.
+_SHELL_SYNTAX = re.compile(r"[;&|<>()$`\\\n*?\[\]{}~#!]")
 #: Splits shell command strings and ``--option=path`` arguments into candidate paths.
 _WORD_SEPARATORS = re.compile(r"[\s=;|&<>()'\"]+")
 #: Library code that reads the source of every module already imported in the process for its
@@ -118,6 +122,26 @@ def _git_words(executable: object, argv: object) -> list[str] | None:
     if os.path.normcase(os.path.basename(program)) not in {"git", "git.exe"}:
         return None
     return words
+
+
+def _shell_words(executable: object, argv: object) -> list[str] | None:
+    """Return the words of a POSIX shell command line that runs one program with literal arguments."""
+    if executable is not None:
+        if not (isinstance(argv, (list, tuple)) and len(argv) == 3 and argv[1] == "-c"):
+            return None
+        program = executable if isinstance(executable, (str, bytes, os.PathLike)) else argv[0]
+        if not isinstance(program, (str, bytes, os.PathLike)) or os.path.basename(os.fsdecode(program)) not in _SHELLS:
+            return None
+        argv = argv[2]
+    if os.name != "posix" or not isinstance(argv, (str, bytes)):
+        return None
+    line = os.fsdecode(argv)  # os.system reports its command line encoded
+    if _SHELL_SYNTAX.search(line):
+        return None
+    try:
+        return shlex.split(line)
+    except ValueError:
+        return None
 
 
 def _git_top(directory: str) -> str | None:
@@ -271,7 +295,12 @@ class ReadRecorder:
             if index < len(args):
                 value = args[index]
                 candidates: Iterable[tuple[str, str | None]] = ((word, directory) for word in _words(value))
-                if index and (words := _git_words(args[index - 1], value)):
+                # os.system passes a shell command line alone; the other events name the program first.
+                launcher = args[index - 1] if index else None
+                words = _git_words(launcher, value) if index else None
+                if words is None and (index or event == "os.system"):
+                    words = _git_words(None, _shell_words(launcher, value))
+                if words:
                     # Every process-launch event ends with the environment; None inherits this one.
                     environment = args[-1] if len(args) > index + 1 else None
                     git_dir, work_tree = (

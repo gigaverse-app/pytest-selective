@@ -540,6 +540,32 @@ GIT_COMMANDS = {
     "index_path_elsewhere": ('git("-C", other, "show", ":input.txt")', "temporary", set()),
     "index_path_of_another_repository": ('git("--git-dir", other + "/.git", "show", ":input.txt")', "temporary", set()),
 }
+SHELL = "shell=True, check=True, capture_output=True, text=True"
+if os.name == "posix":
+    # The same commands as one POSIX shell command line.
+    GIT_COMMANDS |= {
+        "shell_command": (
+            f'subprocess.run("git -C " + shlex.quote(other) + " grep -h -e . -- input.txt", {SHELL}).stdout',
+            "temporary",
+            set(),
+        ),
+        "shell_command_in_a_directory": (
+            f"""subprocess.run("git -C 'nested tree/data' show HEAD:./input.txt", {SHELL}).stdout""",
+            "nested",
+            {NESTED_INPUT},
+        ),
+        "system": (
+            """str(os.system("git -C 'nested tree/data' grep -q -e nested -- input.txt"))""",
+            "0",
+            {NESTED_INPUT},
+        ),
+        # Not one program with literal arguments: the recorder keeps reading every word where it is launched.
+        "shell_pipeline": (
+            f'subprocess.run("cd " + shlex.quote(other) + " && git grep -h -e . -- input.txt", {SHELL}).stdout',
+            "temporary",
+            {ROOT_INPUT},
+        ),
+    }
 
 
 @pytest.fixture(scope="module")
