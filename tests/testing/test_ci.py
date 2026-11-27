@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -541,6 +542,27 @@ def test_a_lane_can_run_for_every_change_outside_declared_unaffected_paths(repos
     assert result.lane_reasons["build"] == [reason]
     # The other lanes keep their own rules.
     assert result.lanes["live"] is False
+
+
+def test_a_mode_change_alone_runs_a_lane_it_was_not_cleared_of(repository):
+    """`chmod +x` leaves the blob as it was, and can still decide whether the build's script runs."""
+    repo, config, _ = repository
+    write(repo, "proof/build.sh", "#!/bin/sh\nlake build\n")
+    write(repo, "scripts/sync.sh", "#!/bin/sh\n")
+    base = commit(repo)
+    config.lanes["build"] = Lane(unaffected_by=["*.md", "scripts/**", "tests/**"])
+    heads = []
+    for script in ("scripts/sync.sh", "proof/build.sh"):
+        # The index carries the mode on every platform; the working tree agrees where it has one.
+        (repo / script).chmod(0o755)
+        subprocess.run(["git", "-C", str(repo), "update-index", "--chmod=+x", script], check=True)
+        heads.append(commit(repo))
+    cleared = plan(repo, config, base, heads[0])
+    assert cleared.changed == ["scripts/sync.sh"]
+    assert cleared.lanes["build"] is False
+    result = plan(repo, config, base, heads[1])
+    assert result.lanes == {"unit": False, "live": False, "build": True}
+    assert result.lane_reasons["build"] == ["not declared unaffected: proof/build.sh"]
 
 
 def test_a_lane_may_declare_only_what_cannot_affect_it():

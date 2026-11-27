@@ -1003,6 +1003,22 @@ def test_git_symlink_is_rejected_without_needing_windows_symlink_privileges(
         cache.snapshot(repo, tree, config)
 
 
+@pytest.mark.parametrize("mode", ["100755", "120000"])
+def test_a_mode_change_with_the_same_blob_selects_the_declared_reader(
+    repo: Path, config: ImpactConfig, cache: GraphCache, mode: str
+) -> None:
+    """An executable bit, or a file replaced by a symlink whose target is its text, keeps the blob id."""
+    write(repo, "tools/run", "other")
+    write(repo, "tests/right/test_two.py", "# gv:test-dependency: tools/run\ndef test_other(): assert True")
+    base = commit(repo)
+    blob = subprocess.check_output(["git", "-C", str(repo), "rev-parse", f"{base}:tools/run"], text=True).strip()
+    subprocess.run(["git", "-C", str(repo), "update-index", "--cacheinfo", f"{mode},{blob},tools/run"], check=True)
+    head = subprocess.check_output(["git", "-C", str(repo), "write-tree"], text=True).strip()
+    report = affected(repo, base, head, config, cache)
+    assert report.changed == ["tools/run"]
+    assert report.selected == ["tests/right/test_two.py"]
+
+
 def test_cli_module_entrypoint_is_native_and_operational(repo: Path, config: ImpactConfig, tmp_path: Path) -> None:
     commit(repo)
     config_path = tmp_path / "config.json"
