@@ -592,9 +592,8 @@ def main(argv: list[str] | None = None) -> int:
                         + "\n"
                     )
                     output.write(f"shard_count={shards}\ngroups={json.dumps(list(range(1, shards + 1)))}\n")
-                    reason = (
-                        f"Selected {len(report.selected)}/{report.total_files} test files; {'; '.join(report.reasons)}"
-                    )
+                    reasons = "; ".join(report.reasons) or "no changed files"
+                    reason = f"Selected {len(report.selected)}/{report.total_files} test files; {reasons}"
                     # One output per line: a multi-line reason (a quoted validation error) would
                     # truncate this value and corrupt every output GitHub parses after it.
                     output.write(f"reason={' '.join(reason.split())}\n")

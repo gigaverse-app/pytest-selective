@@ -109,7 +109,9 @@ def _plan(config: pytest.Config) -> Selection:
             else None,
             dependency_token=os.environ.get("IMPACT_DEPENDENCY_TOKEN") or None,
         )
-        message = f"{report.mode}: {len(report.selected)}/{report.total_files} test files; " + "; ".join(report.reasons)
+        # Only a plan with no changed file has no reason to give.
+        reasons = "; ".join(report.reasons) or "no changed files"
+        message = f"{report.mode}: {len(report.selected)}/{report.total_files} test files; {reasons}"
         if report.mode == "full":
             return Selection(message=message)
         return Selection(
