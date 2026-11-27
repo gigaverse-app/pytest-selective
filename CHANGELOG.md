@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.10.0...v1.10.1) (2026-11-27)
+
+
+### Bug fixes
+
+* **audit:** record the files git reads when options, pathspecs or a shell move the working tree ([#179](https://github.com/gigaverse-app/pytest-selective/issues/179)) ([47448b0](https://github.com/gigaverse-app/pytest-selective/commit/47448b0fceeca7f2f9048af0f0b3956b0f52474c))
+* **plugin:** say that nothing changed when a plan has no reason ([#180](https://github.com/gigaverse-app/pytest-selective/issues/180)) ([de19a01](https://github.com/gigaverse-app/pytest-selective/commit/de19a019d2cb84ad11ec23c2c38dca211ec4488c))
+
 ## [1.10.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.9.1...v1.10.0) (2026-11-26)
 
 
