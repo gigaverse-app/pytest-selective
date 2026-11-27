@@ -155,6 +155,7 @@ def inventory(repo: Path, revision: str) -> GitTree:
         _remember(_tree_listings, tree, listing)
     files: dict[str, str] = {}
     links: list[str] = []
+    modes: dict[str, str] = {}
     for record in listing.split(b"\0"):
         if not record:
             continue
@@ -165,8 +166,10 @@ def inventory(repo: Path, revision: str) -> GitTree:
             links.append(relative_name)
         if kind != "blob" or (mode not in {"100644", "100755"} and name.endswith(b".py")):
             raise ValueError(f"unsupported Git entry {name!r}: {mode} (symlink/submodule)")
-        files[name.decode("utf-8")] = oid
-    return GitTree(tree=tree, files=files, links=links)
+        files[relative_name] = oid
+        if mode != "100644":
+            modes[relative_name] = mode
+    return GitTree(tree=tree, files=files, links=links, modes=modes)
 
 
 def blobs(repo: Path, ids: set[str]) -> dict[str, bytes]:
@@ -723,7 +726,7 @@ class GraphCache:
         if cached is not None:
             try:
                 snapshot = Snapshot.model_validate_json(cached)
-                if snapshot.tree == tree and snapshot.files == files:
+                if snapshot.tree == tree and snapshot.files == files and snapshot.modes == git_tree.modes:
                     self.snapshot_hits += 1
                     return snapshot
             except ValueError:
@@ -738,6 +741,7 @@ class GraphCache:
         snapshot = resolve_graph(
             tree, files, parsed, config, git_tree.links, deferred, session_plugins(repo, files, policies)
         )
+        snapshot.modes = git_tree.modes
         add_sidecar_edges(repo, tree, files, snapshot)
         # Declaration errors are actionable authoring failures, even when the
         # same tree also needs a collection-policy review/full-suite fallback.
@@ -1135,9 +1139,16 @@ def resolve_graph(
 
 
 def changed_paths(before: Snapshot, after: Snapshot) -> list[str]:
-    """Paths whose blob differs between two trees, including additions and deletions."""
+    """
+    Paths whose blob or mode differs between two trees, including additions and deletions.
+
+    A mode change alone leaves the blob as it was, and still changes what running the file does
+    (an executable bit) or what reading it returns (a file replaced by a symlink to its own text).
+    """
     return sorted(
-        path for path in before.files.keys() | after.files.keys() if before.files.get(path) != after.files.get(path)
+        path
+        for path in before.files.keys() | after.files.keys()
+        if before.files.get(path) != after.files.get(path) or before.modes.get(path) != after.modes.get(path)
     )
 
 

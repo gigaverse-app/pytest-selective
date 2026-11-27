@@ -280,12 +280,16 @@ class GitTree(ImpactModel):
     tree: str
     files: dict[str, str]
     links: list[str]
+    #: The Git mode of each file that is not a plain one: executables (100755) and symlinks (120000).
+    modes: dict[str, str] = Field(default_factory=dict)
 
 
 class Snapshot(ImpactModel):
     plugin_tests: list[str] = Field(default_factory=list)
     tree: str
     files: dict[str, str]
+    #: As `GitTree.modes`: a mode can change with no change of blob.
+    modes: dict[str, str] = Field(default_factory=dict)
     edges: dict[str, list[str]]
     tests: list[str]
     opaque: dict[str, list[str]]
