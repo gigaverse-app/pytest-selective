@@ -64,7 +64,8 @@ def test_empty_selection_succeeds_but_filters_and_collection_errors_keep_pytest_
 ) -> None:
     result = run(repo, "--selective", *workers)
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "passed" not in result.stdout and "none:" in result.stdout
+    assert "passed" not in result.stdout
+    assert "pytest-selective: none: 0/2 test files; no changed files\n" in result.stdout
     filtered = run(repo, "--selective", "-k", "does_not_exist", *workers)
     assert filtered.returncode == 5, filtered.stdout + filtered.stderr
     write(repo, "tests/test_bad.py", "this is invalid python\n")
