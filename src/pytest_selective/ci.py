@@ -37,6 +37,10 @@ class Lane(ImpactModel):
     inputs: list[str] = Field(default_factory=list)
     test_patterns: list[str] = Field(default_factory=lambda: ["*"])
     exclude_patterns: list[str] = Field(default_factory=list)
+    #: The only changes that cannot alter this lane's result: any other changed path selects it.
+    #: For a lane whose inputs cannot be enumerated (a proof or release build), so that an
+    #: unfamiliar file runs it. Empty, the lane runs only for its tests and declared inputs.
+    unaffected_by: list[str] = Field(default_factory=list)
 
     def contains_test(self, path: str) -> bool:
         """Match a test by repository-relative path, after limiting it to this lane's roots."""
@@ -46,7 +50,7 @@ class Lane(ImpactModel):
             and not matches(path, self.exclude_patterns)
         )
 
-    @field_validator("roots", "inputs", "test_patterns", "exclude_patterns")
+    @field_validator("roots", "inputs", "test_patterns", "exclude_patterns", "unaffected_by")
     @classmethod
     def relative_paths(cls, values: list[str]) -> list[str]:
         return ImpactConfig.relative_paths(values)
@@ -104,7 +108,7 @@ class LaneConfig(ImpactModel):
     def safe_output_names(cls, lanes: dict[str, Lane]) -> dict[str, Lane]:
         if not lanes or any(not re.fullmatch(r"[a-z][a-z0-9_]*", name) for name in lanes):
             raise ValueError("provide lanes named with lowercase letters, digits and underscores")
-        if any(not lane.roots and not lane.inputs for lane in lanes.values()):
+        if any(not lane.roots and not lane.inputs and not lane.unaffected_by for lane in lanes.values()):
             raise ValueError("each lane needs test roots or explicit inputs")
         return lanes
 
@@ -236,6 +240,12 @@ def plan(repo: Path, config: LaneConfig, base: str, head: str, *, full: bool = F
             unreferenced = [f"unreferenced under root: {path}" for path in under_roots if path not in affected_tests]
             globs = [value for value in lane.inputs if job_input(value) is None]
             reasons.extend(f"explicit input: {path}" for path in report.changed if matches(path, globs))
+            if lane.unaffected_by:
+                reasons.extend(
+                    f"not declared unaffected: {path}"
+                    for path in report.changed
+                    if not matches(path, lane.unaffected_by)
+                )
             unchanged_jobs = []
             for value in lane.inputs:
                 scoped = job_input(value)

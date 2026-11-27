@@ -506,3 +506,45 @@ def test_explicit_inputs_are_not_limited_by_test_patterns(repository):
     config.lanes["live"].test_patterns = ["*_integration.py"]
     write(repo, "external/contract.json", "{}")
     assert plan(repo, config, base, commit(repo)).lanes == {"unit": False, "live": True}
+
+
+@pytest.mark.parametrize(
+    ("changes", "expected", "reason"),
+    [
+        ({"README.md": "documentation"}, False, "no affected tests or changed inputs"),
+        ({"scripts/sync.py": "print(2)"}, False, "no affected tests or changed inputs"),
+        ({"Makefile": "all:"}, True, "not declared unaffected: Makefile"),
+        (
+            {"README.md": "documentation", "proof/Main.lean": "theorem"},
+            True,
+            "not declared unaffected: proof/Main.lean",
+        ),
+        ({"scripts/sync.py": None}, False, "no affected tests or changed inputs"),
+        ({"proof/Old.lean": None}, True, "not declared unaffected: proof/Old.lean"),
+        ({"scripts/build.sh": "lake build"}, True, "explicit input: scripts/build.sh"),
+    ],
+)
+def test_a_lane_can_run_for_every_change_outside_declared_unaffected_paths(repository, changes, expected, reason):
+    """A proof build has no enumerable inputs: only a reviewed list of paths may skip it."""
+    repo, config, _ = repository
+    write(repo, "scripts/sync.py", "print(1)")
+    write(repo, "proof/Old.lean", "theorem")
+    base = commit(repo)
+    config.lanes["build"] = Lane(inputs=["scripts/build.sh"], unaffected_by=["*.md", "scripts/**", "tests/**"])
+    for path, content in changes.items():
+        if content is None:
+            (repo / path).unlink()
+        else:
+            write(repo, path, content)
+    result = plan(repo, config, base, commit(repo))
+    assert result.lanes["build"] is expected
+    assert result.lane_reasons["build"] == [reason]
+    # The other lanes keep their own rules.
+    assert result.lanes["live"] is False
+
+
+def test_a_lane_may_declare_only_what_cannot_affect_it():
+    config = LaneConfig(graph=ImpactConfig(test_roots=["tests"]), lanes={"build": Lane(unaffected_by=["*.md"])})
+    assert config.lanes["build"].unaffected_by == ["*.md"]
+    with pytest.raises(ValidationError, match="each lane needs test roots or explicit inputs"):
+        LaneConfig(graph=ImpactConfig(test_roots=["tests"]), lanes={"build": Lane()})

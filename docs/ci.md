@@ -210,6 +210,30 @@ runs every lane. The workflow path must not match
 non-Markdown files under `.github/`, so a config with a job input must set
 `global_inputs` explicitly.
 
+### Run a lane for every change it was not cleared of
+
+A lane's `inputs` list what selects it, so a file nobody listed skips it. That is the wrong
+default for a job whose inputs cannot be enumerated, such as a proof or release build: list
+instead the only paths that cannot change its result.
+
+```json
+{
+  "lanes": {
+    "build": {
+      "inputs": [".github/workflows/build.yml#build"],
+      "unaffected_by": ["*.md", "scripts/tests/**", ".github/workflows/build.yml"]
+    }
+  },
+  "global_inputs": []
+}
+```
+
+Any changed, added, deleted or renamed path outside `unaffected_by` selects the lane, and the
+plan names it as `not declared unaffected: <path>`. A path inside it can still select the lane
+as an affected test, a lane input or a global input, so clearing the workflow file while naming
+its job runs the build for edits to that job only. Without `unaffected_by` a lane keeps the
+rules above.
+
 ### Documentation and default lane inputs
 
 Unreferenced documentation changes select no tests. The whole-lane planner's
