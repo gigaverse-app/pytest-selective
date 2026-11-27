@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.10.1...v1.11.0) (2026-11-27)
+
+
+### Features
+
+* **ci:** let a lane run for every change it was not cleared of ([#182](https://github.com/gigaverse-app/pytest-selective/issues/182)) ([1d50843](https://github.com/gigaverse-app/pytest-selective/commit/1d50843413406428d47c9cff8c51727667eed3cf))
+
 ## [1.10.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.10.0...v1.10.1) (2026-11-27)
 
 
