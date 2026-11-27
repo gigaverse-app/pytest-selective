@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.11.1](https://github.com/gigaverse-app/pytest-selective/compare/v1.11.0...v1.11.1) (2026-11-27)
+
+
+### Bug fixes
+
+* **audit:** record the file git read for -L ranges, shell assignments, reflog revisions and bare repositories ([#186](https://github.com/gigaverse-app/pytest-selective/issues/186)) ([918feb1](https://github.com/gigaverse-app/pytest-selective/commit/918feb114ee8fee5e913586e5dbdc8f5e5c10b28))
+* **ci:** run a lane with unaffected_by when only a file's mode changed ([#184](https://github.com/gigaverse-app/pytest-selective/issues/184)) ([6aee8c2](https://github.com/gigaverse-app/pytest-selective/commit/6aee8c2357b3d61df320059f617b57503330e766))
+
 ## [1.11.0](https://github.com/gigaverse-app/pytest-selective/compare/v1.10.1...v1.11.0) (2026-11-27)
 
 
