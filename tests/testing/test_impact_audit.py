@@ -539,6 +539,36 @@ GIT_COMMANDS = {
     "index_path": ('git("show", ":0:input.txt", cwd="nested tree/data")', "root", {ROOT_INPUT}),
     "index_path_elsewhere": ('git("-C", other, "show", ":input.txt")', "temporary", set()),
     "index_path_of_another_repository": ('git("--git-dir", other + "/.git", "show", ":input.txt")', "temporary", set()),
+    # The file of a line range is relative to the directory git runs in, unlike the path after a revision.
+    "line_range": (
+        'git("log", "--format=", "-L1,1:input.txt", cwd="nested tree/data").splitlines()[-1]',
+        "+nested",
+        {NESTED_INPUT},
+    ),
+    "line_range_separate_value": (
+        'git("-C", "nested tree/data", "log", "--format=", "-L", "1,1:input.txt").splitlines()[-1]',
+        "+nested",
+        {NESTED_INPUT},
+    ),
+    "line_range_of_a_function": (
+        'git("-C", "nested tree/data", "log", "--format=", "-L", ":nested:input.txt").splitlines()[-1]',
+        "+nested",
+        {NESTED_INPUT},
+    ),
+    "option_value_with_a_colon": (
+        'git("log", "-1", "--format=format:input.txt", cwd="nested tree/data")',
+        "input.txt",
+        set(),
+    ),
+    "revision_path_from_the_git_directory": ('git("show", "HEAD:input.txt", cwd=".git")', "root", {ROOT_INPUT}),
+    # A repository without a work tree holds no file of the checkout around it.
+    "bare_repository_inside_the_checkout": (
+        '(git("-C", other, "-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false",'
+        ' "commit", "-qm", "fixture"), git("clone", "-q", "--bare", other, "build/remote.git"),'
+        ' git("-C", "build/remote.git", "show", "HEAD:input.txt"))[-1]',
+        "temporary",
+        set(),
+    ),
 }
 SHELL = "shell=True, check=True, capture_output=True, text=True"
 if os.name == "posix":
@@ -559,10 +589,31 @@ if os.name == "posix":
             "0",
             {NESTED_INPUT},
         ),
+        "shell_assignment": (
+            f"""subprocess.run("GIT_PAGER=cat git -C 'nested tree/data' grep -h -e . -- input.txt", {SHELL}).stdout""",
+            "nested",
+            {NESTED_INPUT},
+        ),
+        "shell_assigned_work_tree": (
+            'subprocess.run("GIT_DIR=" + shlex.quote(other + "/.git") + " GIT_WORK_TREE=" + shlex.quote(other)'
+            f' + " git grep -h -e . -- input.txt", {SHELL}).stdout',
+            "temporary",
+            set(),
+        ),
+        "shell_reflog_revision": (
+            f"""subprocess.run("git -C 'nested tree/data' show HEAD@{{0}}:input.txt", {SHELL}).stdout""",
+            "root",
+            {ROOT_INPUT},
+        ),
         # Not one program with literal arguments: the recorder keeps reading every word where it is launched.
         "shell_pipeline": (
             f'subprocess.run("cd " + shlex.quote(other) + " && git grep -h -e . -- input.txt", {SHELL}).stdout',
             "temporary",
+            {ROOT_INPUT},
+        ),
+        "shell_braces": (
+            f"""subprocess.run("git -C 'nested tree/data' grep -h -e . -- input.txt {{a,b}}", {SHELL}).stdout""",
+            "nested",
             {ROOT_INPUT},
         ),
     }

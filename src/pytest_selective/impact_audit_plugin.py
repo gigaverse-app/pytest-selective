@@ -48,6 +48,13 @@ _GIT_VALUE_OPTIONS = frozenset(
 _SHELLS = frozenset({"sh", "bash", "dash", "zsh", "ksh"})
 #: Shell syntax beyond one program with literal, possibly quoted, arguments.
 _SHELL_SYNTAX = re.compile(r"[;&|<>()$`\\\n*?\[\]{}~#!]")
+#: A reflog or upstream suffix of a revision (``HEAD@{0}``, ``@{-1}``, ``main@{1.day.ago}``). No shell
+#: expands braces that hold neither a comma nor ``..``, so the word stays literal.
+_REVISION_BRACES = re.compile(r"@\{[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*\}")
+#: A variable assignment before the program of a shell command line.
+_SHELL_ASSIGNMENT = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)=(.*)", re.DOTALL)
+#: The git subcommands whose ``-L`` takes a line range, also as the next argument. ``git grep -L`` takes none.
+_LINE_RANGE_COMMANDS = frozenset({"log", "blame", "annotate"})
 #: Splits shell command strings and ``--option=path`` arguments into candidate paths.
 _WORD_SEPARATORS = re.compile(r"[\s=;|&<>()'\"]+")
 #: Library code that reads the source of every module already imported in the process for its
@@ -136,7 +143,7 @@ def _shell_words(executable: object, argv: object) -> list[str] | None:
     if os.name != "posix" or not isinstance(argv, (str, bytes)):
         return None
     line = os.fsdecode(argv)  # os.system reports its command line encoded
-    if _SHELL_SYNTAX.search(line):
+    if _SHELL_SYNTAX.search(_REVISION_BRACES.sub("", line)):
         return None
     try:
         return shlex.split(line)
@@ -144,14 +151,49 @@ def _shell_words(executable: object, argv: object) -> list[str] | None:
         return None
 
 
+def _shell_assignments(words: list[str] | None) -> tuple[dict[str, str], list[str] | None]:
+    """Split the ``NAME=value`` words a shell command line starts with from the program and its arguments."""
+    assigned: dict[str, str] = {}
+    if words is None:
+        return assigned, None
+    for count, word in enumerate(words):
+        assignment = _SHELL_ASSIGNMENT.fullmatch(word)
+        if assignment is None:
+            return assigned, words[count:]
+        assigned[assignment[1]] = assignment[2]
+    return assigned, None
+
+
 def _git_top(directory: str) -> str | None:
-    """The work tree git discovers from a directory: the nearest one holding a ``.git`` entry."""
+    """
+    The work tree git discovers from a directory: the nearest one holding a ``.git`` entry.
+
+    A git directory on the way up that is no work tree's ``.git`` (a bare repository, a submodule's
+    repository) ends the search as it ends git's: its objects are not the files of a checkout around it.
+    """
     while not os.path.lexists(os.path.join(directory, ".git")):
         parent = os.path.dirname(directory)
         if parent == directory:
             return None
+        if os.path.basename(directory) != ".git" and all(
+            os.path.exists(os.path.join(directory, entry)) for entry in ("HEAD", "objects", "refs")
+        ):
+            return None
         directory = parent
     return directory
+
+
+def _line_range_files(line_range: str) -> Iterable[str]:
+    """
+    The candidate files of a ``-L`` value: ``<start>,<end>:<file>`` or ``:<function>:<file>``.
+
+    A bound or the function may be a regular expression holding colons of its own, so every
+    text after a colon is a candidate; only one naming a tracked file is recorded.
+    """
+    _, separator, rest = line_range.partition(":")
+    while separator:
+        yield rest
+        _, separator, rest = rest.partition(":")
 
 
 def _git_rooted_operand(word: str) -> tuple[str, bool, bool] | None:
@@ -187,6 +229,8 @@ def _git_candidates(
     and resolves a relative repository or work tree in the directory they select. From a directory
     outside the work tree it runs at the work tree's top. A top-rooted pathspec starts at the work
     tree's top and a path in a revision or the index at the top of the repository that holds it.
+    The file of a line range (``-L1,1:file``) is relative to the directory git runs in, and no other
+    option holds a revision's path.
     """
     yield words[0], directory
     index = 1
@@ -220,7 +264,15 @@ def _git_candidates(
     else:
         # A repository named without a work tree uses the current directory as one.
         tree = current if git_dir else None
-    for operand in words[index:]:
+    takes_line_range = index < len(words) and words[index] in _LINE_RANGE_COMMANDS
+    operands = iter(words[index:])
+    for operand in operands:
+        if operand.startswith("-"):
+            yield from ((word, directory) for word in _words(operand))
+            if operand.startswith("-L"):
+                line_range = operand[2:] or (next(operands, "") if takes_line_range else "")
+                yield from ((path, directory) for path in _line_range_files(line_range))
+            continue
         rooted = _git_rooted_operand(operand)
         if rooted is None or rooted[2]:
             yield from ((word, directory) for word in _words(operand))
@@ -298,13 +350,17 @@ class ReadRecorder:
                 # os.system passes a shell command line alone; the other events name the program first.
                 launcher = args[index - 1] if index else None
                 words = _git_words(launcher, value) if index else None
+                assigned: dict[str, str] = {}
                 if words is None and (index or event == "os.system"):
-                    words = _git_words(None, _shell_words(launcher, value))
+                    assigned, command = _shell_assignments(_shell_words(launcher, value))
+                    words = _git_words(None, command)
                 if words:
                     # Every process-launch event ends with the environment; None inherits this one.
+                    # A variable assigned on the shell command line replaces the launched one.
                     environment = args[-1] if len(args) > index + 1 else None
                     git_dir, work_tree = (
-                        _environment_value(environment, name) for name in ("GIT_DIR", "GIT_WORK_TREE")
+                        assigned.get(name, _environment_value(environment, name))
+                        for name in ("GIT_DIR", "GIT_WORK_TREE")
                     )
                     candidates = _git_candidates(words, directory, git_dir, work_tree)
                 for word, where in candidates:
