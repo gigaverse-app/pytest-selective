@@ -520,6 +520,25 @@ GIT_COMMANDS = {
         "nested",
         {NESTED_INPUT},
     ),
+    "top_magic": (f'git("-C", "nested tree/data", {GREP}, ":(top)input.txt")', "root", {ROOT_INPUT}),
+    "top_short_magic": (f'git("-C", "nested tree/data", {GREP}, ":/input.txt")', "root", {ROOT_INPUT}),
+    "top_magic_from_the_subprocess_directory": (
+        f'git({GREP}, ":(top,literal)input.txt", cwd="nested tree/data")',
+        "root",
+        {ROOT_INPUT},
+    ),
+    "top_magic_in_a_work_tree": (
+        f'git("--git-dir", other + "/.git", "--work-tree", other, {GREP}, ":(top)input.txt", cwd="nested tree")',
+        "temporary",
+        set(),
+    ),
+    "other_magic": (f'git("-C", "nested tree/data", {GREP}, ":(literal)input.txt")', "nested", {NESTED_INPUT}),
+    "revision_path": ('git("-C", "nested tree/data", "show", "HEAD:input.txt")', "root", {ROOT_INPUT}),
+    "revision_relative_path": ('git("-C", "nested tree/data", "show", "HEAD:./input.txt")', "nested", {NESTED_INPUT}),
+    "revision_path_from_the_top": ('git("show", "HEAD:nested tree/data/input.txt")', "nested", {NESTED_INPUT}),
+    "index_path": ('git("show", ":0:input.txt", cwd="nested tree/data")', "root", {ROOT_INPUT}),
+    "index_path_elsewhere": ('git("-C", other, "show", ":input.txt")', "temporary", set()),
+    "index_path_of_another_repository": ('git("--git-dir", other + "/.git", "show", ":input.txt")', "temporary", set()),
 }
 
 

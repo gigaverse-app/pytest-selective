@@ -120,13 +120,49 @@ def _git_words(executable: object, argv: object) -> list[str] | None:
     return words
 
 
-def _git_candidates(words: list[str], directory: str | None, work_tree: str | None) -> Iterable[tuple[str, str | None]]:
+def _git_top(directory: str) -> str | None:
+    """The work tree git discovers from a directory: the nearest one holding a ``.git`` entry."""
+    while not os.path.lexists(os.path.join(directory, ".git")):
+        parent = os.path.dirname(directory)
+        if parent == directory:
+            return None
+        directory = parent
+    return directory
+
+
+def _git_rooted_operand(word: str) -> tuple[str, bool, bool] | None:
+    """
+    The path inside an operand that git does not resolve as it is spelled.
+
+    Returns the path, whether it starts at the top instead of the current directory, and whether
+    it names an object of the repository (``HEAD:path``, ``:path``, ``:0:path``) instead of a
+    work tree file (the pathspecs ``:(top)path`` and ``:/path``).
+    """
+    if os.path.isabs(word):  # a Windows drive, not a revision
+        return None
+    if word.startswith(":("):
+        magic, closed, path = word[2:].partition(")")
+        return (path, "top" in magic.split(","), False) if closed else None
+    if word.startswith(":/"):
+        return word[2:], True, False
+    revision, separator, path = word.partition(":")
+    if not separator:
+        return None
+    if not revision and path[:2] in {"0:", "1:", "2:", "3:"}:
+        path = path[2:]
+    return path, not path.startswith(("./", "../")), True
+
+
+def _git_candidates(
+    words: list[str], directory: str | None, git_dir: str | None, work_tree: str | None
+) -> Iterable[tuple[str, str | None]]:
     """
     Yield each candidate path of a git command with the directory git resolves it in.
 
     Git applies every ``-C`` in order, wherever it stands among the options before the subcommand,
-    and resolves a relative work tree in the directory they select. From a directory outside the
-    work tree it runs at the work tree's top.
+    and resolves a relative repository or work tree in the directory they select. From a directory
+    outside the work tree it runs at the work tree's top. A top-rooted pathspec starts at the work
+    tree's top and a path in a revision or the index at the top of the repository that holds it.
     """
     yield words[0], directory
     index = 1
@@ -141,19 +177,40 @@ def _git_candidates(words: list[str], directory: str | None, work_tree: str | No
             if value:
                 directory = os.path.realpath(os.path.join(directory or os.curdir, value))
             continue
-        if option == "--work-tree":
+        if option == "--git-dir":
+            git_dir = value
+        elif option == "--work-tree":
             work_tree = value
         yield from ((word, directory) for word in _words(value) if word)
+    current = os.path.realpath(directory or os.curdir)
+    # Only the conventional layout says where the files of an explicit repository are.
+    repository = os.path.realpath(os.path.join(current, git_dir)) if git_dir else None
     if work_tree:
-        current = os.path.realpath(directory or os.curdir)
-        top = os.path.realpath(os.path.join(current, work_tree))
+        tree: str | None = os.path.realpath(os.path.join(current, work_tree))
         try:
-            inside = os.path.commonpath([top, current]) == top
+            inside = os.path.commonpath([tree, current]) == tree
         except ValueError:  # different drives
             inside = False
         if not inside:
-            directory = top
-    yield from ((word, directory) for word in _words(words[index:]))
+            directory = current = tree
+    else:
+        # A repository named without a work tree uses the current directory as one.
+        tree = current if git_dir else None
+    for operand in words[index:]:
+        rooted = _git_rooted_operand(operand)
+        if rooted is None or rooted[2]:
+            yield from ((word, directory) for word in _words(operand))
+        if rooted is None:
+            continue
+        path, from_top, in_repository = rooted
+        if not in_repository:
+            top = tree or _git_top(current)
+        elif repository:
+            top = os.path.dirname(repository) if os.path.basename(repository) == ".git" else None
+        else:
+            top = _git_top(current)
+        if top is not None:
+            yield path, top if from_top else directory
 
 
 def _environment_value(environment: object, name: str) -> str | None:
@@ -217,7 +274,10 @@ class ReadRecorder:
                 if index and (words := _git_words(args[index - 1], value)):
                     # Every process-launch event ends with the environment; None inherits this one.
                     environment = args[-1] if len(args) > index + 1 else None
-                    candidates = _git_candidates(words, directory, _environment_value(environment, "GIT_WORK_TREE"))
+                    git_dir, work_tree = (
+                        _environment_value(environment, name) for name in ("GIT_DIR", "GIT_WORK_TREE")
+                    )
+                    candidates = _git_candidates(words, directory, git_dir, work_tree)
                 for word, where in candidates:
                     self._add(owner, word, where)
 
