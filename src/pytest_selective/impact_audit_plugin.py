@@ -23,7 +23,7 @@ import shlex
 import subprocess
 import sys
 import uuid
-from collections.abc import Generator, Iterable
+from collections.abc import Generator, Iterable, Mapping
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -40,6 +40,10 @@ _COMMAND_ARGUMENTS = {
     "os.posix_spawn": (0, 1),
     "os.spawn": (1, 2),
 }
+#: Git options before the subcommand whose value may be the next argument.
+_GIT_VALUE_OPTIONS = frozenset(
+    {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--super-prefix", "--config-env", "--attr-source"}
+)
 #: Splits shell command strings and ``--option=path`` arguments into candidate paths.
 _WORD_SEPARATORS = re.compile(r"[\s=;|&<>()'\"]+")
 #: Library code that reads the source of every module already imported in the process for its
@@ -93,9 +97,9 @@ def _words(value: object) -> Iterable[str]:
         yield from (word for word in _WORD_SEPARATORS.split(text) if word and word != text)
 
 
-def _git_chdir_arguments(executable: object, argv: object) -> tuple[list[str], int] | None:
-    """Return the arguments and subcommand position for direct git invocations with leading -C options."""
-    if isinstance(argv, str) and os.name == "nt" and " -C " in argv:
+def _git_words(executable: object, argv: object) -> list[str] | None:
+    """Return the decoded arguments of a direct git invocation."""
+    if isinstance(argv, str) and os.name == "nt":
         # Popen's Windows audit event carries a command line, even for a list of arguments.
         # Accept only a lossless decoding of the form Python itself emits.
         try:
@@ -104,23 +108,62 @@ def _git_chdir_arguments(executable: object, argv: object) -> tuple[list[str], i
             return None
         if subprocess.list2cmdline(words) != argv:
             return None
-    elif isinstance(argv, (list, tuple)) and len(argv) >= 4 and argv[1] in ("-C", b"-C"):
-        if not all(isinstance(arg, (str, bytes, os.PathLike)) for arg in argv):
-            return None
+    elif isinstance(argv, (list, tuple)) and all(isinstance(arg, (str, bytes, os.PathLike)) for arg in argv):
         words = [os.fsdecode(arg) for arg in argv]
     else:
         return None
-    if len(words) < 4 or words[1] != "-C":
+    if not words:
         return None
     program = os.fsdecode(executable) if isinstance(executable, (str, bytes, os.PathLike)) else words[0]
     if os.path.normcase(os.path.basename(program)) not in {"git", "git.exe"}:
         return None
+    return words
+
+
+def _git_candidates(words: list[str], directory: str | None, work_tree: str | None) -> Iterable[tuple[str, str | None]]:
+    """
+    Yield each candidate path of a git command with the directory git resolves it in.
+
+    Git applies every ``-C`` in order, wherever it stands among the options before the subcommand,
+    and resolves a relative work tree in the directory they select. From a directory outside the
+    work tree it runs at the work tree's top.
+    """
+    yield words[0], directory
     index = 1
-    while index + 1 < len(words) and words[index] == "-C":
-        index += 2
-    if index >= len(words) or words[index].startswith("-"):
+    while index < len(words) and words[index].startswith("-"):
+        option, assigned, value = words[index].partition("=")
+        index += 1
+        if not assigned and option in _GIT_VALUE_OPTIONS and index < len(words):
+            value = words[index]
+            index += 1
+        if option == "-C":
+            yield value, directory
+            if value:
+                directory = os.path.realpath(os.path.join(directory or os.curdir, value))
+            continue
+        if option == "--work-tree":
+            work_tree = value
+        yield from ((word, directory) for word in _words(value) if word)
+    if work_tree:
+        current = os.path.realpath(directory or os.curdir)
+        top = os.path.realpath(os.path.join(current, work_tree))
+        try:
+            inside = os.path.commonpath([top, current]) == top
+        except ValueError:  # different drives
+            inside = False
+        if not inside:
+            directory = top
+    yield from ((word, directory) for word in _words(words[index:]))
+
+
+def _environment_value(environment: object, name: str) -> str | None:
+    """A variable of the environment a launched process receives; ``None`` inherits this process's."""
+    if environment is None:
+        return os.environ.get(name)
+    if not isinstance(environment, Mapping):
         return None
-    return words, index
+    value = environment.get(name, environment.get(name.encode()))
+    return os.fsdecode(value) if isinstance(value, (str, bytes, os.PathLike)) else None
 
 
 class ReadRecorder:
@@ -170,16 +213,13 @@ class ReadRecorder:
         for index in _COMMAND_ARGUMENTS[event]:
             if index < len(args):
                 value = args[index]
-                argument_directory = directory
-                if index and (command := _git_chdir_arguments(args[index - 1], value)):
-                    words, subcommand = command
-                    self._add(owner, words[0], directory)
-                    for target in words[2:subcommand:2]:
-                        self._add(owner, target, argument_directory)
-                        argument_directory = os.path.realpath(os.path.join(argument_directory or os.curdir, target))
-                    value = words[subcommand:]
-                for word in _words(value):
-                    self._add(owner, word, argument_directory)
+                candidates: Iterable[tuple[str, str | None]] = ((word, directory) for word in _words(value))
+                if index and (words := _git_words(args[index - 1], value)):
+                    # Every process-launch event ends with the environment; None inherits this one.
+                    environment = args[-1] if len(args) > index + 1 else None
+                    candidates = _git_candidates(words, directory, _environment_value(environment, "GIT_WORK_TREE"))
+                for word, where in candidates:
+                    self._add(owner, word, where)
 
     def _add(self, owner: str, value: object, directory: str | None) -> None:
         if not isinstance(value, (str, bytes, os.PathLike)):

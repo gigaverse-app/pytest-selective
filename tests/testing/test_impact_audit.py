@@ -441,6 +441,10 @@ def test_open_records_reads_but_not_write_only_opens(
         ("os.system", (f"cat '{DATA}' | wc",)),
         ("os.posix_spawn", ("python", [b"python", DATA.encode()], {})),
         ("os.spawn", (0, "python", ["python", DATA], {})),
+        ("os.posix_spawn", ("git", [b"git", b"--no-pager", b"-C", b"data", b"diff", b"--", b"value.txt"], {})),
+        ("os.exec", ("/usr/bin/git", ["git", "--work-tree", "data", "diff", "--", "value.txt"], None)),
+        ("os.spawn", (0, "git", ["git", "diff", "--", "value.txt"], {b"GIT_WORK_TREE": b"data"})),
+        ("subprocess.Popen", ("git", ["git", "diff", "--", "value.txt"], None, {"GIT_WORK_TREE": "data"})),
     ],
 )
 def test_subprocess_arguments_naming_tracked_files_are_reads(
@@ -475,6 +479,89 @@ def test_git_diff(tmp_path):
     reads = load_records(records)[0].inputs[TEST]
     assert "nested tree/data/input.txt" in reads
     assert "input.txt" not in reads
+
+
+ROOT_INPUT = "input.txt"
+NESTED_INPUT = "nested tree/data/input.txt"
+GREP = '"grep", "-h", "-e", ".", "--"'
+# Each case runs one real git command and states what git printed and which tracked file that was.
+# `other` is a second repository outside the audited one whose input.txt holds "temporary".
+GIT_COMMANDS = {
+    "flag_before_chdir": (f'git("--no-pager", "-C", other, {GREP}, "input.txt")', "temporary", set()),
+    "flag_after_chdir": (f'git("-C", other, "--no-pager", {GREP}, "input.txt")', "temporary", set()),
+    "config_before_chdir": (
+        f'git("-c", "core.quotePath=false", "-C", "nested tree/data", {GREP}, "input.txt")',
+        "nested",
+        {NESTED_INPUT},
+    ),
+    "empty_chdir": (f'git("-C", "nested tree", "-C", "", "-C", "data", {GREP}, "input.txt")', "nested", {NESTED_INPUT}),
+    "work_tree": (
+        f'git("--git-dir=" + other + "/.git", "--work-tree=" + other, {GREP}, "input.txt")',
+        "temporary",
+        set(),
+    ),
+    "work_tree_separate_value": (
+        f'git("--git-dir", other + "/.git", "--work-tree", other, {GREP}, "input.txt")',
+        "temporary",
+        set(),
+    ),
+    "work_tree_after_chdir": (
+        f'git("--git-dir", ".git", "--work-tree", ".", "-C", other, {GREP}, "input.txt")',
+        "temporary",
+        set(),
+    ),
+    "work_tree_environment": (
+        f'git({GREP}, "input.txt", env=dict(os.environ, GIT_DIR=other + "/.git", GIT_WORK_TREE=other))',
+        "temporary",
+        set(),
+    ),
+    "work_tree_containing_the_directory": (
+        f'git("--work-tree", "../..", {GREP}, "input.txt", cwd="nested tree/data")',
+        "nested",
+        {NESTED_INPUT},
+    ),
+}
+
+
+@pytest.fixture(scope="module")
+def git_command_reads(tmp_path_factory: pytest.TempPathFactory) -> dict[str, set[str]]:
+    """What the recorder attributes to each case's test file, of the two tracked input.txt files."""
+    base = tmp_path_factory.mktemp("git-commands")
+    repo = base / "repo"
+    init(repo)
+    write(repo, ROOT_INPUT, "root\n")
+    write(repo, NESTED_INPUT, "nested\n")
+    for name, (command, printed, _reads) in GIT_COMMANDS.items():
+        write(
+            repo,
+            f"tests/test_{name}.py",
+            f"""
+import os
+import shlex
+import subprocess
+from pathlib import Path
+
+def git(*args, **options):
+    return subprocess.run(["git", *args], check=True, capture_output=True, text=True, **options).stdout
+
+def test_git(tmp_path):
+    other = str(tmp_path / "other")
+    subprocess.run(["git", "init", "-q", other], check=True)
+    Path(other, "input.txt").write_text("temporary\\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=other, check=True)
+    assert {command}.strip() == {printed!r}
+""",
+        )
+    commit(repo)
+    result = run_audited_pytest(repo, base / "records", "tests")
+    assert result.returncode == 0, result.stdout + result.stderr
+    inputs = load_records(base / "records")[0].inputs
+    return {name: {ROOT_INPUT, NESTED_INPUT} & set(inputs[f"tests/test_{name}.py"]) for name in GIT_COMMANDS}
+
+
+@pytest.mark.parametrize("name", GIT_COMMANDS)
+def test_git_operands_are_read_where_git_resolves_them(git_command_reads: dict[str, set[str]], name: str) -> None:
+    assert git_command_reads[name] == GIT_COMMANDS[name][2]
 
 
 @pytest.mark.parametrize(
